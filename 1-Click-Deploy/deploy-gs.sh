@@ -76,6 +76,7 @@ else
 		* ) echo 'Please enter installation type by name or number: ';;
 	    esac
 	done
+	read -p "To override default number of containers to rise [Default is none]: " -e containerCnt;
 fi
 
 function installRemoteJava {
@@ -114,7 +115,12 @@ fi
 }
 
 function startGS {
-        nohup gigaspaces-${gsType}-enterprise-${gsVersion}/bin/gs.sh host run-agent --auto &
+	if [ -z "$containerCnt" ]
+        then    
+		nohup gigaspaces-${gsType}-enterprise-${gsVersion}/bin/gs.sh host run-agent --auto &
+        else    
+		nohup gigaspaces-${gsType}-enterprise-${gsVersion}/bin/gs.sh host run-agent --auto --gsc=$containerCnt &
+        fi; 
 	echo "starting GS - Done!"
         echo "GS Web-UI http://localhost:8099"
         echo "GS Ops Manager http://localhost:8090"
