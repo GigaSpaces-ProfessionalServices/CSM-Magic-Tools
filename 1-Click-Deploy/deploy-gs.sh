@@ -77,6 +77,14 @@ else
 	    esac
 	done
 	read -p "To override default number of containers to rise [Default is none]: " -e containerCnt;
+	if [ ! -z "$containerCnt" ]
+        then
+		read -p "To override default containers heap [Default is 512m] please specify units (m/g): " -e containerMem;
+		if [ ! -z "$containerMem" ]
+		then
+		       export GS_GSC_OPTIONS="-Xmx$containerMem -Xms$containerMem"
+		fi;	
+        fi;
 fi
 
 function installRemoteJava {
@@ -119,6 +127,10 @@ function startGS {
         then    
 		nohup gigaspaces-${gsType}-enterprise-${gsVersion}/bin/gs.sh host run-agent --auto &
         else    
+                if [ ! -z "$containerMem" ]
+                then
+                       export GS_GSC_OPTIONS="-Xmx$containerMem -Xms$containerMem"
+                fi;
 		nohup gigaspaces-${gsType}-enterprise-${gsVersion}/bin/gs.sh host run-agent --auto --gsc=$containerCnt &
         fi; 
 	echo "starting GS - Done!"
