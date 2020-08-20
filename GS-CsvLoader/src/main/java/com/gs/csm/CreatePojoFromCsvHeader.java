@@ -3,12 +3,18 @@ package com.gs.csm;
 import java.io.*;
 import org.apache.commons.lang3.StringEscapeUtils;
 
+import static com.gs.csm.GsFactory.*;
+import static com.gs.csm.GsFactory.csvFile;
+
 public class CreatePojoFromCsvHeader {
 
     public static void main(String[] args) throws IOException {
-        File csvFile=new File(args[0]);
-        String className=args[1];
-        createPojoFromCsvHeader(csvFile,"src/main/java","com.gs.csm.data",className);
+        packageName=System.getenv("PACKAGE");
+        pojoOutputDirectory=System.getenv("POJO_OUTPUT_DIRECTORY");
+        csvFile=System.getenv("CSV_FILE");
+        File csvObjectFile = new File(csvFile);
+        String className=args[0];
+        createPojoFromCsvHeader(csvObjectFile,pojoOutputDirectory,packageName,className);
     }
     public static void createPojoFromCsvHeader(File csvInputFile, String directoryOfjavaFile, String packageName, String className)
     {

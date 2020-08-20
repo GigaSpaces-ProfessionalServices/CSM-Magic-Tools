@@ -6,6 +6,8 @@ import org.openspaces.core.space.CannotFindSpaceException;
 import org.openspaces.core.space.EmbeddedSpaceConfigurer;
 import org.openspaces.core.space.SpaceProxyConfigurer;
 
+import java.io.File;
+
 public class GsFactory {
     public static String spaceName = "space";
     public static String locators = "localhost";
@@ -13,6 +15,8 @@ public class GsFactory {
     public static int timeout = 60_000;
 
     public static String csvFile = "src/main/resources/ibm.us.csv";
+    public static String packageName = "com.gs.csm.data";
+    public static String pojoOutputDirectory = "src/main/java";
     public static int limitRows = 100000;
 
 
