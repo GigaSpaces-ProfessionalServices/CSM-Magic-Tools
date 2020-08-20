@@ -2,14 +2,16 @@
 
 ## 1. Create a pojo based on the csv header
 
-1. `cd csvLoader`
-2. `mvn exec:java  -Dexec.mainClass=com.gs.csm.CreatePojoFromCsvHeader -Dexec.args="src/main/resources/ibm.us.csv myNewPojo"`
-3. Based on the csv header a new pojo will be created under the package:<br>
-   **com.gs.csm.data**
+1. edit generate-pojo-from-csv-header.sh and set the following to fit your needs:<br>
+   `export PACKAGE="com.gs.csm.data"`
+   `export POJO_OUTPUT_DIRECTORY="src/main/java"`
+   `export POJO_NAME="myNewPojo"`
+   `export CSV_FILE="src/main/resources/ibm.us.csv"`
+   
+2. `./generate-pojo-from-csv-header.sh`
 
-* The above is an example on how to create a pojo based on your csv header<br>
-  Please modify args1 and args2 for you specific needs and run again.<br>
-  
+3. the new pojo will be created in the POJO_OUTPUT_DIRECTORY.
+
 **Note:**<br>
 The pojo will be created with default String properties for other types (Date,Int...), please modify the new pojo and change properties types 
 
