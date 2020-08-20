@@ -14,6 +14,7 @@ public class CreatePojoFromCsvHeader {
         csvFile=System.getenv("CSV_FILE");
         File csvObjectFile = new File(csvFile);
         String className=args[0];
+
         createPojoFromCsvHeader(csvObjectFile,pojoOutputDirectory,packageName,className);
     }
     public static void createPojoFromCsvHeader(File csvInputFile, String directoryOfjavaFile, String packageName, String className)

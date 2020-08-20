@@ -30,8 +30,8 @@ public class IBMStock implements Serializable {
         return Id;
     }
 
-    public void setId(String processingFeeId) {
-        this.Id = processingFeeId;
+    public void setId(String Id) {
+        this.Id = Id;
     }
 
     public java.sql.Date getDate() {

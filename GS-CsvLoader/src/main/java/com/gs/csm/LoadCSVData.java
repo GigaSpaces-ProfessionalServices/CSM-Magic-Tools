@@ -1,7 +1,6 @@
 package com.gs.csm;
 import com.gigaspaces.utils.CsvReader;
 import org.openspaces.core.GigaSpace;
-import com.gs.csm.data.IBMStock;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -16,16 +15,18 @@ import static com.gs.csm.GsFactory.*;
 public class LoadCSVData {
 
 //    static InputStream inputStream = LoadCSVData.class.getClassLoader().getResourceAsStream(csvFileName);
-    public static void main(String[] args) throws IOException {
-        GigaSpace gigaSpace = GsFactory.getOrCreateSpace(args[0], false);
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        spaceName=args[0];
+        GigaSpace gigaSpace = GsFactory.getOrCreateSpace(spaceName, false);
         groups=System.getenv("GS_LOOKUP_GROUPS");
         locators=System.getenv("GS_LOOKUP_LOCATORS");
         csvFile=System.getenv("CSV_FILE");
+        csvPojo=System.getenv("CSV_POJO");
 
         loadCsvData(gigaSpace);
     }
 
-    public static void loadCsvData(GigaSpace gigaSpace) throws IOException {
+    public static void loadCsvData(GigaSpace gigaSpace) throws IOException, ClassNotFoundException {
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateFormatTs = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
@@ -50,7 +51,7 @@ public class LoadCSVData {
                 .build();
 
 //        reader.read(inputStream, IBMStock.class).forEach(gigaSpace::write);
-        reader.read(Paths.get(csvFile), IBMStock.class).limit(limitRows).forEach(gigaSpace::write);
+        reader.read(Paths.get(csvFile), Class.forName(csvPojo)).limit(limitRows).forEach(gigaSpace::write);
 
     }
 }
