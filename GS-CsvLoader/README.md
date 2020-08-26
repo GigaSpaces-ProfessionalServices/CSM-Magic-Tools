@@ -47,7 +47,7 @@ The above properties can be set using gs cli during the deployment phase as well
       
 2. build the maven project:
          `./build.sh`
-3. `$GS_HOME/gs.sh pu deploy --property=numberOfIterations=20 CSVFeeder ~/CSM-Magic-Tools/GS-CsvLoader/target/csvLoader-1.0-SNAPSHOT.jar`
+3. `pu deploy --property=numberOfIterations=20 CSVFeeder /Users/aharonmoll/CSM-Magic-Tools/GS-CsvLoader/target/csvLoader-1.0-SNAPSHOT.jar`
 4. Verify in the Ops Manager that all records were loaded to Space:<br>
    http://localhost:8090
 
