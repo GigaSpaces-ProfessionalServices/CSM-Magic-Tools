@@ -9,7 +9,7 @@ import org.openspaces.core.space.SpaceProxyConfigurer;
 import java.io.File;
 
 public class GsFactory {
-    public static String spaceName = "space";
+    public static String spaceName = "demo";
     public static String locators = "localhost";
     public static String groups = "xap-15.5.0";
     public static int timeout = 60_000;
@@ -18,6 +18,7 @@ public class GsFactory {
     public static String packageName = "com.gs.csm.data";
     public static String pojoOutputDirectory = "src/main/java";
     public static int limitRows = 100000;
+    public static int numberOfIterations = 10;
 
 
     public static GigaSpace getOrCreateSpace(String spaceName, boolean embedded) {

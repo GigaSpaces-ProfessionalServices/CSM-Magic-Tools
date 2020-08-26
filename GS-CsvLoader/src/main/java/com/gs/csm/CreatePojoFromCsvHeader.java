@@ -34,8 +34,11 @@ public class CreatePojoFromCsvHeader {
             javaOutPutFile.createNewFile();
             PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(javaOutputFilePath)));
             System.out.println("generating class..");
-            out.println("package "+packageName+";");
-            out.println("public class " + className + " {");
+            createClassHeader(out,className);
+
+            //Create auto generated Id
+            out.println("\t\tprivate String Id = \"Id\";");
+
             String line = null;
             String[] fields = null;
             int rowNum = 0;
@@ -52,6 +55,8 @@ public class CreatePojoFromCsvHeader {
                     for (int i = 0; i < fields.length; i++) {
                         out.println("\t\tprivate String " + fields[i] + " = \""+ StringEscapeUtils.escapeJava(values[i])+ "\";");
                     }
+                    //Create auto generated Id setter & getter
+                    createAutoGenId(out);
 
                     for (int i = 0; i < fields.length; i++) {
                         String tempField=StringEscapeUtils.escapeJava(values[i]).substring(0, 1).toUpperCase()+StringEscapeUtils.escapeJava(values[i]).substring(1);
@@ -94,6 +99,30 @@ public class CreatePojoFromCsvHeader {
             e.printStackTrace();
         }
 
+    }
+
+    public static void createClassHeader(PrintWriter out, String className)
+    {
+        out.println("package "+packageName+";");
+        out.println("");
+        out.println("import com.gigaspaces.annotation.pojo.SpaceId;");
+        out.println("");
+        out.println("public class " + className + " {");
+    }
+
+    public static void createAutoGenId(PrintWriter out)
+    {
+        //Create auto generated Id
+        //getter method
+        out.println("");
+        out.println("\t\t@SpaceId (autoGenerate = true)");
+        out.println("\t\tpublic String  getId(){");
+        out.println("\t\t\treturn this.Id;");
+        out.println("\t\t}");
+        //setter method
+        out.println("\t\tpublic void  setId(String Id){");
+        out.println("\t\t\t this.Id = Id;");
+        out.println("\t\t}");
     }
 
 }

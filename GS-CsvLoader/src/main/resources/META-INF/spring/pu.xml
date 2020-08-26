@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:os-core="http://www.openspaces.org/schema/core"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.openspaces.org/schema/core http://www.openspaces.org/schema/core/openspaces-core.xsd">
+    <!--
+        Spring propery configurer which allows us to use system properties (such as user.name).
+    -->
+    <bean id="propertiesConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="properties">
+            <props>
+                <prop key="numberOfIterations">10</prop>
+                <prop key="csvFileName">ibm.us.csv</prop>
+                <prop key="csvPojo">com.gs.csm.data.MyNewPojo</prop>
+                <prop key="SpaceName">demo</prop>
+            </props>
+        </property>
+    </bean>
+
+    <context:annotation-config />
+
+    <os-core:giga-space-context/>
+
+    <!--
+        A bean representing a space (an IJSpace implementation).
+
+        Note, we perform a lookup on the space since we are working against a remote space.
+    -->
+    <os-core:space-proxy id="space" name="${SpaceName}"/>
+
+    <!--
+        OpenSpaces simplified space API built on top of IJSpace/JavaSpace.
+    -->
+    <os-core:giga-space id="gigaSpace" space="space"/>
+
+
+    <!--
+        The Data feeder bean, writing new Data objects to the space
+    -->
+    <bean id="dataFeeder" class="com.gs.csm.DataFeeder" depends-on="gigaSpace">
+        <property name="csvFileName" value="${csvFileName}" />
+        <property name="csvPojo" value="${csvPojo}" />
+        <property name="numberOfIterations" value="${numberOfIterations}" />
+    </bean>
+</beans>
