@@ -12,7 +12,7 @@
     <bean id="propertiesConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
         <property name="properties">
             <props>
-                <prop key="numberOfIterations">10</prop>
+                <prop key="numberOfIterations">5</prop>
                 <prop key="csvFileName">ibm.us.csv</prop>
                 <prop key="csvPojo">com.gs.csm.data.MyNewPojo</prop>
                 <prop key="SpaceName">demo</prop>

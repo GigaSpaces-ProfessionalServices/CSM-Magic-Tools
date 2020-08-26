@@ -2,27 +2,22 @@
 
 ## 1. Create a pojo based on the csv header
 
-1. build the maven project:
-   `./build.sh`
-
-2. edit generate-pojo-from-csv-header.sh and set the following to fit your needs:<br>
+1. edit generate-pojo-from-csv-header.sh and set the following to fit your needs:<br>
    `export PACKAGE="com.gs.csm.data"`<br>
    `export POJO_OUTPUT_DIRECTORY="src/main/java"`<br>
    `export POJO_NAME="myNewPojo"`<br>
    `export CSV_FILE="src/main/resources/ibm.us.csv"`<br>
    
-3. `./generate-pojo-from-csv-header.sh`
+2. `./generate-pojo-from-csv-header.sh`
 
-4. the new pojo will be created in the POJO_OUTPUT_DIRECTORY.
+3. The new pojo will be created in the POJO_OUTPUT_DIRECTORY.
 
 **Note:**<br>
 The pojo will be created with default String properties for other types (Date,Int...), please modify the new pojo and change properties types 
 
 ## 2. Load the csv data to Space
 
-1. build the maven project:
-      `./build.sh`
-2. edit import-csv-to-gs.sh and set the following to fit your needs:<br>
+1. edit import-csv-to-gs.sh and set the following to fit your needs:<br>
    `export GS_LOOKUP_GROUPS=15.5.0`<br>
    `export GS_LOOKUP_LOCATORS=localhost`<br>
    `export GS_SPACE_NAME=demo`<br>
@@ -30,9 +25,9 @@ The pojo will be created with default String properties for other types (Date,In
    `export CSV_POJO="com.gs.csm.data.MyNewPojo"`<br>
    `export NUM_OF_ITERATIONS=1;`<br>
     
-3. `./import-csv-to-gs.sh`
+2. `./import-csv-to-gs.sh`
 
-4. Verify in the Ops Manager that all records were loaded to Space:<br>
+3. Verify in the Ops Manager that all records were loaded to Space:<br>
    http://localhost:8090
    
 ## 3. Load the csv data to Space using a stateless pu.
@@ -42,12 +37,13 @@ The pojo will be created with default String properties for other types (Date,In
    `<prop key="csvFileName">ibm.us.csv</prop>`<br>
    `<prop key="csvPojo">com.gs.csm.data.MyNewPojo</prop>`<br>
    `<prop key="SpaceName">demo</prop>`<br>
+   
 **Note:**<br>
-The above properties can be set using gs cli during the deployment phase as well (see an example in section 3).  
+The above properties can be set using gs cli during the deployment phase as well.<br>
+(see an example in import-csv-to-gs-from-pu.sh script).<br>
       
-2. build the maven project:
-         `./build.sh`
-3. `pu deploy --property=numberOfIterations=20 CSVFeeder /Users/aharonmoll/CSM-Magic-Tools/GS-CsvLoader/target/csvLoader-1.0-SNAPSHOT.jar`
-4. Verify in the Ops Manager that all records were loaded to Space:<br>
+2. ./import-csv-to-gs-from-pu.sh
+
+3. Verify in the Ops Manager that all records were loaded to Space:<br>
    http://localhost:8090
 
