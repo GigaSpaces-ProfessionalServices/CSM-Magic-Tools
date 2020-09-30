@@ -78,6 +78,7 @@ else
 		* ) echo 'Please enter installation type by name or number: ';;
 	    esac
 	done
+	read -p "To override default GS_NIC_ADDRESS [Default is the machine hostname]: " -e nicAddr;
 	read -p "To override default number of containers to rise [Default is none]: " -e containerCnt;
 	if [ ! -z "$containerCnt" ]
     then
@@ -105,6 +106,7 @@ fi
 function installRemoteJava {
     if [ "$osType" == "centos" ]; then
 	    sudo yum -y install java-1.8.0-openjdk
+	    sudo yum -y install java-1.8.0-openjdk-devel
 	elif [ "$osType" == "ubuntu" ]; then
 	    sudo apt -y install openjdk-8-jdk
 	fi
@@ -174,6 +176,13 @@ function settingGsManagers {
         echo "setting manager GS - Done!"
 }
 
+function settingNicAddr {
+        echo "settingNicAddr - Done!"
+        echo "setting nic address GS"
+        echo -e "export GS_NIC_ADDRESS=$nicAddr">>gigaspaces-${gsType}-enterprise-${gsVersion}/bin/setenv-overrides.sh
+        echo "setting nic address GS - Done!"
+}
+
 function endAnnouncement {
 echo "#######################################################"
 echo "SUMMARY :  SYSTEM INSTALLED SUCCESSFULLY"
@@ -202,6 +211,11 @@ echo "activating GS"
 activateGS
 echo "starting settingGsManagers"
 settingGsManagers
+if [ ! -z "$nicAddr" ]
+then
+    echo "starting settingNicAddr"
+    settingNicAddr
+fi
 echo "starting GS"
 startGS
 echo "ending the Installation"
