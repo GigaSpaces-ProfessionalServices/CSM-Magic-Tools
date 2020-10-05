@@ -49,4 +49,8 @@ The above properties can be set using gs cli during the deployment phase as well
 
 3. Verify in the Ops Manager that all records were loaded to Space:<br>
    http://localhost:8090
+   
+**TIP:**<br>
+To add sequence number (@SpaceId) in a new CSV do:<br>
+`cat /etc/new.csv |awk '{print $0",",NR}'`
 
