@@ -34,6 +34,10 @@ public class DataFeeder {
         GsFactory.csvPojo = csvPojo;
     }
 
+    public void setLimitRows(int limitRows) {
+        GsFactory.limitRows = limitRows;
+    }
+
     @PostConstruct
     public void construct() throws IOException, ClassNotFoundException {
         System.out.println("--- STARTING LOADING CSV FILE [" + GsFactory.csvFile+ "]");
@@ -54,7 +58,7 @@ public class DataFeeder {
         public void run() {
             try {
                 InputStream inputStream=null;
-                for (int i = 1; i< GsFactory.numberOfIterations; i++) {
+                for (int i = 1; i<= GsFactory.numberOfIterations; i++) {
                     System.out.println("--- STARTING ITEARTION NUMBER " + i);
                     inputStream = LoadCSVData.class.getClassLoader().getResourceAsStream(GsFactory.csvFile);
                     loadCsvData(gigaSpace, inputStream);

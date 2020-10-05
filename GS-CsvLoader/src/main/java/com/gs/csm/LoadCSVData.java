@@ -22,6 +22,7 @@ public class LoadCSVData {
         locators=System.getenv("GS_LOOKUP_LOCATORS");
         csvFile=System.getenv("CSV_FILE");
         csvPojo=System.getenv("CSV_POJO");
+        limitRows=Integer.valueOf(System.getenv("LIMIT_ROWS"));
         numberOfIterations=Integer.valueOf(System.getenv("NUM_OF_ITERATIONS"));
 
         loadCsvData(gigaSpace);

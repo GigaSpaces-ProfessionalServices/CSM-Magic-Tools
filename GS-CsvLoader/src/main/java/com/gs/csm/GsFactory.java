@@ -17,8 +17,8 @@ public class GsFactory {
     public static String csvFile = "src/main/resources/ibm.us.csv";
     public static String packageName = "com.gs.csm.data";
     public static String pojoOutputDirectory = "src/main/java";
-    public static int limitRows = 100000;
-    public static int numberOfIterations = 10;
+    public static int limitRows = 10000000;
+    public static int numberOfIterations = 1;
 
 
     public static GigaSpace getOrCreateSpace(String spaceName, boolean embedded) {

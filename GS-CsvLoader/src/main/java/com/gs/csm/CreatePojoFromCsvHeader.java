@@ -37,7 +37,7 @@ public class CreatePojoFromCsvHeader {
             createClassHeader(out,className);
 
             //Create auto generated Id
-            out.println("\t\tprivate String Id = \"Id\";");
+//            out.println("\t\tprivate String Id = \"Id\";");
 
             String line = null;
             String[] fields = null;
@@ -56,7 +56,7 @@ public class CreatePojoFromCsvHeader {
                         out.println("\t\tprivate String " + fields[i] + " = \""+ StringEscapeUtils.escapeJava(values[i])+ "\";");
                     }
                     //Create auto generated Id setter & getter
-                    createAutoGenId(out);
+//                    createAutoGenId(out);
 
                     for (int i = 0; i < fields.length; i++) {
                         String tempField=StringEscapeUtils.escapeJava(values[i]).substring(0, 1).toUpperCase()+StringEscapeUtils.escapeJava(values[i]).substring(1);

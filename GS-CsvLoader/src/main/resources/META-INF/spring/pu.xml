@@ -12,9 +12,10 @@
     <bean id="propertiesConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
         <property name="properties">
             <props>
-                <prop key="numberOfIterations">5</prop>
-                <prop key="csvFileName">ibm.us.csv</prop>
-                <prop key="csvPojo">com.gs.csm.data.MyNewPojo</prop>
+                <prop key="numberOfIterations">1</prop>
+                <prop key="limitRows">100000</prop>
+                <prop key="csvFileName">fh_5yrs_with_id.csv</prop>
+                <prop key="csvPojo">com.gs.csm.data.StocksHistoriesPojo</prop>
                 <prop key="SpaceName">demo</prop>
             </props>
         </property>
@@ -44,5 +45,6 @@
         <property name="csvFileName" value="${csvFileName}" />
         <property name="csvPojo" value="${csvPojo}" />
         <property name="numberOfIterations" value="${numberOfIterations}" />
+        <property name="limitRows" value="${limitRows}" />
     </bean>
 </beans>
