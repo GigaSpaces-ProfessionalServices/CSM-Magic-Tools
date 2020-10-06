@@ -1,12 +1,18 @@
 # GS csv loader
 
 ## 1. Create a pojo based on the csv header
+ **(Run this step only for a csv different from provided fh_5yrs_with_id.csv)**
 
 1. edit generate-pojo-from-csv-header.sh and set the following to fit your needs:<br>
    `export PACKAGE="com.gs.csm.data"`<br>
    `export POJO_OUTPUT_DIRECTORY="src/main/java"`<br>
-   `export POJO_NAME="StocksHistoriesPojo"`<br>
-   `export CSV_FILE="src/main/resources/fh_5yrs_with_id.csv"`<br>
+   `export POJO_NAME="<new pojo name>"`<br>
+   `export CSV_FILE="src/main/resources/<new csv>.csv"`<br>
+   
+   **TIP:**<br>
+   To add sequence number (@SpaceId) in a new CSV do:<br>
+   `cat /etc/new.csv |awk '{print $0",",NR}'`<br>
+   After running add **Id** header above the addition column.
    
 2. `./generate-pojo-from-csv-header.sh`
 
@@ -49,8 +55,4 @@ The above properties can be set using gs cli during the deployment phase as well
 
 3. Verify in the Ops Manager that all records were loaded to Space:<br>
    http://localhost:8090
-   
-**TIP:**<br>
-To add sequence number (@SpaceId) in a new CSV do:<br>
-`cat /etc/new.csv |awk '{print $0",",NR}'`
 
