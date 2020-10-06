@@ -1,6 +1,8 @@
 package com.gs.csm.data;
 
 import com.gigaspaces.annotation.pojo.SpaceId;
+import com.gigaspaces.annotation.pojo.SpaceIndex;
+import com.gigaspaces.metadata.index.SpaceIndexType;
 
 public class StocksHistoriesPojo {
 		private String date = "date";
@@ -62,6 +64,7 @@ public class StocksHistoriesPojo {
 			 this.adjclose = adjclose;
 		}
 
+		@SpaceIndex(type = SpaceIndexType.EQUAL)
 		public String  getSymbol(){
 			return this.symbol;
 		}
