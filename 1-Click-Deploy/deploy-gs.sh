@@ -36,14 +36,14 @@ else
 	done
 
 	echo List of available product versions:
-	echo [1] 15.5.0
+	echo [1] 15.5.1
 	echo [2] 15.2.0
 	echo [3] 15.0.0
 
 	while true; do
 	    read -p 'Select product version by name or number:[' -i 1']' -e gsVersion
 	    case $gsVersion in
-		1]1|1]|1]15.5.0) gsVersion=15.5.0; break;;
+		1]1|1]|1]15.5.1) gsVersion=15.5.1; break;;
 		1]2|1]15.2.0) gsVersion=15.2.0; break;;
 		1]3|1]15.0.0) gsVersion=15.0.0; break;;
 		* ) echo 'Please enter product name or number: ';;
@@ -142,7 +142,7 @@ function unzipGS {
 }
 
 function activateGS {
-        if [ "$gsVersion" == "15.5.0" ]; then
+        if [ "$gsVersion" == "15.5.1" ]; then
 		    license="Product=InsightEdge;Version=15.5;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2020-Nov-24;Hash=YiiSYZQMIPSmOQYPCPS6"
         elif [ "$gsVersion" == "15.2.0" ]; then
 		    license="Product=InsightEdge;Version=15.2;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2020-Nov-24;Hash=YVPQhPkEWBRluNvMO9Sx"

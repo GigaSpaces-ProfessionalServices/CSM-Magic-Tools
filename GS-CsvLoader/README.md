@@ -26,7 +26,7 @@ The pojo will be created with default String properties for other types (Date,In
 ## 2. Load the csv data to Space
 
 1. edit import-csv-to-gs.sh and set the following to fit your needs:<br>
-   `export GS_LOOKUP_GROUPS=15.5.0`<br>
+   `export GS_LOOKUP_GROUPS=15.5.1`<br>
    `export GS_LOOKUP_LOCATORS=localhost`<br>
    `export GS_SPACE_NAME=demo`<br>
    `export CSV_FILE=src/main/resources/fh_5yrs_with_id.csv`<br>

@@ -11,7 +11,7 @@ import java.io.File;
 public class GsFactory {
     public static String spaceName = "demo";
     public static String locators = "localhost";
-    public static String groups = "xap-15.5.0";
+    public static String groups = "xap-15.5.1";
     public static int timeout = 60_000;
     public static String csvPojo = "com.gs.csm.data.IBMStock";
     public static String csvFile = "src/main/resources/ibm.us.csv";

@@ -1,5 +1,5 @@
 #!/bin/bash
-export GS_LOOKUP_GROUPS="15.5.0"
+export GS_LOOKUP_GROUPS="15.5.1"
 export GS_LOOKUP_LOCATORS="localhost"
 export GS_SPACE_NAME="demo"
 export CSV_FILE="src/main/resources/fh_5yrs_with_id.csv"
