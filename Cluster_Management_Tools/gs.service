@@ -1,0 +1,14 @@
+[Unit]
+Description="GigaSpaces Service Grid"
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+ExecStart=/bin/bash /usr/local/bin/start_gs.sh
+ExecStop=/bin/bash /opt/gigaspaces-insightedge-enterprise-15.5.1/bin/gs.sh host kill-agent :q 
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
