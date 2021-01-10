@@ -50,6 +50,19 @@ else
 	    esac
 	done
 
+	echo List of available open jdk versions:
+	echo [1] 1.8
+	echo [2] 11
+
+	while true; do
+	    read -p 'Select open jdk version by name or number:[' -i 1']' -e openJdkVersion
+	    case $openJdkVersion in
+		1]1|1]|1]1.8) openJdkVersion=1.8; break;;
+		1]2|1]11) openJdkVersion=11; break;;
+		* ) echo 'Please enter open jdk name or number: ';;
+	    esac
+	done
+
 	echo List of available installation types:
 	echo [1] local
 	echo [2] cluster
@@ -105,10 +118,19 @@ fi
 
 function installRemoteJava {
     if [ "$osType" == "centos" ]; then
-	    sudo yum -y install java-1.8.0-openjdk
-	    sudo yum -y install java-1.8.0-openjdk-devel
+        if [ "$openJdkVersion" == "1.8" ]; then
+            sudo yum -y install java-1.8.0-openjdk
+            sudo yum -y install java-1.8.0-openjdk-devel
+	    elif [ "$openJdkVersion" == "11" ]; then
+	        sudo yum -y install java-11-openjdk
+	        sudo yum -y install java-11-openjdk-devel
+	    fi
 	elif [ "$osType" == "ubuntu" ]; then
-	    sudo apt -y install openjdk-8-jdk
+	    if [ "$openJdkVersion" == "1.8" ]; then
+	        sudo apt -y install openjdk-8-jdk
+	    elif [ "$openJdkVersion" == "11" ]; then
+	        sudo apt -y install openjdk-11-jdk
+	    fi
 	fi
 	echo "install Remote JDK - Done!"
 }
@@ -143,11 +165,11 @@ function unzipGS {
 
 function activateGS {
         if [ "$gsVersion" == "15.5.1" ]; then
-		    license="Product=InsightEdge;Version=15.5;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2020-Nov-24;Hash=YiiSYZQMIPSmOQYPCPS6"
+		    license="Product=InsightEdge;Version=15.5;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=VQrC9QtPPRPEjNMCfrGP"
         elif [ "$gsVersion" == "15.2.0" ]; then
-		    license="Product=InsightEdge;Version=15.2;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2020-Nov-24;Hash=YVPQhPkEWBRluNvMO9Sx"
+		    license="Product=InsightEdge;Version=15.2;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=bSUYEf4Q5qQVQxON8NmN"
 	    elif [ "$gsVersion" == "15.0.0" ]; then
-		    license="Product=InsightEdge;Version=15.0;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2020-Nov-24;Hash=QpNXYXYUV6SQNWPRURZW"
+		    license="Product=InsightEdge;Version=15.0;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=IRONFbgROSRgsQOPNPSQ"
         fi
         echo $license>gigaspaces-${gsType}-enterprise-${gsVersion}/gs-license.txt
 	echo "activating GS - Done!"
