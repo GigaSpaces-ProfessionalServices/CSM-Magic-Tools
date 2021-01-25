@@ -38,7 +38,7 @@ In our case the GigaSpaces packages was extracted in /opt/ folder
 
 Copy start_gs.sh  stop_gs.sh scripts to /usr/local/bin folder.  
 Make both files executable  
-chnode +x start_gs.sh  
+chmode +x start_gs.sh  
 chmdode +x stop_gs.sh   
 Copy gs.service to /etc/systemd/system/ folder   
 
@@ -53,6 +53,7 @@ csm sudo mv /tmp/gs.service /etc/systemd/system/
 
 start the service on all nodes:  
 
+[ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload '
 [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service '  
 [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service '  
 active  
