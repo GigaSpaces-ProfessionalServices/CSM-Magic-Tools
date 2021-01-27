@@ -5,7 +5,8 @@ We are using the first node in the cluster for management.
 create ssh key:  
 ssh-keygen -t rsa  
 
-Append the content of .ssh/id_rsa.pub to .ssh/authorized_keys file on all nodes in the cluster or use
+Append the content of .ssh/id_rsa.pub to .ssh/authorized_keys file on all nodes in the cluster  
+or use  
 ssh-copy-id -i .ssh/key_name.pub user_name$IP
 
 2. create nodes.txt file and make a list of private IPs of all nodes   
