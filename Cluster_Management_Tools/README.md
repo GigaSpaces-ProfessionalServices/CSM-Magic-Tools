@@ -54,7 +54,7 @@ csm sudo mv /tmp/gs.service /etc/systemd/system/
 
 start the service on all nodes:  
 
-[ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload '
+[ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload '  
 [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service '  
 [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service '  
 active  
