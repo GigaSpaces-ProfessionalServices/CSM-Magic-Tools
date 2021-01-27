@@ -33,9 +33,10 @@ Sun Nov  1 13:31:08 UTC 2020
     
       
 
-Using systemd serivce management for starting and stoppig GigaSpaces Grid  
-IMPORTANT.  
-edit the following scripts and make sure the path to the gs.sh is correct.  
+Using systemd serivce management for starting and stoppig GigaSpaces Grid 
+  
+IMPORTANT 
+Edit the following scripts and make sure the path to the gs.sh is correct.  
 In our case the GigaSpaces packages was extracted in /opt/ folder  
 
 Copy start_gs.sh  stop_gs.sh scripts to /usr/local/bin folder.  
