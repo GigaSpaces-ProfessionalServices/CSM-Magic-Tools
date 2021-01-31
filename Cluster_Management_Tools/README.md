@@ -54,6 +54,7 @@ Sun Nov  1 13:31:08 UTC 2020
   
 Prepare a folder for SW packages on all nodes:
     [ec2-user@ip-9-0-1-172 ~]$ csm "sudo mkdir /var/soft"
+    [ec2-user@ip-9-0-1-172 ~]$ csm "sudo chmod 777 /var/soft"
 
 Download java and GigaSpaces package to the management server, copy the packages to all nodes
 and use teh csm tool to install the packages    
