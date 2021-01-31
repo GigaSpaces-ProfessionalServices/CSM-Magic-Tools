@@ -3,17 +3,17 @@ We are using the first node in the cluster for management.
 
 1. The following command will overright default id_rsa keys of the user, use -f key in order to specify a non default filenames.
 create ssh key:  
-ssh-keygen -t rsa  
+  ssh-keygen -t rsa  
 
 Append the content of .ssh/id_rsa.pub to .ssh/authorized_keys file on all nodes in the cluster  
 or use  
-ssh-copy-id -i .ssh/key_name.pub user_name$IP
+  ssh-copy-id -i .ssh/key_name.pub user_name$IP
 
 2. create nodes.txt file and make a list of private IPs of all nodes   
-[ec2-user@ip-9-0-1-172 ~]$ cat nodes.txt  
-9.0.1.172    
-9.0.1.119   
-9.0.1.84     
+  [ec2-user@ip-9-0-1-172 ~]$ cat nodes.txt  
+  9.0.1.172    
+  9.0.1.119   
+  9.0.1.84     
 
 3. execute a command on all nodes  
 [ec2-user@ip-9-0-1-172 ~]$ cat nodes.txt |xargs -i ssh {} date  
