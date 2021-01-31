@@ -85,32 +85,32 @@ If private IP needs to be set in **setenv-overrides.sh** use **set_env.sh** scri
   Using systemd service management for starting and stopping GigaSpaces Grid' 
   
 ##### IMPORTANT   
-Edit the following scripts and make sure the path to the gs.sh is correct.  
+Edit **start_gs.sh & stop_gs.sh** scripts and make sure the path to the **gs.sh** is correct.  
 In our case the GigaSpaces packages was extracted in **/opt/** folder  
 First we install and configure the software and the scripts on the management server and tne copy them to the rest of the hosts
 
 Copy **start_gs.sh  stop_gs.sh** scripts to **/usr/local/bin** folder.  
 Make both files executable      
 
-        chmode +x start_gs.sh  
-        chmdode +x stop_gs.sh   
+        chmod +x start_gs.sh  
+        chmod +x stop_gs.sh   
 
 Copy **gs.service** to **/etc/systemd/system/** folder  
 
 
 Use scp to copy the files to other nodes in the cluster  
 
-    cat nodes |xargs -i cp /usr/local/bin/st*_gs.sh {}:/tmp  
+    cat nodes.txt | xargs -i scp -i .ssh/id_rsa st*_gs.sh {}:/tmp 
     csm 'sudo mv /tmp/st*_gs.sh /usr/local/bin/'  
 
-    cat nodes |xargs -i cp /etc/systemd/system/gs.service {}:/tmp  
+    cat nodes.txt | xargs -i scp -i .ssh/id_rsa gs.service {}:/tmp  
     csm sudo mv /tmp/gs.service /etc/systemd/system/  
 
 start the service on all nodes:  
 
-    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload '  
-    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service '   
-    [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service '  
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload'  
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service'   
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service'  
 **active**  
 **active**  
 **active**  
