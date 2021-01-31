@@ -55,6 +55,7 @@ c)    set password for ec2-user.
 5. Prepare a folder for SW packages on all nodes:  
     [ec2-user@ip-9-0-1-172 ~]$ **csm "sudo mkdir /var/soft"**
     [ec2-user@ip-9-0-1-172 ~]$ **csm "sudo chmod 777 /var/soft"**
+    [ec2-user@ip-9-0-1-172 ~]$ **csm "sudo chmod 777 /opt"**
 
 Download java and GigaSpaces package to the management server, copy the packages to all nodes
 and use the csm tool to install the packages:    
@@ -63,11 +64,16 @@ and use the csm tool to install the packages:
     csm "sudo rpm -ivh /var/soft/jdk*"
 
     cat nodes.txt | xargs -i scp -i .ssh/id_rsa gigaspaces-smart-ods-enterprise-15.8.0.zip  {}:/var/soft/      
-    csm "cd /opt/; unzip /var/soft/gigaspaces-smart-ods-enterprise-15.8.0.zip > /dev/null "
+    csm "cd /opt/; unzip /var/soft/gigaspaces-smart-ods-enterprise-15.8.0.zip > /dev/null"
+    
+   **Note:**<br>
+    For aws instances install unzip before running the above command:
+    
+    [ec2-user@ip-9-0-1-172 ~]$ csm "sudo yum -y install unzip"
 
 Take care of the GS license. First edit the license file on the local server, then copy it to all nodes:
 
-    cat nodes.txt | xargs -i scp -i .ssh/id_rsa /opt/gigaspaces-smart-ods-enterprise-15.8.0/gs-license.txt  {}:/opt/gigaspaces-smart-ods-enterprise-15.8.0/gs-license.txt
+    cat nodes.txt | xargs -i scp -i .ssh/id_rsa setenv-overrides.sh  {}:/opt/gigaspaces-smart-ods-enterprise-15.8.0/bin/setenv-overrides.sh
     
 If private IP needs to be set in setenv-overrides.sh use set_env.sh script.
      
