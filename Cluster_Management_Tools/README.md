@@ -71,11 +71,12 @@ and use the csm tool to install the packages:
     
     [ec2-user@ip-9-0-1-172 ~]$ csm "sudo yum -y install unzip"
 
-Take care of the GS license. First edit the license file on the local server, then copy it to all nodes:
+Take care of the **GS_LICENSE, GS_MANAGER_SERVERS etc.**<br>
+Edit the **setenv-overrides.sh** file on the local server, then copy it to all nodes:
 
     cat nodes.txt | xargs -i scp -i .ssh/id_rsa setenv-overrides.sh  {}:/opt/gigaspaces-smart-ods-enterprise-15.8.0/bin/setenv-overrides.sh
     
-If private IP needs to be set in setenv-overrides.sh use set_env.sh script.
+If private IP needs to be set in **setenv-overrides.sh** use **set_env.sh** script.
      
     cat nodes.txt | xargs -i scp -i .ssh/id_rsa set_env.sh  {}:/tmp/
     csm "/tmp/set_env.sh /opt/gigaspaces-smart-ods-enterprise-15.8.0/bin/setenv-overrides.sh"
@@ -83,7 +84,7 @@ If private IP needs to be set in setenv-overrides.sh use set_env.sh script.
           
   Using systemd service management for starting and stopping GigaSpaces Grid' 
   
-#####IMPORTANT   
+##### IMPORTANT   
 Edit the following scripts and make sure the path to the gs.sh is correct.  
 In our case the GigaSpaces packages was extracted in **/opt/** folder  
 First we install and configure the software and the scripts on the management server and tne copy them to the rest of the hosts
@@ -110,6 +111,6 @@ start the service on all nodes:
     [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload '  
     [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service '   
     [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service '  
-active  
-active  
-active  
+**active**  
+**active**  
+**active**  
