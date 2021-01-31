@@ -17,8 +17,8 @@ We need to use user's passeword in order to run the previous command.
 On aws instances we need to manually set the password and allow ssh with password.   
 Execute the following steps on each host:   
 a)    
-Append the following two lines to /etc/ssh/sshd_config  file:   
-Match User ec2-user 
+Append the following two lines to /etc/ssh/sshd_config  file:     
+Match User ec2-user     
 PasswordAuthentication yes  
 b)  
 restart the ssh daemon: 
