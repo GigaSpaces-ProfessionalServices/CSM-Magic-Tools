@@ -52,14 +52,9 @@ c)    set password for ec2-user.
 **Sun Nov  1 13:31:08 UTC 2020**  
 [ec2-user@ip-9-0-1-172 ~]$  
   
-<<<<<<< HEAD
-Prepare a folder for SW packages on all nodes:
-    [ec2-user@ip-9-0-1-172 ~]$ csm "sudo mkdir /var/soft"
-    [ec2-user@ip-9-0-1-172 ~]$ csm "sudo chmod 777 /var/soft"
-=======
-Prepare a folder for SW packages on all nodes:  
+5. Prepare a folder for SW packages on all nodes:  
     [ec2-user@ip-9-0-1-172 ~]$ **csm "sudo mkdir /var/soft"**
->>>>>>> 5a65455fc7dcc9187241331edec0b9d2401a8f18
+    [ec2-user@ip-9-0-1-172 ~]$ **csm "sudo chmod 777 /var/soft"**
 
 Download java and GigaSpaces package to the management server, copy the packages to all nodes
 and use the csm tool to install the packages:    
@@ -67,7 +62,7 @@ and use the csm tool to install the packages:
     cat nodes.txt | xargs -i scp -i .ssh/id_rsa jdk-11.0.10_linux-x64_bin.rpm  {}:/var/soft/
     csm "sudo rpm -ivh /var/soft/jdk*"
 
-    cat host_list.txt | xargs -i scp -i .ssh/id_rsa gigaspaces-smart-ods-enterprise-15.8.0.zip  {}:/var/soft/      
+    cat nodes.txt | xargs -i scp -i .ssh/id_rsa gigaspaces-smart-ods-enterprise-15.8.0.zip  {}:/var/soft/      
     csm "cd /opt/; unzip /var/soft/gigaspaces-smart-ods-enterprise-15.8.0.zip > /dev/null "
 
 Take care of the GS license. First edit the license file on the local server, then copy it to all nodes:
