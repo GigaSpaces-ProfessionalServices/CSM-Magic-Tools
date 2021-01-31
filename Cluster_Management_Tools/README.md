@@ -86,8 +86,7 @@ If private IP needs to be set in **setenv-overrides.sh** use **set_env.sh** scri
   
 ##### IMPORTANT   
 Edit **start_gs.sh & stop_gs.sh** scripts and make sure the path to the **gs.sh** is correct.  
-In our case the GigaSpaces packages was extracted in **/opt/** folder  
-First we install and configure the software and the scripts on the management server and tne copy them to the rest of the hosts
+In our case the GigaSpaces packages was extracted in **/opt/** folder
 
 Copy **start_gs.sh  stop_gs.sh** scripts to **/usr/local/bin** folder.  
 Make both files executable      
