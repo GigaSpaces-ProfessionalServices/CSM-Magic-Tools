@@ -13,24 +13,23 @@ or use
     
 **Note:**
 
-We need to use user's passeword in order to run the previous command.
+We need to use user's password in order to run the previous command.
+
 On aws instances we need to manually set the password and allow ssh with password.   
-Execute the following steps on each host:   
-a)    
-Append the following two lines to /etc/ssh/sshd_config  file:     
-Match User ec2-user     
-PasswordAuthentication yes  
-b)  
-restart the ssh daemon: 
-sudo systemctl restart sshd     
-c)    
-set password for ec2-user.  
-sudo -i 
-passwd ec2-user 
+Execute the following steps on each host:
 
+a)      Append the following two lines to **/etc/ssh/sshd_config** file:
+  
+    Match User ec2-user 
+    PasswordAuthentication yes  
+b)      restart the ssh daemon:
 
+    sudo systemctl restart sshd
+       
+c)    set password for ec2-user.
 
-
+    sudo -i 
+    passwd ec2-user 
 
 2. create nodes.txt file and make a list of private IPs of all nodes   
     [ec2-user@ip-9-0-1-172 ~]$ cat nodes.txt  
