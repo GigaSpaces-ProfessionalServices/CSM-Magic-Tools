@@ -1,13 +1,20 @@
 CSM tool for executing commands on all nodes in the cluster  
 We are using the first node in the cluster for management.
 
-1. The following command will overright default id_rsa keys of the user, use -f key in order to specify a non default filenames.
-create ssh key:  
-  ssh-keygen -t rsa  
+1.  The following command will overright default id_rsa keys of the user, use -f key in order to specify a non default filenames.
+create ssh key:
+
+    `ssh-keygen -t rsa` 
 
 Append the content of .ssh/id_rsa.pub to .ssh/authorized_keys file on all nodes in the cluster  
 or use  
-  ssh-copy-id -i .ssh/key_name.pub user_name$IP
+
+    ssh-copy-id -i .ssh/id_rsa.pub user_name@PRIVATE_IP 
+    
+**Note:**
+
+On aws instances  
+
 
 2. create nodes.txt file and make a list of private IPs of all nodes   
   [ec2-user@ip-9-0-1-172 ~]$ cat nodes.txt  

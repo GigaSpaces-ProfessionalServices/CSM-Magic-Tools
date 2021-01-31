@@ -1,10 +1,13 @@
 # 1 click deploy script 
 
 For help please run:
-./deploy-gs.sh -h
+
+    ./deploy-gs.sh -h
 
 For interactive mode run:
-./deploy-gs.sh
+
+    ./deploy-gs.sh
 
 For silent (unattended) mode run:
-./deploy-gs.sh --silent
+
+    ./deploy-gs.sh --silent
