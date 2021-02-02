@@ -81,6 +81,7 @@ Edit the **setenv-overrides.sh** file on the local server, then copy it to all n
 If private IP needs to be set in **setenv-overrides.sh** use **set_env.sh** script.
      
     cat nodes.txt | xargs -i scp -i .ssh/id_rsa set_env.sh  {}:/tmp/
+    csm "chmod +x /tmp/set_env.sh"
     csm "/tmp/set_env.sh /opt/gigaspaces-smart-ods-enterprise-15.8.0/bin/setenv-overrides.sh"
 
           
@@ -115,3 +116,8 @@ start the service on all nodes:
 **active**  
 **active**  
 **active**  
+
+To stop the service on all nodes:
+
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl stop gs.service'
+
