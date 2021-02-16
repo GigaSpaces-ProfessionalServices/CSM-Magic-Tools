@@ -36,16 +36,16 @@ else
 	done
 
 	echo List of available product versions:
-	echo [1] 15.5.1
-	echo [2] 15.2.0
-	echo [3] 15.0.0
+	echo [1] 15.8.0
+	echo [2] 15.5.1
+	echo [3] 15.2.0
 
 	while true; do
 	    read -p 'Select product version by name or number:[' -i 1']' -e gsVersion
 	    case $gsVersion in
-		1]1|1]|1]15.5.1) gsVersion=15.5.1; break;;
-		1]2|1]15.2.0) gsVersion=15.2.0; break;;
-		1]3|1]15.0.0) gsVersion=15.0.0; break;;
+		1]1|1]|1]15.8.0) gsVersion=15.8.0; break;;
+		1]2|1]15.5.1) gsVersion=15.5.1; break;;
+		1]3|1]15.2.0) gsVersion=15.2.0; break;;
 		* ) echo 'Please enter product name or number: ';;
 	    esac
 	done
@@ -105,12 +105,14 @@ else
     echo List of available machine OS types:
 	echo [1] centos
 	echo [2] ubuntu
+	echo [3] awsLinux2
 
 	while true; do
             read -p 'Select machine os type by name or number:[' -i 1']' -e osType
 	    case $osType in
 		1]1|1]|1]centos) osType=centos; break;;
 		1]2|1]ubuntu) osType=ubuntu; break;;
+		1]3|1]awsLinux2) osType=awsLinux2; break;;
 		* ) echo 'Please enter machine os type by name or number: ';;
 	    esac
 	done
@@ -130,6 +132,14 @@ function installRemoteJava {
 	        sudo apt -y install openjdk-8-jdk
 	    elif [ "$openJdkVersion" == "11" ]; then
 	        sudo apt -y install openjdk-11-jdk
+	    fi
+	elif [ "$osType" == "awsLinux2" ]; then
+	    if [ "$openJdkVersion" == "1.8" ]; then
+	        sudo amazon-linux-extras enable corretto8
+	        yum clean metadata
+	        sudo yum -y install java-1.8.0-amazon-corretto
+	    elif [ "$openJdkVersion" == "11" ]; then
+	        sudo amazon-linux-extras install java-openjdk11
 	    fi
 	fi
 	echo "install Remote JDK - Done!"
@@ -164,12 +174,12 @@ function unzipGS {
 }
 
 function activateGS {
-        if [ "$gsVersion" == "15.5.1" ]; then
+        if [ "$gsVersion" == "15.8.0" ]; then
+		    license="Product=InsightEdge;Version=15.8;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-May-04;Hash=OYsnHLOOSfb7Q0uQdQNO"
+        elif [ "$gsVersion" == "15.5.1" ]; then
 		    license="Product=InsightEdge;Version=15.5;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=VQrC9QtPPRPEjNMCfrGP"
         elif [ "$gsVersion" == "15.2.0" ]; then
 		    license="Product=InsightEdge;Version=15.2;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=bSUYEf4Q5qQVQxON8NmN"
-	    elif [ "$gsVersion" == "15.0.0" ]; then
-		    license="Product=InsightEdge;Version=15.0;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=IRONFbgROSRgsQOPNPSQ"
         fi
         echo $license>gigaspaces-${gsType}-enterprise-${gsVersion}/gs-license.txt
 	echo "activating GS - Done!"
