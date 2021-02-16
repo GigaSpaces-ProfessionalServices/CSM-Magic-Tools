@@ -111,7 +111,8 @@ Use scp to copy the files to other nodes in the cluster
 start the service on all nodes:  
 
     [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl daemon-reload'  
-    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service'   
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl start gs.service'
+    [ec2-user@ip-9-0-1-172 ~]$ csm 'sudo systemctl enable gs.service'   
     [ec2-user@ip-9-0-1-172 ~]$ csm 'systemctl is-active gs.service'  
 **active**  
 **active**  
