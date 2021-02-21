@@ -88,8 +88,8 @@ and use the csm tool to install the packages:
    
     cp /var/cache/yum/x86_64/7Server/rhui-REGION-rhel-server-releases/packages/unzip-6.0-21.el7.x86_64.rpm /tmp
     cat nodes.txt |xargs -i scp /tmp/unzip-6.0-21.el7.x86_64.rpm {}:/tmp
-    csm “sudo yum install -y /tmp/unzip-6.0-21.el7.x86_64.rpm ”
-    [ec2-user@ip-14-15-100-147 ~]$ csm ‘which unzip 
+    csm “sudo yum install -y /tmp/unzip-6.0-21.el7.x86_64.rpm”
+    [ec2-user@ip-14-15-100-147 ~]$ csm "which unzip" 
     /usr/bin/unzip
     /usr/bin/unzip
     ......
