@@ -4,12 +4,20 @@ We are using the first node in the cluster for management.
 1.  The following command will overright default id_rsa keys of the user, use -f key in order to specify a non default filenames.
 create ssh key:
 
-    `ssh-keygen -t rsa` 
+    `cd ~`
+    `ssh-keygen -t rsa -f .ssh/gs_ods` 
+    
+    Hit `enter` in response for all questions.
+    
+    2 Options:
+    1. `cp .ssh/gs_ods .ssh/id_rsa`
+    2. Each command do:
+       `ssh -i .ssh/gs_ods`
 
-Append the content of .ssh/id_rsa.pub to .ssh/authorized_keys file on all nodes in the cluster  
+Append the content of .ssh/gs_ods.pub to .ssh/authorized_keys file on all nodes in the cluster  
 or use  
 
-    ssh-copy-id -i .ssh/id_rsa.pub user_name@PRIVATE_IP 
+    ssh-copy-id -i .ssh/gs_ods.pub user_name@PRIVATE_IP 
     
 **Note:**
 
@@ -52,6 +60,9 @@ c)    set password for ec2-user.
 **Sun Nov  1 13:31:08 UTC 2020**  
 [ec2-user@ip-9-0-1-172 ~]$ 
 
+**TIP:**
+**Add to ~/.bash_profile**
+
 5. Add the **csm** alias to **~/.bash_profile** file.
   
 6. Prepare a folder for SW packages on all nodes:  
@@ -72,6 +83,17 @@ and use the csm tool to install the packages:
     For aws instances install unzip before running the above command:
     
     [ec2-user@ip-9-0-1-172 ~]$ csm "sudo yum -y install unzip"
+    
+   If no internet connection do:
+   
+    cp /var/cache/yum/x86_64/7Server/rhui-REGION-rhel-server-releases/packages/unzip-6.0-21.el7.x86_64.rpm /tmp
+    cat nodes.txt |xargs -i scp /tmp/unzip-6.0-21.el7.x86_64.rpm {}:/tmp
+    csm “sudo yum install -y /tmp/unzip-6.0-21.el7.x86_64.rpm ”
+    [ec2-user@ip-14-15-100-147 ~]$ csm ‘which unzip 
+    /usr/bin/unzip
+    /usr/bin/unzip
+    ......
+    
 
 Take care of the **GS_LICENSE, GS_MANAGER_SERVERS etc.**<br>
 Edit the **setenv-overrides.sh** file on the local server, then copy it to all nodes:
