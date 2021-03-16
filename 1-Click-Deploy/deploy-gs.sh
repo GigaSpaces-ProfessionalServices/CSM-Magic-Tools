@@ -139,7 +139,7 @@ function installRemoteJava {
 	        yum clean metadata
 	        sudo yum -y install java-1.8.0-amazon-corretto
 	    elif [ "$openJdkVersion" == "11" ]; then
-	        sudo amazon-linux-extras install java-openjdk11
+	        sudo amazon-linux-extras -y install java-openjdk11
 	    fi
 	fi
 	echo "install Remote JDK - Done!"
@@ -150,6 +150,8 @@ function installZip {
 	    sudo yum -y install unzip
 	elif [ "$osType" == "ubuntu" ]; then
 	    sudo apt -y install unzip
+	elif [ "$osType" == "awsLinux2" ]; then
+	    sudo yum -y install unzip
 	fi
 	echo "install ZIP - Done!"
 }
@@ -159,6 +161,8 @@ function installWget {
 	    sudo yum -y install wget
 	elif [ "$osType" == "ubuntu" ]; then
 	    sudo apt -y install wget
+	elif [ "$osType" == "awsLinux2" ]; then
+	    sudo yum -y install wget
 	fi
 	echo "install wget - Done!"
 }
