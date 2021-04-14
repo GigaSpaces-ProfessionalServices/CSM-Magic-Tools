@@ -179,7 +179,7 @@ function unzipGS {
 
 function activateGS {
         if [ "$gsVersion" == "15.8.0" ]; then
-		    license="Product=InsightEdge;Version=15.8;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-May-04;Hash=OYsnHLOOSfb7Q0uQdQNO"
+		    license="Product=InsightEdge;Version=15.8;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Jul-13;Hash=OSBxNFMO4OVJOFOBwNQF"
         elif [ "$gsVersion" == "15.5.1" ]; then
 		    license="Product=InsightEdge;Version=15.5;Type=ENTERPRISE;Customer=demo_DEV;Expiration=2021-Apr-10;Hash=VQrC9QtPPRPEjNMCfrGP"
         elif [ "$gsVersion" == "15.2.0" ]; then
