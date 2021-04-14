@@ -139,7 +139,7 @@ function installRemoteJava {
 	        yum clean metadata
 	        sudo yum -y install java-1.8.0-amazon-corretto
 	    elif [ "$openJdkVersion" == "11" ]; then
-	        sudo amazon-linux-extras -y install java-openjdk11
+	        sudo amazon-linux-extras install -y java-openjdk11
 	    fi
 	fi
 	echo "install Remote JDK - Done!"
