@@ -5,7 +5,7 @@ Execute commands or run health checks on remote servers across all clusters
 The function get_targeted_servers() holds the parameters necessary
 
 Every cluster of servers has 3 parameters:
-1. Discriptive cluster name (e.g Spaces / management servers / DI servers etc)
+1. ENV_NAME :: Discriptive cluster name (e.g Spaces / management servers / DI servers etc)
 2. SERVER_LIST :: space delimited list of host names (as resolved in DNS)
 3. SERVICES :: every service is constructed of 3 fields delimited by a colon
 	#1 :: the type of check R (=Remote) or L (=Local) *** some service have to be tested remotely (e.g. PING or SSH) to ensure connectivity
