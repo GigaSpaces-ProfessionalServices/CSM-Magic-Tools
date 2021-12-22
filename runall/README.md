@@ -15,7 +15,7 @@ Every cluster of servers has 3 parameters:
 
 If a new cluster needs to be added:
 1. Add a case to get_targeted_servers() function
-2. add the case to parameter ENV_TYPES
+2. 2. add the case to parameter ENV_TYPES
 
 For help run:
 	./runall.sh -h
