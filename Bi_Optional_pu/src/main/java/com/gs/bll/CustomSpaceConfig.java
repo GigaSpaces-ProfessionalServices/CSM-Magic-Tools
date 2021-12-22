@@ -30,9 +30,11 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
 
     @Override
     protected void configure(EmbeddedSpaceFactoryBean factoryBean) {
+        super.configure(factoryBean);
         Properties spaceProperties = new Properties();
         logger.info("################### configure() ###########################");
         logger.info("spacePropertyFilePath : "+spacePropertyFilePath);
+        logger.info("spaceName"+getSpaceName());
         boolean isSpacePropertyFileExist = checkIsFileExist(spacePropertyFilePath);
         logger.info("isSpacePropertyFileExist : "+isSpacePropertyFileExist);
         if(isSpacePropertyFileExist){
@@ -47,7 +49,6 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
         if(!tieredConfigFilePath.equals("")) {
             System.out.println("################## " + tieredConfigFilePath + "###############");
             logger.info("################## tieredConfigFilePath #### here ##################" + tieredConfigFilePath);
-            super.configure(factoryBean);
             TieredStorageConfig tieredStorageConfig = new TieredStorageConfig();
             Map<String, TieredStorageTableConfig> tables = new HashMap<>();
             boolean isTieredConfigFileExist = checkIsFileExist(tieredConfigFilePath);
