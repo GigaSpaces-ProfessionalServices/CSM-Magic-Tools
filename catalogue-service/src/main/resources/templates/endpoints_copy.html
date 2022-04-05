@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="https://thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        table, th, td {
+          border: 1px solid black;
+          border-collapse: collapse;
+        }
+
+    </style>
+
+    <script>
+        var hostName;
+		var reloadInterval = '30000';
+        window.setInterval('reloadWindow()','30000');
+		var lastIndex = 0;
+		var totalEndpoints ;
+        function loadMetadata(){
+
+            totalEndpoints = document.getElementById("totalEndpoints").value;
+
+           if(lastIndex<totalEndpoints){
+				setTimeout('getMetadata()','1000');
+			}
+        }
+
+       function getMetadata(){
+
+			var index = lastIndex;
+			var url = "http://"+hostName+"/tables/"+index;
+            console.log("url="+url);
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+
+            xmlhttp.onreadystatechange = function(){
+
+                 if(xmlhttp.readyState ===4 && xmlhttp.status===200){
+                    var responseStr = xmlhttp.responseText;
+                    console.log(responseStr);
+						var data="";
+
+						if(responseStr!="" && responseStr!=null){
+							var res = JSON.parse(xmlhttp.responseText);
+							console.log(res);
+							var metadataList=res.metadata;
+							for(j=0;j<metadataList.length;j++){
+
+								if(data==""){
+									data = metadataList[j];
+								} else{
+									data +=","+metadataList[j];
+								}
+
+							}
+							console.log("table lenght"+metadataList.length);
+						} else{
+							data="<font color='red'> Endpoint URL is not reachable!</font>";
+						}
+
+						console.log(data);
+						document.getElementById(''+index+'').innerHTML = data;
+						var newIndex = parseInt(index)+1;
+
+						console.log("Before lastIndex=>"+lastIndex);
+						lastIndex = newIndex;
+						console.log("after lastIndex=>"+lastIndex);
+						document.getElementById("lastEndpointIndex").value =  newIndex;
+
+						loadMetadata();
+
+                }
+            }
+        }
+
+        function reloadWindow(){
+			reloadInterval = parseInt(totalEndpoints) * 1000;
+            window.location.href = window.location.href;
+        }
+        window.onload = function(){
+            hostName = location.host;
+            var errDiv = document.getElementById("errorMsg");
+
+            if(errDiv==null){
+                setTimeout('loadMetadata()','2000');
+            }
+        }
+
+    </script>
+
+
+    <title>Service Catalogue</title>
+</head>
+<body>
+<div id="errorMsg" th:if="${error!=null}"><font color="red"> <span th:text="${error}"></span></font></div>
+<div th:if="${error==null}">
+
+    <input type="hidden" name="totalEndpoints" id="totalEndpoints" th:value="${#lists.size(endpointList)}" />
+    <input type="hidden" name="lastEndpointIndex" id="lastEndpointIndex" value="0" />
+
+    <table>
+        <thead>
+        <tr>
+            <th> Index </th>
+            <th> Endpoint </th>
+            <th> Metadata </th>
+        </tr>
+        </thead>
+        <tbody>
+
+        <tr th:if="${endpointList!=null && endpointList.empty}">
+            <td colspan="3"> No Endpoints Available </td>
+        </tr>
+        <tr th:each="strEndpoint, isStat : ${endpointList}"  >
+            <td><span th:text="${isStat.index}">  </span></td>
+            <td><span th:text="${strEndpoint}">  </span></td>
+            <td th:id="${isStat.index}" > No Data Found!! </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
