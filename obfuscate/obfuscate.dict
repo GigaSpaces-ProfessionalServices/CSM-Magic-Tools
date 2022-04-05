@@ -1,0 +1,45 @@
+###################################################
+###### DO NOT REMOVE COMMENTS FROM THIS FILE ######
+###################################################
+#
+# this is the dictionary file for obfuscate.sh
+# to obfuscate strings/values in a file add instructions below
+#
+# Instruction must comply to the format: [ENV]:[STRING]:[REPLACE]
+# [ENV]     = the type of environment to process
+# [STRING]  = the string value to look for
+# [REPLACE] = the value to replace STRING with
+#
+
+###################################################
+################# DEV ENVIRONMENT #################
+###################################################
+# DEV:STRING1:STRING2
+
+###################################################
+############### STAGING ENVIRONMENT ###############
+###################################################
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+STG::
+
+###################################################
+############## PRODUCTION ENVIRONMENT #############
+###################################################
+# PRD::STRING1:STRING2
