@@ -2,21 +2,17 @@
 <html xmlns:th="https://thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-  <!--  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js" integrity="sha384-eMNCOe7tC1doHpGoWe/6oMVemdAVTMs2xqW4mwXrXsW0L84Iytr2wi5v2QjrP/xp" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.min.js" integrity="sha384-cn7l7gDp0eyniUwwAZgrzD06kc/tftFf19TOAs2zVinnD/C7E91j9yyk5//jjpt/" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    -->
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
-          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
-          crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
-    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
-    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" >
+    <link rel="stylesheet" type="text/css" th:href="@{/css/jquery.dataTables.min.css}" >
+    <script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
+    <script type="text/javascript" language="javascript" th:src="@{/js/jquery.dataTables.min.js}"></script>
+
     <script language="javascript" type="text/javascript">
     $(document).ready( function () {
         $('#dataTable').DataTable();
+
+
     } );
     </script>
 
@@ -24,121 +20,64 @@
         var hostName;
 		var reloadInterval = '30000';
         //window.setInterval('reloadWindow()','60000');
-		var lastIndex = 0;
-		var totalEndpoints ;
-        function loadMetadata(){
-
-           /* totalEndpoints = document.getElementById("totalEndpoints").value;
-
-           if(lastIndex<totalEndpoints){
-				setTimeout('getMetadata()','1000');
-			} */
-
-		   var allEndpoints = document.getElementById("allEndpoints").value;
-		   var allEndpoints = allEndpoints.substring(1, allEndpoints.length-1);
-		   console.log("allEndpoints="+allEndpoints);
-		   var endPointArr = allEndpoints.split(",");
-		   for(var i=0;i<endPointArr.length;i++){
-		        getMetadata(endPointArr[i].trim());
-		   }
-        }
-
-       function getMetadata(endpoint){
-            var index = lastIndex;
-			var url = "http://"+hostName+"/tables/"+endpoint;
-            console.log("url="+url);
-            var xmlhttp = new XMLHttpRequest();
-            xmlhttp.open("GET", url, true);
-            xmlhttp.send();
-
-            xmlhttp.onreadystatechange = function(){
-
-                 if(xmlhttp.readyState ===4 && xmlhttp.status===200){
-                    var responseStr = xmlhttp.responseText;
-                    console.log(responseStr);
-						var data="";
-
-						if(responseStr!="" && responseStr!=null){
-							var res = JSON.parse(xmlhttp.responseText);
-							console.log(res);
-
-							var metadataList=res.metadata;
-							for(j=0;j<metadataList.length;j++){
-
-								if(data==""){
-									data = metadataList[j];
-								} else{
-									data +=","+metadataList[j];
-								}
-
-							}
-							console.log("table lenght"+metadataList.length);
-						} else{
-							data="<font color='red'> Endpoint URL is not reachable!</font>";
-						}
-
-						console.log(data);
-						document.getElementById(''+endpoint+'').innerHTML = data;
-
-
-
-                }
-            }
-        }
 
         function reloadWindow(){
-			reloadInterval = parseInt(totalEndpoints) * 1000;
-            window.location.href = window.location.href;
+			window.location.href = window.location.href;
         }
         window.onload = function(){
             hostName = location.host;
             var errDiv = document.getElementById("errorMsg");
 
             if(errDiv==null){
-                setTimeout('loadMetadata()','2000');
+                var ele = document.getElementById("NoData");
+
+                if(ele!=null){
+                    setTimeout('submitForm()','2000'); // Submit form only once to load initial data
+                }
             }
         }
 
+        function submitForm(){
+            document.getElementById("form").submit();
+        }
     </script>
 
 
     <title>Service Catalogue</title>
+
 </head>
+
 <body>
+
 <div id="errorMsg" th:if="${error!=null}"><font color="red"> <span th:text="${error}"></span></font></div>
 <div th:if="${error==null}">
+    <form th:action="@{/}" method="post" id="form">
+        <input type="hidden" name="allEndpoints" id="allEndpoints" th:value="${endpointList}" />
 
-    <input type="hidden" name="allEndpoints" id="allEndpoints" th:value="${endpointList}" />
+        <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='10' data-order='[[1, "asc"]]'>
+            <thead>
+            <tr>
+                <th> Sr No </th>
+                <th> Endpoint </th>
+                <th id="metadataHeader"  class="sorting_disabled" > Metadata </th>
+            </tr>
+            </thead>
+            <tbody>
 
-    <input type="hidden" name="totalEndpoints" id="totalEndpoints" th:value="${#lists.size(endpointList)}" />
-    <input type="hidden" name="lastEndpointIndex" id="lastEndpointIndex" value="0" />
+            <tr th:if="${endpointMetadataList!=null && endpointMetadataList.empty}">
+                <td colspan="3"> No Endpoints Available </td>
+            </tr>
 
-    <!-- <form th:action="@{/search}" method="get">
-        <input type="text" name="keyword" th:value="${keyword}"  placeholder="Find Endpoint" size="50" >
-        <button type="submit" class="btn btn-info" >Search</button>
-        <button type="submit" class="btn btn-info" >Reset</button>
-    </form> -->
-
-    <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='50' data-order='[[1, "desc"]]'>
-        <thead>
-        <tr>
-            <th> Index </th>
-            <th> Endpoint </th>
-            <th> Metadata </th>
-        </tr>
-        </thead>
-        <tbody>
-
-        <tr th:if="${endpointList!=null && endpointList.empty}">
-            <td colspan="3"> No Endpoints Available </td>
-        </tr>
-        <tr th:each="strEndpoint, isStat : ${endpointList}"  >
-            <td><span th:text="${isStat.index}">  </span></td>
-            <td><span th:text="${strEndpoint}">  </span></td>
-            <td th:id="${strEndpoint}" > No Data Found!! </td>
-        </tr>
-        </tbody>
-    </table>
+            <tr th:each="endpoint, isStat : ${endpointMetadataList}"  >
+                <td><span th:text="${isStat.index + 1}">  </span></td>
+                <td><span th:text="${endpoint.endpointName}">   </span></td>
+                <td id="NoData" th:if="${endpoint.metadata==null}"> No Data Found!! </td>
+                <td id="" th:if="${endpoint.metadata!=null && endpoint.metadata.empty}"> <font color="red"> <span> Metadata endpoint is not accessible.. </span> </font> </td>
+                <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}"> <span th:text="${endpoint.metadata}"> </span> </td>
+            </tr>
+            </tbody>
+        </table>
+    </form>
 </div>
 
 </body>

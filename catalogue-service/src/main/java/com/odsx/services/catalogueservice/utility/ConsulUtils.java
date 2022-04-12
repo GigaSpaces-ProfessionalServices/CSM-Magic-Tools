@@ -5,10 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
 
-@Component
+@Service
 public class ConsulUtils {
 
     private static Logger log = LoggerFactory.getLogger(ConsulUtils.class);
