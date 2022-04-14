@@ -32,7 +32,7 @@
                 var ele = document.getElementById("NoData");
 
                 if(ele!=null){
-                    setTimeout('submitForm()','20000'); // Submit form only once to load initial data
+                    setTimeout('submitForm()','2000'); // Submit form only once to load initial data
                 }
             }
         }
@@ -74,8 +74,8 @@
                 <td style="width:15%"><span th:text="${endpoint.endpointName}">   </span></td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances==null}"><span> - </span> </td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}">   </span></td>
-                <td id="NoData" th:if="${endpoint.metadata==null && errorInMetadata==null}"> No Data Found!! </td>
-                <td id="" th:if="${errorInMetadata!=null}"> <font color="red"> <span th:text="${errorInMetadata}"> </span> </font> </td>
+                <td id="NoData" th:if="${endpoint.metadata==null && endpoint.errorMsg==null}"> No Data Found!! </td>
+                <td id="" th:if="${endpoint.errorMsg!=null}"> <font color="red"> <span th:text="${endpoint.errorMsg}"> </span> </font> </td>
                 <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}"> <span th:text="${endpoint.metadata}"> </span> </td>
             </tr>
             </tbody>

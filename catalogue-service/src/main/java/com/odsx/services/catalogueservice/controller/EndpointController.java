@@ -60,7 +60,7 @@ public class EndpointController {
 
         log.info("Entering into -> getEndpointMetadata");
         ModelAndView modelAndView = new ModelAndView();
-        List<EndpointMetadata> endpointMetadataListList = new ArrayList<>();
+        List<EndpointMetadata> endpointMetadataList = new ArrayList<>();
         log.info("Request Params - All endpoints -> "+endpoints);
 
 
@@ -76,19 +76,20 @@ public class EndpointController {
                  endpointMetadata = endpointMetadataUtils.getMetadata(endpoint);
 
                 log.debug("endpointMetadata -> " + endpointMetadata.toString());
-                endpointMetadataListList.add(endpointMetadata);
+                endpointMetadataList.add(endpointMetadata);
             } catch (Exception e){
 
                 endpointMetadata = new EndpointMetadata();
                 endpointMetadata.setEndpointName(endpoint);
-                endpointMetadataListList.add(endpointMetadata);
-                modelAndView.addObject("errorInMetadata", "Metadata endpoint is not accessible. ");
+                endpointMetadata.setErrorMsg("Metatada endpoint is not accessible.");
+                endpointMetadataList.add(endpointMetadata);
+
             }
         }
 
-        log.info("Endpoint with metadata Size -> "+(endpointMetadataListList!=null ? endpointMetadataListList.size() : "is null"));
+        log.info("Endpoint with metadata Size -> "+(endpointMetadataList!=null ? endpointMetadataList.size() : "is null"));
         log.info("Exiting from -> getEndpointMetadata");
-        modelAndView.addObject("endpointMetadataList", endpointMetadataListList);
+        modelAndView.addObject("endpointMetadataList", endpointMetadataList);
 
         modelAndView.setViewName("endpoints");
 

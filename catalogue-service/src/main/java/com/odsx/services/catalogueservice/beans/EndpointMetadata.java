@@ -14,6 +14,7 @@ public class EndpointMetadata {
 
     private List<String> metadata;
 
+    private String errorMsg;
 
     public String getEndpointName() {
         return endpointName;
@@ -35,6 +36,14 @@ public class EndpointMetadata {
         return numberOfInstances;
     }
 
+    public String getErrorMsg() {
+        return errorMsg;
+    }
+
+    public void setErrorMsg(String errorMsg) {
+        this.errorMsg = errorMsg;
+    }
+
     public void setNumberOfInstances(Integer numberOfInstances) {
         this.numberOfInstances = numberOfInstances;
     }
@@ -45,6 +54,7 @@ public class EndpointMetadata {
                 "endpointName='" + endpointName + '\'' +
                 ", numberOfInstances=" + numberOfInstances +
                 ", metadata=" + metadata +
+                ", errorMsg='" + errorMsg + '\'' +
                 '}';
     }
 
@@ -53,11 +63,11 @@ public class EndpointMetadata {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         EndpointMetadata that = (EndpointMetadata) o;
-        return Objects.equals(endpointName, that.endpointName) && Objects.equals(numberOfInstances, that.numberOfInstances) && Objects.equals(metadata, that.metadata);
+        return endpointName.equals(that.endpointName) && Objects.equals(numberOfInstances, that.numberOfInstances) && Objects.equals(metadata, that.metadata) && Objects.equals(errorMsg, that.errorMsg);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(endpointName, numberOfInstances, metadata);
+        return Objects.hash(endpointName, numberOfInstances, metadata, errorMsg);
     }
 }
