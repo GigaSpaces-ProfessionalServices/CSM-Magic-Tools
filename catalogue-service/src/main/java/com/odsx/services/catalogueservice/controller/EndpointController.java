@@ -81,8 +81,8 @@ public class EndpointController {
 
                 endpointMetadata = new EndpointMetadata();
                 endpointMetadata.setEndpointName(endpoint);
-                endpointMetadata.setMetadata(new ArrayList<String>());
                 endpointMetadataListList.add(endpointMetadata);
+                modelAndView.addObject("errorInMetadata", "Metadata endpoint is not accessible. ");
             }
         }
 

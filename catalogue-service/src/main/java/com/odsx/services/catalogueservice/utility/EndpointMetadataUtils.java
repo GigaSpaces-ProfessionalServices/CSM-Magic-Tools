@@ -30,7 +30,14 @@ public class EndpointMetadataUtils {
         EndpointMetadata endpointMetadata = null ;
         //try {
 
-            String endpointHost = consulUtils.getServiceDefinition(endpointName);
+            Map<String,String> serviceDefMap = consulUtils.getServiceDefinition(endpointName);
+
+            String serviceAddress = serviceDefMap.get("ServiceAddress");
+            String servicePort = serviceDefMap.get("ServicePort");
+            Integer numberOfInstances = serviceDefMap.get("InstancesCount")!=null?Integer.valueOf(serviceDefMap.get("InstancesCount")):1;
+            String endpointHost = serviceAddress+":"+servicePort;
+            log.debug("Endpoint Host -> " + endpointHost);
+
 
             String url = "http://" + endpointHost + "/v1";
             log.debug("Endpoint Name -> " + endpointName);
@@ -49,6 +56,7 @@ public class EndpointMetadataUtils {
             log.info("Metadata Webservice Response -> " + response);
 
             endpointMetadata = convertWSResponse(response);
+            endpointMetadata.setNumberOfInstances(numberOfInstances);
 
             log.info("Exiting from ->" + methodName);
 

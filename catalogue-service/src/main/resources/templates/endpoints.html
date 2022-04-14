@@ -19,7 +19,7 @@
     <script>
         var hostName;
 		var reloadInterval = '30000';
-        //window.setInterval('reloadWindow()','60000');
+        window.setInterval('reloadWindow()','60000');
 
         function reloadWindow(){
 			window.location.href = window.location.href;
@@ -32,7 +32,7 @@
                 var ele = document.getElementById("NoData");
 
                 if(ele!=null){
-                    setTimeout('submitForm()','2000'); // Submit form only once to load initial data
+                    setTimeout('submitForm()','20000'); // Submit form only once to load initial data
                 }
             }
         }
@@ -58,21 +58,24 @@
             <thead>
             <tr>
                 <th> Sr No </th>
-                <th> Endpoint </th>
-                <th id="metadataHeader"  class="sorting_disabled" > Metadata </th>
+                <th> MicroService </th>
+                <th> Instances </th>
+                <th> Metadata;Tables </th>
             </tr>
             </thead>
             <tbody>
 
             <tr th:if="${endpointMetadataList!=null && endpointMetadataList.empty}">
-                <td colspan="3"> No Endpoints Available </td>
+                <td colspan="3"> No MicroServices Available </td>
             </tr>
 
             <tr th:each="endpoint, isStat : ${endpointMetadataList}"  >
-                <td><span th:text="${isStat.index + 1}">  </span></td>
-                <td><span th:text="${endpoint.endpointName}">   </span></td>
-                <td id="NoData" th:if="${endpoint.metadata==null}"> No Data Found!! </td>
-                <td id="" th:if="${endpoint.metadata!=null && endpoint.metadata.empty}"> <font color="red"> <span> Metadata endpoint is not accessible.. </span> </font> </td>
+                <td style="width:5%"><span th:text="${isStat.index + 1}">  </span></td>
+                <td style="width:15%"><span th:text="${endpoint.endpointName}">   </span></td>
+                <td style="width:10%" th:if="${endpoint.numberOfInstances==null}"><span> - </span> </td>
+                <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}">   </span></td>
+                <td id="NoData" th:if="${endpoint.metadata==null && errorInMetadata==null}"> No Data Found!! </td>
+                <td id="" th:if="${errorInMetadata!=null}"> <font color="red"> <span th:text="${errorInMetadata}"> </span> </font> </td>
                 <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}"> <span th:text="${endpoint.metadata}"> </span> </td>
             </tr>
             </tbody>

@@ -45,11 +45,13 @@ public class ConsulUtils {
         return catalogServiceList;
     }
 
-    public String getServiceDefinition(String serviceName) throws Exception{
+    public Map<String,String> getServiceDefinition(String serviceName) throws Exception{
         String methodName = "getServiceDefinition";
         log.info("Entering into -> "+methodName);
 
         log.info("Service name -> "+serviceName);
+
+        Map<String,String> serviceDefMap = new HashMap<>();
 
         String CONSUL_URL = CONSUL_CATALOG_ENDPOINT+"/service/"+(serviceName!=null?serviceName.trim():"");
         log.debug("Consul Service Definition URL -> "+CONSUL_URL);
@@ -63,14 +65,16 @@ public class ConsulUtils {
 
         JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
 
-        log.debug("Service Address -> "+jsonObject.get("Address"));
+        log.debug("Service Address -> "+jsonObject.get("ServiceAddress"));
         log.debug("Service Port -> "+jsonObject.get("ServicePort"));
+        log.debug("Number of Instances -> "+String.valueOf(jsonArray.size()));
 
-        String endpointHost = jsonObject.get("Address").getAsString()+":"+jsonObject.get("ServicePort").getAsString();
-        log.info("Endpoint Host -> "+endpointHost);
+        serviceDefMap.put("ServiceAddress",jsonObject.get("ServiceAddress").getAsString());
+        serviceDefMap.put("ServicePort",jsonObject.get("ServicePort").getAsString());
+        serviceDefMap.put("InstancesCount",String.valueOf(jsonArray.size()));
 
         log.info("Exiting from -> "+methodName);
-        return endpointHost;
+        return serviceDefMap;
     }
 
     private RestTemplate getRestTemplate(){

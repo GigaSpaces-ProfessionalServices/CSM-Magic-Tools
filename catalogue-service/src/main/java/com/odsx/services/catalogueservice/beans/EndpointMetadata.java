@@ -10,7 +10,10 @@ public class EndpointMetadata {
 
     private String endpointName;
 
+    private Integer numberOfInstances;
+
     private List<String> metadata;
+
 
     public String getEndpointName() {
         return endpointName;
@@ -28,24 +31,33 @@ public class EndpointMetadata {
         this.metadata = metadata;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        EndpointMetadata that = (EndpointMetadata) o;
-        return endpointName.equals(that.endpointName) && Objects.equals(metadata, that.metadata);
+    public Integer getNumberOfInstances() {
+        return numberOfInstances;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(endpointName, metadata);
+    public void setNumberOfInstances(Integer numberOfInstances) {
+        this.numberOfInstances = numberOfInstances;
     }
 
     @Override
     public String toString() {
         return "EndpointMetadata{" +
                 "endpointName='" + endpointName + '\'' +
+                ", numberOfInstances=" + numberOfInstances +
                 ", metadata=" + metadata +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        EndpointMetadata that = (EndpointMetadata) o;
+        return Objects.equals(endpointName, that.endpointName) && Objects.equals(numberOfInstances, that.numberOfInstances) && Objects.equals(metadata, that.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(endpointName, numberOfInstances, metadata);
     }
 }
