@@ -12,6 +12,7 @@
     $(document).ready( function () {
         $('#dataTable').DataTable();
 
+        $( "#dataTable_filter" ).prepend( "  <button type='button' class='btn btn-secondary' onclick='reloadWindow();'>Refresh</button> &nbsp; &nbsp;&nbsp;&nbsp;" );
 
     } );
     </script>
@@ -19,7 +20,7 @@
     <script>
         var hostName;
 		var reloadInterval = '30000';
-        window.setInterval('reloadWindow()','60000');
+        window.setInterval('reloadWindow()','3000000');
 
         function reloadWindow(){
 			window.location.href = window.location.href;
@@ -27,11 +28,16 @@
         window.onload = function(){
             hostName = location.host;
             var errDiv = document.getElementById("errorMsg");
+            var elms = document.querySelectorAll("[id='inError']");
+            if(elms.length > 0){
+                document.getElementById("totalInError").innerHTML = elms.length;
+            }
 
             if(errDiv==null){
                 var ele = document.getElementById("NoData");
 
                 if(ele!=null){
+
                     setTimeout('submitForm()','2000'); // Submit form only once to load initial data
                 }
             }
@@ -51,15 +57,20 @@
 
 <div id="errorMsg" th:if="${error!=null}"><font color="red"> <span th:text="${error}"></span></font></div>
 <div th:if="${error==null}">
+
     <form th:action="@{/}" method="post" id="form">
         <input type="hidden" name="allEndpoints" id="allEndpoints" th:value="${endpointList}" />
 
+        <div>
+
+        </div>
         <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='10' data-order='[[1, "asc"]]'>
             <thead>
             <tr>
                 <th> Sr No </th>
                 <th> MicroService </th>
                 <th> Instances </th>
+                <th> Port Number </th>
                 <th> Metadata;Tables </th>
             </tr>
             </thead>
@@ -73,13 +84,23 @@
                 <td style="width:5%"><span th:text="${isStat.index + 1}">  </span></td>
                 <td style="width:15%"><span th:text="${endpoint.endpointName}">   </span></td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances==null}"><span> - </span> </td>
-                <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}">   </span></td>
+                <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}"> </span></td>
+                <td style="width:10%" th:if="${endpoint.portNumbers==null}"> <span> - </span> </td>
+                <td style="width:10%" th:if="${endpoint.portNumbers!=null}"><span th:text="${endpoint.portNumbers}"> </span></td>
                 <td id="NoData" th:if="${endpoint.metadata==null && endpoint.errorMsg==null}"> No Data Found!! </td>
-                <td id="" th:if="${endpoint.errorMsg!=null}"> <font color="red"> <span th:text="${endpoint.errorMsg}"> </span> </font> </td>
+                <td id="inError" th:if="${endpoint.errorMsg!=null}"> <font color="red"> <span th:text="${endpoint.errorMsg}"> </span> </font> </td>
                 <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}"> <span th:text="${endpoint.metadata}"> </span> </td>
             </tr>
             </tbody>
         </table>
+        <div>
+            <span th:if="${endpointMetadataList!=null}"> Total Services : <b> <span th:text="${#lists.size(endpointMetadataList)}"></span> </b></span>
+            <b> &#124; </b>
+            <span> Total Instances :  <b><span th:text="${totalInstances}">  </span>  </b></span>
+            <b> &#124; </b>
+            <span> Total Services in Error : <b><span id="totalInError">  </span></b> </span>
+
+        </div>
     </form>
 </div>
 

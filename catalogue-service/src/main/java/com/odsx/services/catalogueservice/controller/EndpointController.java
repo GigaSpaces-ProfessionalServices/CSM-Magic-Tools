@@ -1,6 +1,6 @@
 package com.odsx.services.catalogueservice.controller;
 
-import com.odsx.services.catalogueservice.beans.EndpointMetadata;
+import com.odsx.services.catalogueservice.response.EndpointResponse;
 import com.odsx.services.catalogueservice.utility.ConsulUtils;
 import com.odsx.services.catalogueservice.utility.EndpointMetadataUtils;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class EndpointController {
 
         log.info("Entering into -> loadEndpoints");
         ModelAndView modelAndView = new ModelAndView();
-        List<EndpointMetadata> endpointMetadataList = new ArrayList<>();
+        List<EndpointResponse> endpointMetadataList = new ArrayList<>();
         try{
 
             List<String> endpointList = consulUtils.getAllRegisteredEndpoints();
@@ -39,9 +39,9 @@ public class EndpointController {
 
             for(String endpoint : endpointList){
 
-                EndpointMetadata endpointMetadata = new EndpointMetadata();
-                endpointMetadata.setEndpointName(endpoint);
-                endpointMetadataList.add(endpointMetadata);
+                EndpointResponse endpointResponse = new EndpointResponse();
+                endpointResponse.setEndpointName(endpoint);
+                endpointMetadataList.add(endpointResponse);
             }
             modelAndView.addObject("endpointList", endpointList);
             modelAndView.addObject("endpointMetadataList", endpointMetadataList);
@@ -60,7 +60,7 @@ public class EndpointController {
 
         log.info("Entering into -> getEndpointMetadata");
         ModelAndView modelAndView = new ModelAndView();
-        List<EndpointMetadata> endpointMetadataList = new ArrayList<>();
+        List<EndpointResponse> endpointMetadataList = new ArrayList<>();
         log.info("Request Params - All endpoints -> "+endpoints);
 
 
@@ -71,18 +71,23 @@ public class EndpointController {
         log.debug("Endpoints As Array ->"+endpointList.toString());
 
         for(String endpoint : endpointList){
-            EndpointMetadata endpointMetadata = null;
+            EndpointResponse endpointResponse = null;
             try {
-                 endpointMetadata = endpointMetadataUtils.getMetadata(endpoint);
+                endpointResponse = endpointMetadataUtils.getMetadata(endpoint);
 
-                log.debug("endpointMetadata -> " + endpointMetadata.toString());
-                endpointMetadataList.add(endpointMetadata);
+                log.info("endpointMetadata -> " + endpointResponse.toString());
+                endpointMetadataList.add(endpointResponse);
+
+                Integer totalInstances = endpointMetadataList.stream().map(x -> x.getNumberOfInstances())
+                        .reduce(0, Integer::sum);
+
+                modelAndView.addObject("totalInstances", totalInstances);
             } catch (Exception e){
-
-                endpointMetadata = new EndpointMetadata();
-                endpointMetadata.setEndpointName(endpoint);
-                endpointMetadata.setErrorMsg("Metatada endpoint is not accessible.");
-                endpointMetadataList.add(endpointMetadata);
+                log.info("Error in getEndpointMetadata() -> "+e.getLocalizedMessage());
+                endpointResponse = new EndpointResponse();
+                endpointResponse.setEndpointName(endpoint);
+                endpointResponse.setErrorMsg("Error in retrieving metadata..");
+                endpointMetadataList.add(endpointResponse);
 
             }
         }

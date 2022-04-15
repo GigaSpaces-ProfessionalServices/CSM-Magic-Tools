@@ -4,16 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.odsx.services.catalogueservice.beans.EndpointMetadata;
+import com.odsx.services.catalogueservice.response.EndpointResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
 import javax.annotation.Resource;
-import java.net.ConnectException;
 import java.util.*;
 
 @Service
@@ -24,48 +22,35 @@ public class EndpointMetadataUtils {
     @Resource
     private ConsulUtils consulUtils;
 
-    public EndpointMetadata getMetadata(String endpointName) throws Exception {
+    public EndpointResponse getMetadata(String endpointName) throws Exception {
         String methodName = "getMetadata";
         log.info("Entering into ->" + methodName);
-        EndpointMetadata endpointMetadata = null ;
-        //try {
+        log.info("Endpoint Name -> " + endpointName);
 
-            Map<String,String> serviceDefMap = consulUtils.getServiceDefinition(endpointName);
+        Map<String,String> serviceDefMap = consulUtils.getServiceDefinition(endpointName);
 
-            String serviceAddress = serviceDefMap.get("ServiceAddress");
-            String servicePort = serviceDefMap.get("ServicePort");
-            Integer numberOfInstances = serviceDefMap.get("InstancesCount")!=null?Integer.valueOf(serviceDefMap.get("InstancesCount")):1;
-            String endpointHost = serviceAddress+":"+servicePort;
-            log.debug("Endpoint Host -> " + endpointHost);
+        String serviceAddress = serviceDefMap.get("ServiceAddress");
+        String servicePort = serviceDefMap.get("ServicePort");
+        Integer numberOfInstances = serviceDefMap.get("InstancesCount")!=null?Integer.valueOf(serviceDefMap.get("InstancesCount")):1;
+        log.debug("numberOfInstances -> " + numberOfInstances);
 
+        String endpointHost = serviceAddress+":"+servicePort;
+        log.debug("Endpoint Host -> " + endpointHost);
 
-            String url = "http://" + endpointHost + "/v1";
-            log.debug("Endpoint Name -> " + endpointName);
-            log.debug("Endpoint URL -> " + url);
+        EndpointResponse endpointResponse = new EndpointResponse() ;
+        endpointResponse.setNumberOfInstances(numberOfInstances);
+        endpointResponse.setEndpointName(endpointName);
+        endpointResponse.setPortNumbers(servicePort);
 
-            Map<String, String> params = new HashMap<String, String>();
-            params.put("serviceName", endpointName.toLowerCase(Locale.ROOT));
+        String url = "http://" + endpointHost + "/v1";
+        String metadataURL = url + "/"+endpointName+"/metadata";
+        log.debug(" Endpoint Metadata URL -> " + metadataURL);
 
-            String restURL = url + "/"+endpointName+"/metadata";
-            log.debug("Metadata URL -> " + restURL);
+        endpointResponse = getMetadataFromService(metadataURL,endpointResponse);
 
-            RestTemplate template = new RestTemplate();
-            template.setMessageConverters(getTextMessageConverters());
+        log.info("Exiting from ->" + methodName);
 
-            String response = template.getForObject(restURL, String.class);
-            log.info("Metadata Webservice Response -> " + response);
-
-            endpointMetadata = convertWSResponse(response);
-            endpointMetadata.setNumberOfInstances(numberOfInstances);
-
-            log.info("Exiting from ->" + methodName);
-
-        /*} catch (Exception e) {
-            e.printStackTrace();
-            log.error(e.getLocalizedMessage());
-
-        }*/
-        return endpointMetadata;
+        return endpointResponse;
     }
 
     private List<HttpMessageConverter<?>> getTextMessageConverters() {
@@ -74,7 +59,28 @@ public class EndpointMetadataUtils {
         return converters;
     }
 
-    private EndpointMetadata convertWSResponse(String response){
+    private EndpointResponse getMetadataFromService(String metadataURL, EndpointResponse endpointResponse){
+        String methodName = "getMetadataFromService";
+        log.info("Entering into -> "+methodName);
+        log.info("metadataURL -> "+metadataURL);
+        RestTemplate template = new RestTemplate();
+        template.setMessageConverters(getTextMessageConverters());
+        try {
+            String response = template.getForObject(metadataURL, String.class);
+            log.info("Metadata Webservice Response -> " + response);
+
+            List<String> metadataList = convertWSResponse(response);
+            endpointResponse.setMetadata(metadataList);
+
+            log.info("Exiting from -> "+methodName);
+        } catch(Exception e){
+            e.printStackTrace();
+            endpointResponse.setErrorMsg("Error in connecting Metadata endpoint URL..");
+        }
+        return endpointResponse;
+    }
+
+    private List<String> convertWSResponse(String response){
 
         try {
             String methodName = "convertWSResponse";
@@ -93,14 +99,9 @@ public class EndpointMetadataUtils {
             for (JsonElement jsonElement : metadataArray) {
                 metadataList.add(jsonElement.getAsString());
             }
-
-            EndpointMetadata endpointMetadata = new EndpointMetadata();
-            endpointMetadata.setMetadata(metadataList);
-            endpointMetadata.setEndpointName(endpointName);
-
             log.info("Exiting from ->" + methodName);
-            return endpointMetadata;
-        }catch (Exception e){
+            return metadataList;
+        } catch (Exception e){
             e.printStackTrace();
             return null;
         }

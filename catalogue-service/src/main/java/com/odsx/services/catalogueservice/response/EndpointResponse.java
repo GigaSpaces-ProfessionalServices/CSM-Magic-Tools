@@ -1,4 +1,4 @@
-package com.odsx.services.catalogueservice.beans;
+package com.odsx.services.catalogueservice.response;
 
 import org.springframework.stereotype.Component;
 
@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Component
-public class EndpointMetadata {
+public class EndpointResponse {
 
     private String endpointName;
 
@@ -15,6 +15,8 @@ public class EndpointMetadata {
     private List<String> metadata;
 
     private String errorMsg;
+
+    private String portNumbers;
 
     public String getEndpointName() {
         return endpointName;
@@ -48,13 +50,22 @@ public class EndpointMetadata {
         this.numberOfInstances = numberOfInstances;
     }
 
+    public String getPortNumbers() {
+        return portNumbers;
+    }
+
+    public void setPortNumbers(String portNumbers) {
+        this.portNumbers = portNumbers;
+    }
+
     @Override
     public String toString() {
-        return "EndpointMetadata{" +
+        return "EndpointResponse{" +
                 "endpointName='" + endpointName + '\'' +
                 ", numberOfInstances=" + numberOfInstances +
                 ", metadata=" + metadata +
                 ", errorMsg='" + errorMsg + '\'' +
+                ", portNumbers='" + portNumbers + '\'' +
                 '}';
     }
 
@@ -62,12 +73,16 @@ public class EndpointMetadata {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        EndpointMetadata that = (EndpointMetadata) o;
-        return endpointName.equals(that.endpointName) && Objects.equals(numberOfInstances, that.numberOfInstances) && Objects.equals(metadata, that.metadata) && Objects.equals(errorMsg, that.errorMsg);
+        EndpointResponse that = (EndpointResponse) o;
+        return endpointName.equals(that.endpointName)
+                && Objects.equals(numberOfInstances, that.numberOfInstances)
+                && Objects.equals(metadata, that.metadata)
+                && Objects.equals(errorMsg, that.errorMsg)
+                && Objects.equals(portNumbers, that.portNumbers);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(endpointName, numberOfInstances, metadata, errorMsg);
+        return Objects.hash(endpointName, numberOfInstances, metadata, errorMsg,portNumbers);
     }
 }
