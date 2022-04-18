@@ -1,0 +1,16 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC 
+"-//Hibernate/Hibernate Mapping DTD//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.gigaspaces.datavalidator.model.DataSourceAgentAssignment" table="DATASOURCEAGENTASSIGNMENT">
+		<meta attribute="class-description">
+			This class contains the datasource and agent assignment detail.
+		</meta>
+		<composite-id>
+			<key-property name="agentId" column="AGENT_ID" type="long" />
+			<key-property name="dataSourceId" column="DATASOURCE_ID" type="long" />
+		</composite-id>
+	</class>
+</hibernate-mapping>
