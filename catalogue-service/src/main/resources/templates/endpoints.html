@@ -5,6 +5,11 @@
 
     <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" >
     <link rel="stylesheet" type="text/css" th:href="@{/css/jquery.dataTables.min.css}" >
+    <style>
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
     <script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
     <script type="text/javascript" language="javascript" th:src="@{/js/jquery.dataTables.min.js}"></script>
 
@@ -12,7 +17,7 @@
     $(document).ready( function () {
         $('#dataTable').DataTable();
 
-        $( "#dataTable_filter" ).prepend( "  <button type='button' class='btn btn-secondary' onclick='reloadWindow();'>Refresh</button> &nbsp; &nbsp;&nbsp;&nbsp;" );
+        $( "#dataTable_length" ).prepend( "<a href='#' onclick='reloadWindow();'> <img title='reload' src='../images/refresh_icon.png'/></a> &nbsp; &nbsp;&nbsp;&nbsp;" );
 
     } );
     </script>
@@ -60,28 +65,37 @@
 
     <form th:action="@{/}" method="post" id="form">
         <input type="hidden" name="allEndpoints" id="allEndpoints" th:value="${endpointList}" />
-
         <div>
-
+            <table>
+                <tr>
+                    <span th:if="${endpointResponseList!=null}"> Total Services : <b> <span th:text="${#lists.size(endpointResponseList)}"></span> </b></span>
+                    <b> &#124; </b>
+                    <span> Total Instances :  <b><span th:text="${totalInstances}">  </span>  </b></span>
+                    <b> &#124; </b>
+                    <span> Total Services in Error : <b><span id="totalInError">  </span></b> </span>
+                </tr>
+            </table>
         </div>
-        <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='10' data-order='[[1, "asc"]]'>
-            <thead>
+
+        <br/>
+        <table class="table table-bordered table-sm mt-2 table-striped" id="dataTable" data-page-length='10' data-order='[[0, "asc"]]'>
+            <thead class="bg-dark" style="color:white">
             <tr>
-                <th> Sr No </th>
+                <!-- <th> Sr No </th> -->
                 <th> MicroService </th>
                 <th> Instances </th>
                 <th> Port Number </th>
-                <th> Metadata;Tables </th>
+                <th> Tables </th>
             </tr>
             </thead>
             <tbody>
 
-            <tr th:if="${endpointMetadataList!=null && endpointMetadataList.empty}">
+            <tr th:if="${endpointResponseList!=null && endpointResponseList.empty}">
                 <td colspan="3"> No MicroServices Available </td>
             </tr>
 
-            <tr th:each="endpoint, isStat : ${endpointMetadataList}"  >
-                <td style="width:5%"><span th:text="${isStat.index + 1}">  </span></td>
+            <tr th:each="endpoint, isStat : ${endpointResponseList}"  >
+                <!-- <td style="width:5%"><span th:text="${isStat.index + 1}">  </span></td> -->
                 <td style="width:15%"><span th:text="${endpoint.endpointName}">   </span></td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances==null}"><span> - </span> </td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}"> </span></td>
@@ -89,18 +103,21 @@
                 <td style="width:10%" th:if="${endpoint.portNumbers!=null}"><span th:text="${endpoint.portNumbers}"> </span></td>
                 <td id="NoData" th:if="${endpoint.metadata==null && endpoint.errorMsg==null}"> No Data Found!! </td>
                 <td id="inError" th:if="${endpoint.errorMsg!=null}"> <font color="red"> <span th:text="${endpoint.errorMsg}"> </span> </font> </td>
-                <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}"> <span th:text="${endpoint.metadata}"> </span> </td>
+                <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}">
+                  <!--  <ul class="list-group" th:each="metadata, isStat : ${endpoint.metadata}">
+                        <li class="list-group-item"> <span th:text="${metadata}"> </span></li>
+                    </ul> -->
+                    <span th:each="metadata, isStat : ${endpoint.metadata}">
+                       &#8226;
+                        <span th:text="${metadata}"> </span>
+                        <br/>
+                    </span>
+
+                </td>
             </tr>
             </tbody>
         </table>
-        <div>
-            <span th:if="${endpointMetadataList!=null}"> Total Services : <b> <span th:text="${#lists.size(endpointMetadataList)}"></span> </b></span>
-            <b> &#124; </b>
-            <span> Total Instances :  <b><span th:text="${totalInstances}">  </span>  </b></span>
-            <b> &#124; </b>
-            <span> Total Services in Error : <b><span id="totalInError">  </span></b> </span>
 
-        </div>
     </form>
 </div>
 

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="https://thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" >
+    <link rel="stylesheet" type="text/css" th:href="@{/css/jquery.dataTables.min.css}" >
+    <script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
+    <script type="text/javascript" language="javascript" th:src="@{/js/jquery.dataTables.min.js}"></script>
+
+    <script language="javascript" type="text/javascript">
+    $(document).ready( function () {
+        $('#dataTable').DataTable();
+
+        $( "#dataTable_filter" ).prepend( "  <button type='button' class='btn btn-secondary' onclick='reloadWindow();'>Refresh</button> &nbsp; &nbsp;&nbsp;&nbsp;" );
+    } );
+    </script>
+
+    <script>
+        var hostName;
+		var reloadInterval = '30000';
+        //window.setInterval('reloadWindow()','3000000');
+
+        function reloadWindow(){
+			window.location.href = window.location.href;
+        }
+        window.onload = function(){
+            hostName = location.host;
+            var errDiv = document.getElementById("errorMsg");
+
+            var errEle = document.getElementById("servicesInError");
+            if(errEle!=null && errEle!=undefined){
+                var servicesInError = errEle.value;
+                var errArr = servicesInError.split(",");
+                document.getElementById("totalInError").innerHTML = errArr.length;
+            }
+
+
+            if(errDiv==null){
+                var ele = document.getElementById("NoData");
+
+                if(ele!=null){
+
+                    //setTimeout('submitForm()','2000'); // Submit form only once to load initial data
+                }
+            }
+        }
+
+        function submitForm(){
+            document.getElementById("form").submit();
+        }
+    </script>
+
+
+    <title>Table Catalogue</title>
+
+</head>
+
+<body>
+
+<div id="errorMsg" th:if="${error!=null}"><font color="red"> <span th:text="${error}"></span></font></div>
+<div th:if="${error==null}">
+
+    <div>
+        <span th:if="${endpointMetadataList!=null}"> Total Tables : <b> <span th:text="${#lists.size(endpointMetadataList)}"></span> </b></span>
+        <b> &#124; </b>
+        <span> Total Services in Error : <b><span id="totalInError">  </span></b> </span>
+    </div>
+    <br/>
+    <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='10' data-order='[[1, "asc"]]'>
+        <thead>
+        <tr>
+            <th> Sr No </th>
+            <th> Table </th>
+            <th> Services </th>
+
+        </tr>
+        </thead>
+        <tbody>
+
+        <tr th:if="${endpointMetadataList!=null && endpointMetadataList.empty}">
+            <td colspan="3"> No Tables Available </td>
+        </tr>
+
+        <tr th:each="metadata, isStat : ${endpointMetadataList}"  >
+            <td style="width:10%"><span th:text="${isStat.index + 1}">  </span></td>
+            <td style="width:25%" th:if="${metadata.tableName!='ErrorInService'}"><span th:text="${metadata.tableName}">   </span></td>
+            <td style="width:25%" id="errorRecord" th:if="${metadata.tableName=='ErrorInService'}"><input type="hidden" name="servicesInError" id="servicesInError" th:value="${metadata.serviceList}"/> <font color="red">  <span th:text="${metadata.tableName}">   </span></font> </td>
+            <td id="NoData" th:if="${metadata.serviceList==null && metadata.errorMsg==null}"> No Data Found!! </td>
+            <!-- <td id="inError" th:if="${metadata.errorMsg!=null}"> <font color="red"> <span th:text="${metadata.errorMsg}"> </span> </font> </td> -->
+            <td th:if="${metadata.serviceList!=null && !metadata.serviceList.empty}"> <span th:text="${metadata.serviceList}"> </span> </td>
+        </tr>
+        </tbody>
+    </table>
+
+
+</div>
+
+</body>
+</html>
