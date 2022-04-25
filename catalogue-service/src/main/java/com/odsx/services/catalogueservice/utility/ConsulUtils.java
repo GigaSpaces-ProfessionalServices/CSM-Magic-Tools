@@ -5,11 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
 
-@Service
+@Component
 public class ConsulUtils {
 
     private static Logger log = LoggerFactory.getLogger(ConsulUtils.class);
@@ -45,13 +44,13 @@ public class ConsulUtils {
         return catalogServiceList;
     }
 
-    public Map<String,String> getServiceDefinition(String serviceName) throws Exception{
+    public List<Map<String,String>> getServiceDefinition(String serviceName) throws Exception{
         String methodName = "getServiceDefinition";
         log.info("Entering into -> "+methodName);
 
         log.info("Service name -> "+serviceName);
+        List<Map<String,String>> instancesMapList = new ArrayList<>();
 
-        Map<String,String> serviceDefMap = new HashMap<>();
 
         String CONSUL_URL = CONSUL_CATALOG_ENDPOINT+"/service/"+(serviceName!=null?serviceName.trim():"");
         log.debug("Consul Service Definition URL -> "+CONSUL_URL);
@@ -62,19 +61,19 @@ public class ConsulUtils {
         log.debug("Consul Service Definition Response -> "+strResponse);
 
         JsonArray jsonArray = new Gson().fromJson(strResponse, JsonArray.class);
+        for(JsonElement jsonElement : jsonArray) {
+            JsonObject jsonObject = jsonElement.getAsJsonObject();
+            log.debug("Service Address -> " + jsonObject.get("ServiceAddress"));
+            log.debug("Service Port -> " + jsonObject.get("ServicePort"));
+            log.debug("Number of Instances -> " + String.valueOf(jsonArray.size()));
+            Map<String, String> serviceDefMap = new HashMap<>();
+            serviceDefMap.put("ServiceAddress", jsonObject.get("ServiceAddress").getAsString());
+            serviceDefMap.put("ServicePort", jsonObject.get("ServicePort").getAsString());
 
-        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
-
-        log.debug("Service Address -> "+jsonObject.get("ServiceAddress"));
-        log.debug("Service Port -> "+jsonObject.get("ServicePort"));
-        log.debug("Number of Instances -> "+String.valueOf(jsonArray.size()));
-
-        serviceDefMap.put("ServiceAddress",jsonObject.get("ServiceAddress").getAsString());
-        serviceDefMap.put("ServicePort",jsonObject.get("ServicePort").getAsString());
-        serviceDefMap.put("InstancesCount",String.valueOf(jsonArray.size()));
-
-        log.info("Exiting from -> "+methodName);
-        return serviceDefMap;
+            log.info("Exiting from -> " + methodName);
+            instancesMapList.add(serviceDefMap);
+        }
+        return instancesMapList;
     }
 
     private RestTemplate getRestTemplate(){

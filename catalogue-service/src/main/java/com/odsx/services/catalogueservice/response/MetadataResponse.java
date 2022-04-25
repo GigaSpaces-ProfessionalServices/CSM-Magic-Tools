@@ -12,7 +12,7 @@ public class MetadataResponse {
     private List<String> serviceList;
     private String errorMsg;
 
-    public String getTableName() {
+   public String getTableName() {
         return tableName;
     }
 
@@ -28,11 +28,11 @@ public class MetadataResponse {
         this.serviceList = serviceList;
     }
 
-    public String getErrMsg() {
+    public String getErrorMsg() {
         return errorMsg;
     }
 
-    public void setErrMsg(String errorMsg) {
+    public void setErrorMsg(String errorMsg) {
         this.errorMsg = errorMsg;
     }
 

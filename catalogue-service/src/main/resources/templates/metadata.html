@@ -12,7 +12,8 @@
     $(document).ready( function () {
         $('#dataTable').DataTable();
 
-        $( "#dataTable_filter" ).prepend( "  <button type='button' class='btn btn-secondary' onclick='reloadWindow();'>Refresh</button> &nbsp; &nbsp;&nbsp;&nbsp;" );
+        $( "#dataTable_length" ).prepend( "<a href='#' onclick='reloadWindow();'> <img title='reload' src='../images/refresh_icon.png'/></a> &nbsp; &nbsp;&nbsp;&nbsp;" );
+        $("#searchLabel").html("Filter By Table Name:");
     } );
     </script>
 
@@ -22,18 +23,19 @@
         //window.setInterval('reloadWindow()','3000000');
 
         function reloadWindow(){
+            alert('reloadWindow');
 			window.location.href = window.location.href;
         }
         window.onload = function(){
             hostName = location.host;
             var errDiv = document.getElementById("errorMsg");
 
-            var errEle = document.getElementById("servicesInError");
-            if(errEle!=null && errEle!=undefined){
-                var servicesInError = errEle.value;
-                var errArr = servicesInError.split(",");
-                document.getElementById("totalInError").innerHTML = errArr.length;
+
+            var elms = document.querySelectorAll("[id='errServices']");
+            if(elms.length > 0){
+                document.getElementById("totalInError").innerHTML = elms.length;
             }
+
 
 
             if(errDiv==null){
@@ -67,10 +69,10 @@
         <span> Total Services in Error : <b><span id="totalInError">  </span></b> </span>
     </div>
     <br/>
-    <table class="table table-bordered table-sm mt-2" id="dataTable" data-page-length='10' data-order='[[1, "asc"]]'>
-        <thead>
+    <table class="table table-bordered table-sm mt-2 table-striped" id="dataTable" data-page-length='10' data-order='[[0, "asc"]]'>
+        <thead class="bg-dark" style="color:white">
         <tr>
-            <th> Sr No </th>
+            <!-- <th> Sr No </th> -->
             <th> Table </th>
             <th> Services </th>
 
@@ -83,12 +85,28 @@
         </tr>
 
         <tr th:each="metadata, isStat : ${endpointMetadataList}"  >
-            <td style="width:10%"><span th:text="${isStat.index + 1}">  </span></td>
-            <td style="width:25%" th:if="${metadata.tableName!='ErrorInService'}"><span th:text="${metadata.tableName}">   </span></td>
-            <td style="width:25%" id="errorRecord" th:if="${metadata.tableName=='ErrorInService'}"><input type="hidden" name="servicesInError" id="servicesInError" th:value="${metadata.serviceList}"/> <font color="red">  <span th:text="${metadata.tableName}">   </span></font> </td>
+            <!-- <td style="width:10%"><span th:text="${isStat.index + 1}">  </span></td> -->
+            <td style="width:45%" th:if="${metadata.errorMsg==null}"><span th:text="${metadata.tableName}">   </span></td>
+            <td class="table-danger" style="width:25%"  th:if="${metadata.errorMsg!=null}"><span th:text="${metadata.errorMsg}"></span> </td>
             <td id="NoData" th:if="${metadata.serviceList==null && metadata.errorMsg==null}"> No Data Found!! </td>
-            <!-- <td id="inError" th:if="${metadata.errorMsg!=null}"> <font color="red"> <span th:text="${metadata.errorMsg}"> </span> </font> </td> -->
-            <td th:if="${metadata.serviceList!=null && !metadata.serviceList.empty}"> <span th:text="${metadata.serviceList}"> </span> </td>
+            <td class="table-success" th:if="${metadata.serviceList!=null && !metadata.serviceList.empty && metadata.errorMsg==null}">
+
+                <span th:each="service, isStat : ${metadata.serviceList}">
+                   &#8226;
+                    <span th:text="${service}"> </span>
+                    <br/>
+                </span>
+
+            </td>
+            <td id="errorRecord" class="table-warning" th:if="${metadata.serviceList!=null && !metadata.serviceList.empty && metadata.errorMsg!=null}">
+
+                <span th:each="service, isStat : ${metadata.serviceList}">
+                   &#8226;
+                    <span id="errServices" th:text="${service}"> </span>
+                    <br/>
+                </span>
+
+            </td>
         </tr>
         </tbody>
     </table>

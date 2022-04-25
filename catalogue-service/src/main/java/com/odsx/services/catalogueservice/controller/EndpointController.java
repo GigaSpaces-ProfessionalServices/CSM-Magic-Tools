@@ -20,7 +20,7 @@ public class EndpointController {
     @Resource
     private EndpointUtils endpointUtils;
 
-    @GetMapping("/")
+    @GetMapping("/services")
     public ModelAndView loadEndpoints(){
 
         log.info("Entering into -> loadEndpoints");
@@ -50,7 +50,7 @@ public class EndpointController {
         return modelAndView;
     }
 
-    @PostMapping("/")
+    @PostMapping("/services")
     public ModelAndView getEndpointMetadata(@RequestParam(value = "allEndpoints") String endpoints){
 
         log.info("Entering into -> getEndpointMetadata");

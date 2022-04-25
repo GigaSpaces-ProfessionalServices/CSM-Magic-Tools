@@ -7,12 +7,13 @@ import com.google.gson.JsonObject;
 import com.odsx.services.catalogueservice.response.EndpointResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import javax.annotation.Resource;
 import java.util.*;
 
-@Service
+@Component
 public class EndpointUtils {
 
     private static Logger log = LoggerFactory.getLogger(EndpointUtils.class);
@@ -30,37 +31,54 @@ public class EndpointUtils {
         log.info("Entering into ->" + methodName);
         log.info("Endpoint Name -> " + endpointArr.toString());
         List<EndpointResponse> endpointResponseList = new ArrayList<>();
+        int count =0;
         for(String endpointName : endpointArr) {
-            EndpointResponse endpointResponse = new EndpointResponse();
-            endpointResponse.setEndpointName(endpointName);
+            endpointName = endpointName.trim();
+            count++;
             try {
-                Map<String, String> serviceDefMap = consulUtils.getServiceDefinition(endpointName);
+                List<Map<String,String>> serviceDefMapList = consulUtils.getServiceDefinition(endpointName);
 
-                String serviceAddress = serviceDefMap.get("ServiceAddress");
-                String servicePort = serviceDefMap.get("ServicePort");
-                Integer numberOfInstances = serviceDefMap.get("InstancesCount") != null ? Integer.valueOf(serviceDefMap.get("InstancesCount")) : 1;
-                log.debug("numberOfInstances -> " + numberOfInstances);
+                List<String> metadataList = new ArrayList<>();
+                EndpointResponse endpointResponse = new EndpointResponse();
+                endpointResponse.setEndpointName(endpointName);
+                boolean isServiceInError = true;
 
-                String endpointHost = serviceAddress + ":" + servicePort;
-                log.debug("Endpoint Host -> " + endpointHost);
+                innerLoop:
+                for(Map<String,String> serviceDefMap : serviceDefMapList) {
 
-                endpointResponse.setNumberOfInstances(numberOfInstances);
+                    String serviceAddress = serviceDefMap.get("ServiceAddress");
+                    String servicePort = serviceDefMap.get("ServicePort");
+                    String endpointHost = serviceAddress + ":" + servicePort;
+                    log.debug("Endpoint Host -> " + endpointHost);
 
-                endpointResponse.setPortNumbers(servicePort);
+                    endpointResponse.setNumberOfInstances(serviceDefMapList.size());
 
-                String url = "http://" + endpointHost + "/v1";
-                String metadataURL = url + "/" + endpointName + "/metadata";
-                log.debug(" Endpoint Metadata URL -> " + metadataURL);
+                    endpointResponse.setPortNumbers(servicePort);
 
-                List<String> metadataList = getEndpointResponse(metadataURL);
-                endpointResponse.setMetadata(metadataList);
+                    String url = "http://" + endpointHost + "/v1";
+                    String metadataURL = url + "/" + endpointName + "/metadata";
+                    log.debug(" Endpoint Metadata URL -> " + metadataURL);
+
+                    try {
+                        metadataList = getEndpointResponse(metadataURL);
+                        isServiceInError = false;
+                        break innerLoop;
+                    } catch (Exception e){
+                        log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
+                        continue;
+                    }
+                }
+                if(!isServiceInError) {
+                    endpointResponse.setMetadata(metadataList);
+                } else{
+                    endpointResponse.setErrorMsg("Error in connecting Metadata endpoint URL.");
+                }
+                endpointResponseList.add(endpointResponse);
+                log.info("Exiting from ->" + methodName);
             } catch (Exception e) {
-                e.printStackTrace();
-                endpointResponse.setErrorMsg("Error in connecting Metadata endpoint URL..");
+                log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
+                //e.printStackTrace();
             }
-            log.info("Exiting from ->" + methodName);
-            endpointResponseList.add(endpointResponse);
-
         }
         return endpointResponseList;
     }
@@ -69,18 +87,21 @@ public class EndpointUtils {
         String methodName = "getEndpointResponse";
         log.info("Entering into -> "+methodName);
         log.info("metadataURL -> "+metadataURL);
+        List<String> metadataList = new ArrayList<>();
+
         RestTemplate template = new RestTemplate();
         String response = template.getForObject(metadataURL, String.class);
         log.info("Metadata Webservice Response -> " + response);
-        List<String> metadataList = convertEndpointWSResponse(response);
-        log.info("Exiting from -> "+methodName);
+        metadataList = convertEndpointWSResponse(response);
+        log.info("Exiting from -> " + methodName);
 
         return metadataList;
     }
 
     private List<String> convertEndpointWSResponse(String response) {
+        String methodName = "convertEndpointWSResponse";
         try {
-            String methodName = "convertEndpointWSResponse";
+
             log.info("Entering into ->" + methodName);
 
             log.debug("Response -> " + response);
@@ -99,6 +120,7 @@ public class EndpointUtils {
             log.info("Exiting from ->" + methodName);
             return metadataList;
         } catch (Exception e) {
+            log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
             e.printStackTrace();
             return null;
         }

@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import javax.annotation.Resource;
 import java.util.*;
 
-@Service
+@Component
 public class MetadataUtils {
     private static Logger log = LoggerFactory.getLogger(MetadataUtils.class);
 
@@ -27,45 +27,60 @@ public class MetadataUtils {
         Map<String,String> tableServiceMap = new HashMap<>();
         String servicesInError="";
         for(String endpointName: allEndpoints) {
+            endpointName = endpointName.trim();
             try {
+
                 log.info("Endpoint Name -> " + endpointName);
-                Map<String, String> serviceDefMap = consulUtils.getServiceDefinition(endpointName);
+                List<Map<String,String>> serviceDefMapList = consulUtils.getServiceDefinition(endpointName);
+                List<String> metadataList = new ArrayList<>();
+                boolean isErrorInService = true;
+                innerLoop:
+                for(Map<String,String> serviceDefMap : serviceDefMapList) {
 
-                String serviceAddress = serviceDefMap.get("ServiceAddress");
-                String servicePort = serviceDefMap.get("ServicePort");
-                Integer numberOfInstances = serviceDefMap.get("InstancesCount") != null ? Integer.valueOf(serviceDefMap.get("InstancesCount")) : 1;
-                log.debug("numberOfInstances -> " + numberOfInstances);
+                    String serviceAddress = serviceDefMap.get("ServiceAddress");
+                    String servicePort = serviceDefMap.get("ServicePort");
+                    Integer numberOfInstances = serviceDefMap.get("InstancesCount") != null ? Integer.valueOf(serviceDefMap.get("InstancesCount")) : 1;
+                    log.debug("numberOfInstances -> " + numberOfInstances);
 
-                String endpointHost = serviceAddress + ":" + servicePort;
-                log.debug("Endpoint Host -> " + endpointHost);
+                    String endpointHost = serviceAddress + ":" + servicePort;
+                    log.debug("Endpoint Host -> " + endpointHost);
 
-                String url = "http://" + endpointHost + "/v1";
-                String metadataURL = url + "/" + endpointName + "/metadata";
-                log.debug(" Endpoint Metadata URL -> " + metadataURL);
+                    String url = "http://" + endpointHost + "/v1";
+                    String metadataURL = url + "/" + endpointName + "/metadata";
+                    log.debug(" Endpoint Metadata URL -> " + metadataURL);
 
-                List<String> metadataList = getMetadataResponse(metadataURL);
-                log.debug(" Endpoint Metadata Response -> " + metadataList.toString());
+                    try {
+                        metadataList = getMetadataResponse(metadataURL);
+                        log.debug(" Endpoint Metadata Response -> " + metadataList.toString());
+                        isErrorInService = false;
+                    }catch (Exception e){
+                        servicesInError += (servicesInError == "") ? endpointName : "," + endpointName;
+                        tableServiceMap.put("error",servicesInError);
+                        log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
+                        continue;
+                    }
+                    if(!isErrorInService) {
+                        for (String tableName : metadataList) {
+                            String mapValue = "";
+                            if (tableServiceMap.containsKey(tableName)) {
+                                mapValue = tableServiceMap.get(tableName);
 
-                for (String tableName : metadataList) {
-                    String mapValue = "";
-                    if (tableServiceMap.containsKey(tableName)) {
-                        mapValue = tableServiceMap.get(tableName);
+                                if (!mapValue.contains(endpointName))
+                                    mapValue += (mapValue == "") ? mapValue : "," + endpointName;
 
-                        if (!mapValue.contains(endpointName))
-                            mapValue += (mapValue == "") ? mapValue : "," + endpointName;
-
-                        tableServiceMap.put(tableName, mapValue);
-                    } else {
-                        tableServiceMap.put(tableName, endpointName);
+                                tableServiceMap.put(tableName, mapValue);
+                            } else {
+                                tableServiceMap.put(tableName, endpointName);
+                            }
+                        }
+                        break innerLoop;
                     }
                 }
-
                 log.info("Exiting from ->" + methodName);
-            }catch (Exception exception ){
-                log.error("Error in "+methodName+"->"+ exception.getMessage());
-                exception.printStackTrace();
-                servicesInError += (servicesInError == "") ? endpointName : "," + endpointName;
-                tableServiceMap.put("ErrorInService",servicesInError);
+            }catch (Exception e ){
+                log.error("Error in "+methodName+"->"+ e.getMessage());
+                //e.printStackTrace();
+
             }
         }
         log.debug(" Table Service Map -> " + tableServiceMap.toString());
@@ -108,19 +123,30 @@ public class MetadataUtils {
             log.info("Exiting from ->" + methodName);
             return metadataList;
         } catch (Exception e){
-            e.printStackTrace();
+            log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
+            //e.printStackTrace();
             return null;
         }
     }
 
     private List<MetadataResponse> parseServiceMetadataRespose(Map<String,String> tableServiceMap){
+        String methodName = "parseServiceMetadataRespose";
+        log.info("Entering into ->" + methodName);
         List<MetadataResponse> endpointMetadataList = new ArrayList<>();
-        for (String key : tableServiceMap.keySet()) {
-            String serviceNames = tableServiceMap.get(key);
-            MetadataResponse metadataResponse = new MetadataResponse();
-            metadataResponse.setTableName(key);
-            metadataResponse.setServiceList(Arrays.asList(serviceNames.split(",")));
-            endpointMetadataList.add(metadataResponse);
+        try {
+            for (String key : tableServiceMap.keySet()) {
+                MetadataResponse metadataResponse = new MetadataResponse();
+                String serviceNames = tableServiceMap.get(key);
+                if(key==null || !key.equalsIgnoreCase("error")) {
+                    metadataResponse.setTableName(key.trim());
+                } else{
+                    metadataResponse.setErrorMsg("Services in error");
+                }
+                metadataResponse.setServiceList(Arrays.asList(serviceNames.split(",")));
+                endpointMetadataList.add(metadataResponse);
+            }
+        }catch (Exception e){
+            log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
         }
         return endpointMetadataList;
     }

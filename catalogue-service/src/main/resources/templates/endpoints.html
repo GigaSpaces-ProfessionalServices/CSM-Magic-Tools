@@ -18,7 +18,7 @@
         $('#dataTable').DataTable();
 
         $( "#dataTable_length" ).prepend( "<a href='#' onclick='reloadWindow();'> <img title='reload' src='../images/refresh_icon.png'/></a> &nbsp; &nbsp;&nbsp;&nbsp;" );
-
+        $("#searchLabel").html("Filter By Service Name:");
     } );
     </script>
 
@@ -43,7 +43,7 @@
 
                 if(ele!=null){
 
-                    setTimeout('submitForm()','2000'); // Submit form only once to load initial data
+                    setTimeout('submitForm()','5000'); // Submit form only once to load initial data
                 }
             }
         }
@@ -63,7 +63,7 @@
 <div id="errorMsg" th:if="${error!=null}"><font color="red"> <span th:text="${error}"></span></font></div>
 <div th:if="${error==null}">
 
-    <form th:action="@{/}" method="post" id="form">
+    <form th:action="@{/services}" method="post" id="form">
         <input type="hidden" name="allEndpoints" id="allEndpoints" th:value="${endpointList}" />
         <div>
             <table>
@@ -78,7 +78,7 @@
         </div>
 
         <br/>
-        <table class="table table-bordered table-sm mt-2 table-striped" id="dataTable" data-page-length='10' data-order='[[0, "asc"]]'>
+        <table class="table table-bordered table-sm mt-2  table-striped" id="dataTable" data-page-length='10' data-order='[[0, "asc"]]'>
             <thead class="bg-dark" style="color:white">
             <tr>
                 <!-- <th> Sr No </th> -->
@@ -96,17 +96,16 @@
 
             <tr th:each="endpoint, isStat : ${endpointResponseList}"  >
                 <!-- <td style="width:5%"><span th:text="${isStat.index + 1}">  </span></td> -->
-                <td style="width:15%"><span th:text="${endpoint.endpointName}">   </span></td>
+                <td style="width:15%" th:if="${endpoint.errorMsg==null}"><span th:text="${endpoint.endpointName}">   </span></td>
+                <td class="table-warning"  style="width:15%" th:if="${endpoint.errorMsg!=null}"><span th:text="${endpoint.endpointName}">   </span></td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances==null}"><span> - </span> </td>
                 <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}"> </span></td>
                 <td style="width:10%" th:if="${endpoint.portNumbers==null}"> <span> - </span> </td>
                 <td style="width:10%" th:if="${endpoint.portNumbers!=null}"><span th:text="${endpoint.portNumbers}"> </span></td>
                 <td id="NoData" th:if="${endpoint.metadata==null && endpoint.errorMsg==null}"> No Data Found!! </td>
-                <td id="inError" th:if="${endpoint.errorMsg!=null}"> <font color="red"> <span th:text="${endpoint.errorMsg}"> </span> </font> </td>
-                <td th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}">
-                  <!--  <ul class="list-group" th:each="metadata, isStat : ${endpoint.metadata}">
-                        <li class="list-group-item"> <span th:text="${metadata}"> </span></li>
-                    </ul> -->
+                <td class="table-danger" id="inError" th:if="${endpoint.errorMsg!=null}"> <span th:text="${endpoint.errorMsg}"> </span> </td>
+                <td class="table-success" th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}">
+
                     <span th:each="metadata, isStat : ${endpoint.metadata}">
                        &#8226;
                         <span th:text="${metadata}"> </span>
