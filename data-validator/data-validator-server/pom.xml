@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.ibm.db2.jcc</groupId>
                 <artifactId>db2jcc4</artifactId>
-                <version>4.31.10 </version>
+                <version>4.19.80</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/sqljdbc4 -->
         <!--<dependency>

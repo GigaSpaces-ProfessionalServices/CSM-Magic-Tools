@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import com.gigaspaces.datavalidator.model.MeasurementRequestModel;
+import com.microsoft.sqlserver.jdbc.SQLServerDataSource;
 
 public class JDBCUtils {
 
@@ -56,7 +57,18 @@ public class JDBCUtils {
 			break;
 
 		case "ms-sql":
-			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
+			SQLServerDataSource ds = new SQLServerDataSource();
+			ds.setServerName(dataSourceHostIp);
+			ds.setPortNumber(Integer.parseInt(dataSourcePort));
+			ds.setIntegratedSecurity(Boolean.parseBoolean(integratedSecurity));
+			ds.setAuthenticationScheme(authenticationScheme);
+			ds.setDatabaseName(schemaName);
+
+			logger.info("#### MS SQL Data Source: "+ds.toString());
+			connection = ds.getConnection();
+
+
+			/*Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
 			connectionString = "jdbc:sqlserver://" + dataSourceHostIp + ":" + dataSourcePort + ";DatabaseName="+ schemaName + ";";
 
 			if (integratedSecurity != null && integratedSecurity.trim().length() > 0) {
@@ -67,66 +79,28 @@ public class JDBCUtils {
 			}
 			if (properties != null && properties.trim().length() > 0) {
 				connectionString = connectionString + properties;
-			}
+			}*/
 
 			break;
 		}
-		logger.info("DataSource ConnectionString for " + measurement.getDataSourceType() + " :" + connectionString);
-		connection = DriverManager.getConnection(connectionString, username, password);
-
-		return connection;
-	}
-    
-	
-	public static Connection getConnection(String dataSource, String dataSourceHostIp, String dataSourcePort, String schemaName, String username, String password ,
-			String integratedSecurity,String isKerberoseInt,String otherProperties) throws ReflectiveOperationException, ReflectiveOperationException, ClassNotFoundException, SQLException {
-		Connection connection = null;
-		String connectionString = "";
-
-		switch (dataSource) {
-		
-		case "gigaspaces":
-			Class.forName("com.j_spaces.jdbc.driver.GDriver").newInstance();
-			connectionString = "jdbc:gigaspaces:url:jini://" + dataSourceHostIp + ":" + dataSourcePort + "/*/"+ schemaName;
-			break;
-		
-		case "mysql":
-			Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
-			connectionString = "jdbc:mysql://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName	+ "?zeroDateTimeBehavior=CONVERT_TO_NULL";
-			break;
-		
-		case "db2":
-			Class.forName("com.ibm.db2.jcc.DB2Driver").newInstance();
-			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
-			break;
-		
-		case "ms-sql":
-			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
-			connectionString = "jdbc:sqlserver://" + dataSourceHostIp + ":" + dataSourcePort + ";DatabaseName="	+ schemaName+";";
-
-			if (integratedSecurity != null && integratedSecurity.trim().length() > 0) {
-				connectionString = connectionString + "integratedSecurity="+integratedSecurity+";";
-			}
-			if (isKerberoseInt != null && isKerberoseInt.trim().length() > 0) {
-				connectionString = connectionString + "authenticationScheme="+isKerberoseInt+";";
-			}
-			if (otherProperties != null && otherProperties.trim().length() > 0) {
-				connectionString = connectionString + otherProperties;
-			}
-
-			break;
+		if(!dataSourceType.equals("ms-sql")) {
+			logger.info("DataSource ConnectionString for " + measurement.getDataSourceType() + " :" + connectionString);
+			connection = DriverManager.getConnection(connectionString, username, password);
 		}
-		logger.info("DataSource ConnectionString for " + dataSource + " :" + connectionString);
-		connection = DriverManager.getConnection(connectionString, username, password);
-	
+
 		return connection;
 	}
+
     public static String buildQuery(String dataSource, String fieldName
             , String function, String tableName, long limitRecords, String whereCondition){
         StringBuilder query = new StringBuilder();
         query.append("SELECT ");
         if(function != null && aggregation_functions.contains(function.toLowerCase())){
-            query.append(function).append("(A.").append(fieldName).append(") ");
+            if(fieldName != null && fieldName.equals("*")){
+				query.append(function).append("(").append(fieldName).append(") ");
+			}else{
+				query.append(function).append("(A.").append(fieldName).append(") ");
+			}
         }
         query.append(" FROM ");
         //use in future

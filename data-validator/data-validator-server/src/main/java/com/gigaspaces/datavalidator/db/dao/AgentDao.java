@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface AgentDao extends DAO<Agent> {
 	List<Agent> getActiveAgents();
+	List<Agent> getByHostIp(String hostIp);
 }

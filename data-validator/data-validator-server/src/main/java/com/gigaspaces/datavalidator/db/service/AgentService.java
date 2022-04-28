@@ -42,6 +42,9 @@ public class AgentService {
 	public Agent getById(long id) {
 		return agentDao.getById(id);
 	}
+	public List<Agent> getByHostIp(String hostIp) {
+		return agentDao.getByHostIp(hostIp);
+	}
 
 
 }

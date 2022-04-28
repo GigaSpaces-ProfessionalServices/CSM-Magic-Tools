@@ -14,5 +14,9 @@ public class AgentDaoImpl extends DAOImplAbstract<Agent> implements AgentDao{
 		String sql = "from com.gigaspaces.datavalidator.model.Agent";
 		return getAll(sql);
 	}
-
+	@Override
+	public List<Agent> getByHostIp(String hostIp) {
+		String sql = "from com.gigaspaces.datavalidator.model.Agent WHERE hostIp="+hostIp;
+		return getAll(sql);
+	}
 }

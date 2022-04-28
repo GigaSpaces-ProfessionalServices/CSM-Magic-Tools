@@ -91,14 +91,16 @@ public class MeasurementService {
 		
 		Long dataSourceId = 0l;
 		Measurement measurement=measurementDao.getById(parseLong);
-		dataSourceId = measurement.getDataSourceId();
-		logger.info("dataSourceId: "+dataSourceId);
-		DataSource dataSource=dataSourceService.getDataSource(dataSourceId);
-		logger.info("dataSource: "+dataSource);
-		//Agent agent = dataSourceAgentAssignmentService.getAgentByDataSource(dataSourceId);
-		logger.info("AAgent: "+dataSource.getAgent());
-		//dataSource.setAgent(agent);
-		measurement.setDataSource(dataSource);
+		if(measurement != null) {
+			dataSourceId = measurement.getDataSourceId();
+			logger.info("dataSourceId: " + dataSourceId);
+			DataSource dataSource = dataSourceService.getDataSource(dataSourceId);
+			logger.info("dataSource: " + dataSource);
+			//Agent agent = dataSourceAgentAssignmentService.getAgentByDataSource(dataSourceId);
+			logger.info("AAgent: " + dataSource.getAgent());
+			//dataSource.setAgent(agent);
+			measurement.setDataSource(dataSource);
+		}
 		return measurement;
 
 	}

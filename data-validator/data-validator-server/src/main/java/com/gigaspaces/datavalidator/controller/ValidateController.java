@@ -7,6 +7,7 @@ import com.gigaspaces.datavalidator.db.service.*;
 import com.gigaspaces.datavalidator.model.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonMethod;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -33,7 +34,7 @@ public class ValidateController {
     
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
-    @GetMapping("/compare/{measurementId1}/{measurementId2}")
+    @GetMapping("/measurement/compare/{measurementId1}/{measurementId2}")
     public Map<String,String> compareMeasurement(@PathVariable String measurementId1
             ,@PathVariable String measurementId2
             ,@RequestParam(defaultValue="0") int executionTime) {
@@ -157,6 +158,80 @@ public class ValidateController {
         }
 
         return response;
+    }
+    @GetMapping(value="/test/run/{measurementId}",produces = MediaType.APPLICATION_JSON_VALUE)
+    public String runTest(@PathVariable long measurementId)
+    {
+        JsonObject response = new JsonObject();
+        logger.info("========RUN TEST START");
+        Measurement measurementObj = measurementService.getMeasurement(measurementId);
+        if(measurementObj == null){
+            response.addProperty("result","Test with id="+measurementId+" not found");
+            return response.toString();
+        }
+        Map<String, String> map = runMeasurement(String.valueOf(measurementId), 0);
+        logger.info("========RUN TEST END");
+
+        Gson gson =new Gson();
+        TestTask testTask = gson.fromJson(map.get("response"),TestTask.class);
+        logger.info("Test Task: "+testTask);
+
+        response.addProperty("result",testTask.getResult());
+        response.addProperty("query",testTask.getQuery());
+        StringBuilder dataSource = new StringBuilder();
+        if(testTask.getMeasurementList().size() ==1){
+            Measurement measurement = testTask.getMeasurementList().get(0);
+            dataSource.append("type=");
+            dataSource.append(measurement.getDataSource().getDataSourceType());
+            dataSource.append(",host=");
+            dataSource.append(measurement.getDataSource().getDataSourceHostIp());
+        }
+        response.addProperty("datasourceInfo",dataSource.toString());
+        return response.toString();
+    }
+    @GetMapping(value="/compare/{id1}/{id2}",produces = MediaType.APPLICATION_JSON_VALUE)
+    public String runCompare(@PathVariable long id1,@PathVariable long id2)
+    {
+        JsonObject response = new JsonObject();
+        Gson gson =new Gson();
+
+        logger.info("========RUN TEST START");
+        Measurement measurementObj1 = measurementService.getMeasurement(id1);
+        if(measurementObj1 == null){
+            response.addProperty("result","Test with id="+id1+" not found");
+            return response.toString();
+        }
+        Measurement measurementObj2 = measurementService.getMeasurement(id2);
+        if(measurementObj2 == null){
+            response.addProperty("result","Test with id="+id2+" not found");
+            return response.toString();
+        }
+
+        Map<String, String> map = compareMeasurement(String.valueOf(id1),String.valueOf(id2), 0);
+        logger.info("========RUN TEST END");
+        TestTask testTask = gson.fromJson(map.get("response"),TestTask.class);
+        logger.info("Test Task: "+testTask);
+
+        response.addProperty("result",testTask.getResult());
+        response.addProperty("query",testTask.getQuery());
+
+        StringBuilder dataSource = new StringBuilder();
+        Measurement measurement = testTask.getMeasurementList().get(0);
+        dataSource.append("type=");
+        dataSource.append(measurement.getDataSource().getDataSourceType());
+        dataSource.append(",host=");
+        dataSource.append(measurement.getDataSource().getDataSourceHostIp());
+
+        dataSource.append(" | ");
+        Measurement measurement2 = testTask.getMeasurementList().get(1);
+        dataSource.append("type=");
+        dataSource.append(measurement2.getDataSource().getDataSourceType());
+        dataSource.append(",host=");
+        dataSource.append(measurement2.getDataSource().getDataSourceHostIp());
+
+        response.addProperty("datasourceInfo",dataSource.toString());
+
+        return response.toString();
     }
     @DeleteMapping("/measurement/remove/{measurementId}")
     public Map<String,String> removeMeasurement(@PathVariable String measurementId
@@ -548,6 +623,24 @@ public class ValidateController {
 
         response.put("response", jsonTaskList);
         return response;
+    }
+    @DeleteMapping("/agent/remove/{agentHostIp}")
+    public Map<String,String> removeAgent(@PathVariable String agentHostIp
+            , @RequestParam(defaultValue="0") int executionTime
+    ) {
+        Map<String,String> response = new HashMap<>();
+        try {
+            List<Agent> agents=agentService.getByHostIp(agentHostIp);
+            for(Agent agent: agents){
+                agentService.deleteById(agent.getId());
+            }
+            response.put("response", "Agent with host ip '"+agentHostIp+"' is removed");
+            return response;
+        } catch (Exception exe) {
+            exe.printStackTrace();
+            response.put("response", exe.getMessage());
+            return response;
+        }
     }
     /*@GetMapping("/agentdatasource/list")
     public Map<String,String> getAgentAndDataSourceList(){
