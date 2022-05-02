@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Logger;
@@ -544,7 +545,7 @@ public class ValidateController {
         }
         return response;
     }
-    @DeleteMapping("/assignment/remove/{agentId}")
+    /*@DeleteMapping("/assignment/remove/{agentId}")
     public Map<String,String> removeAssignment(@PathVariable String agentId
             , @RequestParam(defaultValue="0") int executionTime
     ) {
@@ -558,6 +559,28 @@ public class ValidateController {
             agent.getDataSources().clear();
             agentService.update(agent);
             response.put("response", "Agent and Data Source assignment removed for agent id '"+agentId+"'");
+            return response;
+        } catch (Exception exe) {
+            exe.printStackTrace();
+            response.put("response", exe.getMessage());
+            return response;
+        }
+    }*/
+    @DeleteMapping("/assignment/remove/{dataSourceId}")
+    public Map<String,String> removeDataSourceFromAgent(@PathVariable String dataSourceId
+            , @RequestParam(defaultValue="0") int executionTime
+    ) {
+        Map<String,String> response = new HashMap<>();
+        try {
+            DataSource dataSource=dataSourceService.getById(Long.parseLong(dataSourceId));
+            Agent agent = dataSource.getAgent();
+            if(agent != null){
+                agent.getDataSources().remove(dataSource);
+                agentService.update(agent);
+                dataSource.setAgent(null);
+                dataSourceService.update(dataSource);
+            }
+            response.put("response", "Data Source with id '"+dataSourceId+"' is disassociated from Agent id '"+agent.getId()+"'");
             return response;
         } catch (Exception exe) {
             exe.printStackTrace();

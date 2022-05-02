@@ -64,7 +64,14 @@ public class JDBCUtils {
 			ds.setAuthenticationScheme(authenticationScheme);
 			ds.setDatabaseName(schemaName);
 
-			logger.info("#### MS SQL Data Source: "+ds.toString());
+			logger.info("#### MS SQL Data Source: ");
+			logger.info("dataSourceHostIp: "+dataSourceHostIp);
+			logger.info("dataSourcePort: "+dataSourcePort);
+			logger.info("integratedSecurity: "+integratedSecurity);
+			logger.info("authenticationScheme: "+authenticationScheme);
+			logger.info("schemaName: "+schemaName);
+			logger.info("############################");
+
 			connection = ds.getConnection();
 
 
