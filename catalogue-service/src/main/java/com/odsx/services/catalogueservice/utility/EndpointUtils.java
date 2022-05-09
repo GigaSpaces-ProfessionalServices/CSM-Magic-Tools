@@ -1,25 +1,28 @@
 package com.odsx.services.catalogueservice.utility;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
+import com.odsx.services.catalogueservice.model.InstanceDefinition;
+import com.odsx.services.catalogueservice.model.ServiceDefinition;
 import com.odsx.services.catalogueservice.response.EndpointResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import javax.annotation.Resource;
 import java.util.*;
 
-@Component
+@Service
 public class EndpointUtils {
 
     private static Logger log = LoggerFactory.getLogger(EndpointUtils.class);
 
     @Resource
     private ConsulUtils consulUtils;
+
+    @Resource
+    private CommonUtils commonUtils;
+
+    @Resource
+    private ServiceDefinitionUtils serviceDefinitionUtils;
 
     public List<String> getAllEndpoints() throws Exception {
         List<String> endpointList = consulUtils.getAllRegisteredEndpoints();
@@ -36,7 +39,7 @@ public class EndpointUtils {
             endpointName = endpointName.trim();
             count++;
             try {
-                List<Map<String,String>> serviceDefMapList = consulUtils.getServiceDefinition(endpointName);
+                ServiceDefinition serviceDefinition = consulUtils.getServiceDefinition(endpointName);
 
                 List<String> metadataList = new ArrayList<>();
                 EndpointResponse endpointResponse = new EndpointResponse();
@@ -44,19 +47,16 @@ public class EndpointUtils {
                 boolean isServiceInError = true;
 
                 innerLoop:
-                for(Map<String,String> serviceDefMap : serviceDefMapList) {
+                for(InstanceDefinition instanceDefinition : serviceDefinition.getInstances()) {
 
-                    String serviceAddress = serviceDefMap.get("ServiceAddress");
-                    String servicePort = serviceDefMap.get("ServicePort");
-                    String endpointHost = serviceAddress + ":" + servicePort;
-                    log.debug("Endpoint Host -> " + endpointHost);
 
-                    endpointResponse.setNumberOfInstances(serviceDefMapList.size());
+                    log.debug("InstanceDefinition-> " + instanceDefinition);
 
-                    endpointResponse.setPortNumbers(servicePort);
+                    endpointResponse.setNumberOfInstances(serviceDefinition.getInstances().size());
 
-                    String url = "http://" + endpointHost + "/v1";
-                    String metadataURL = url + "/" + endpointName + "/metadata";
+                    endpointResponse.setPortNumbers(instanceDefinition.getPortNumber());
+
+                    String metadataURL = serviceDefinitionUtils.buildMetadataURL(instanceDefinition);
                     log.debug(" Endpoint Metadata URL -> " + metadataURL);
 
                     try {
@@ -89,8 +89,7 @@ public class EndpointUtils {
         log.info("metadataURL -> "+metadataURL);
         List<String> metadataList = new ArrayList<>();
 
-        RestTemplate template = new RestTemplate();
-        String response = template.getForObject(metadataURL, String.class);
+        String response = commonUtils.getStringRestResponse(metadataURL);
         log.info("Metadata Webservice Response -> " + response);
         metadataList = convertEndpointWSResponse(response);
         log.info("Exiting from -> " + methodName);
@@ -109,6 +108,7 @@ public class EndpointUtils {
 
             JsonObject jsonObject = new Gson().fromJson(response, JsonObject.class);
 
+            //jsonObject.
             String endpointName = jsonObject.get("endpoint").getAsString();
             log.info("Endpoint Name -> " + endpointName);
             JsonArray metadataArray = jsonObject.getAsJsonArray("metadata").getAsJsonArray();

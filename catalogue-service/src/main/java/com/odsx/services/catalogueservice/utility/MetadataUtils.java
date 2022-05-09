@@ -4,22 +4,27 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.odsx.services.catalogueservice.model.InstanceDefinition;
+import com.odsx.services.catalogueservice.model.ServiceDefinition;
 import com.odsx.services.catalogueservice.response.MetadataResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
 import java.util.*;
 
-@Component
+@Service
 public class MetadataUtils {
     private static Logger log = LoggerFactory.getLogger(MetadataUtils.class);
 
     @Resource
     private ConsulUtils consulUtils;
+    @Resource
+    private ServiceDefinitionUtils serviceDefinitionUtils;
+
+    @Resource
+    private CommonUtils commonUtils;
 
     public List<MetadataResponse> getService(List<String> allEndpoints) throws Exception {
         String methodName = "getService";
@@ -31,24 +36,14 @@ public class MetadataUtils {
             try {
 
                 log.info("Endpoint Name -> " + endpointName);
-                List<Map<String,String>> serviceDefMapList = consulUtils.getServiceDefinition(endpointName);
+                ServiceDefinition serviceDefinition = consulUtils.getServiceDefinition(endpointName);
                 List<String> metadataList = new ArrayList<>();
                 boolean isErrorInService = true;
                 innerLoop:
-                for(Map<String,String> serviceDefMap : serviceDefMapList) {
+                for(InstanceDefinition instanceDefinition : serviceDefinition.getInstances()) {
 
-                    String serviceAddress = serviceDefMap.get("ServiceAddress");
-                    String servicePort = serviceDefMap.get("ServicePort");
-                    Integer numberOfInstances = serviceDefMap.get("InstancesCount") != null ? Integer.valueOf(serviceDefMap.get("InstancesCount")) : 1;
-                    log.debug("numberOfInstances -> " + numberOfInstances);
-
-                    String endpointHost = serviceAddress + ":" + servicePort;
-                    log.debug("Endpoint Host -> " + endpointHost);
-
-                    String url = "http://" + endpointHost + "/v1";
-                    String metadataURL = url + "/" + endpointName + "/metadata";
-                    log.debug(" Endpoint Metadata URL -> " + metadataURL);
-
+                    log.debug("InstanceDefinition -> " + instanceDefinition.toString());
+                    String metadataURL = serviceDefinitionUtils.buildMetadataURL(instanceDefinition);
                     try {
                         metadataList = getMetadataResponse(metadataURL);
                         log.debug(" Endpoint Metadata Response -> " + metadataList.toString());
@@ -91,9 +86,8 @@ public class MetadataUtils {
         String methodName = "getMetadataResponse";
         log.info("Entering into -> "+methodName);
         log.info("metadataURL -> "+metadataURL);
-        RestTemplate template = new RestTemplate();
 
-        String response = template.getForObject(metadataURL, String.class);
+        String response = commonUtils.getStringRestResponse(metadataURL);
         log.info("Metadata Webservice Response -> " + response);
 
         List<String> metadataList = convertMetadataWSResponse(response);
