@@ -32,14 +32,14 @@ public class EndpointController {
 
             log.info("Endpoint List Size -> "+(endpointList!=null ? endpointList.size() : "is null"));
 
-            for(String endpoint : endpointList){
+            /*for(String endpoint : endpointList){
 
                 EndpointResponse endpointResponse = new EndpointResponse();
                 endpointResponse.setEndpointName(endpoint);
                 endpointMetadataList.add(endpointResponse);
-            }
+            }*/
             modelAndView.addObject("endpointList", endpointList);
-            modelAndView.addObject("endpointResponseList", endpointMetadataList);
+            //modelAndView.addObject("endpointResponseList", endpointMetadataList);
         } catch (Exception e){
             log.error(e.getLocalizedMessage());
             modelAndView.addObject("error", "Error in retrieving endpoints from consul. ");
