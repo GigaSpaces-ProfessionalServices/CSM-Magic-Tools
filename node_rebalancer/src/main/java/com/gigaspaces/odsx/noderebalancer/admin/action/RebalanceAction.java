@@ -1,5 +1,6 @@
 package com.gigaspaces.odsx.noderebalancer.admin.action;
 
+import com.gigaspaces.cluster.activeelection.SpaceMode;
 import com.gigaspaces.odsx.noderebalancer.action.BaseAction;
 import com.gigaspaces.odsx.noderebalancer.action.Status;
 import com.gigaspaces.odsx.noderebalancer.admin.AdminAdapter;
@@ -50,6 +51,7 @@ public class RebalanceAction extends BaseAction {
                 logger.info("Beginning to rebalance containers for the workflow target machine : " + hostIpAddress);
                 rebalanceContainersOnMachine(machine);
                 return Status.SUCCESS;
+
             }else {
                 logger.warning("Could not obtain machine for the workflow host, rebalance operation could not be completed : " + hostIpAddress );
                 return Status.FAILURE;
@@ -76,6 +78,8 @@ public class RebalanceAction extends BaseAction {
         int totalSpaceInstances = 0, primaryspaceInstances = 0;
         //Pair<Integer, Integer> spaceInstanceCounts = getSpaceInstanceCounts(machine.getHostAddress());
         rebalanceSpaceContainers(machine.getHostAddress());
+
+
     }
 
 
@@ -110,9 +114,6 @@ public class RebalanceAction extends BaseAction {
     private boolean isPrimary(SpaceInstance spaceInstance) {
         boolean isThisPrimaryInstance = false;
         SpacePartition spacePartition = spaceInstance.getPartition();
-        System.out.println(" Partition : " + spacePartition);
-        System.out.println(" Primary instance from Partition : " + spacePartition.getPrimary());
-        System.out.println(" Backup instance from Partition : " + spacePartition.getBackup());
 
         int primaryInstanceId = spacePartition.getPrimary().getInstanceId();
         int backupInstanceId = spacePartition.getBackup().getInstanceId();
@@ -138,6 +139,11 @@ public class RebalanceAction extends BaseAction {
         SpaceInstance[] instances = spaces[0].getInstances();
         boolean alternate = true;
 
+        /**
+         * Commented By: Himali Sathavara
+         * Desc : LEUMI-JIRA #378
+         * Rebalancer did not work properly if this action tries to demote an instance that was already backup instance orignally.
+         *
         for (SpaceInstance spaceInstance : instances) {
             if(spaceInstance.getMachine().getHostAddress().equals(hostAddress)){
                 logger.info("Obtained Space instance for rebalancing  : " + spaceInstance);
@@ -156,7 +162,53 @@ public class RebalanceAction extends BaseAction {
                     }
                 }
             }
+        }*/
+        /**
+         * Added By: Himali Sathavara
+         * Desc : LEUMI-JIRA #378
+         * Rebalancer did not work properly if this action tries to demote an instance that was already backup instance orignally.
+         */
+        for (SpaceInstance spaceInstance : instances) {
+            if(spaceInstance.getMachine().getHostAddress().equals(hostAddress)){
+                logger.info("Obtained Space instance for rebalancing  : " + spaceInstance);
+                logger.info("Obtained Space instanceID  : " + spaceInstance.getId());
+                logger.info("Obtained Space instance name  : " + spaceInstance.getSpaceInstanceName());
+                logger.info("Obtained Space backup instance name  : " + spaceInstance.getBackupId());
+                logger.info("Obtained Space mode  : " + spaceInstance.getMode());
+                logger.info(" Cluster information for the space instance: " + spaceInstance.getClusterInfo());
+
+                //if((spaceInstance.getMode() == SpaceMode.BACKUP && spaceInstance.getBackupId() == 0) || (spaceInstance.getMode() == SpaceMode.PRIMARY && spaceInstance.getBackupId() == 1)) {
+
+                    SpacePartition spacePartition = spaceInstance.getPartition();
+                    logger.info("spacePartition : " + spacePartition.getPartitionId());
+                    logger.info("spacePartition backup : " + spacePartition.getBackup().getSpaceInstanceName());
+                    logger.info("spacePartition primary : " + spacePartition.getPrimary().getSpaceInstanceName());
+
+                    for (SpaceInstance instance : spacePartition.getInstances()) {
+                        logger.info("Other Space instanceID  : " + instance.getId());
+                        logger.info("Other Space instance name  : " + instance.getSpaceInstanceName());
+                        logger.info("Other Space backup instance name  : " + instance.getBackupId());
+                        logger.info("Other Space mode  : " + instance.getMode());
+                        if (!instance.getId().equals(spaceInstance.getId())) {
+                            if(instance.getMode()==SpaceMode.PRIMARY && instance.getBackupId() ==1) {
+                                logger.info(String.format(" Got instance to demote : %s  , %s , Host  %s ", instance.getId(), instance.getSpaceInstanceName(), instance.getMachine().getHostAddress()));
+                                logger.info(" Cluster information for the demote candidate space instance: " + spaceInstance.getClusterInfo());
+                                if (alternate) {
+                                    demoteSpaceInstance(instance);
+                                    alternate = !alternate;
+                                    //System.exit(0);
+
+                                } else {
+                                    logger.info("Skipping this instance, should demote the next one.");
+                                }
+
+                            }
+                        }
+                    }
+
+            }
         }
+
     }
 
     private void demoteSpaceInstance( SpaceInstance primaryInstance) {
