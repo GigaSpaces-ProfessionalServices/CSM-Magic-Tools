@@ -5,6 +5,7 @@ import org.codehaus.jackson.annotate.JsonBackReference;
 import org.codehaus.jackson.annotate.JsonManagedReference;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 //@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class DataSource implements Serializable{
@@ -116,5 +117,18 @@ public class DataSource implements Serializable{
 
 	public void setAgent(Agent agent) {
 		this.agent = agent;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		DataSource that = (DataSource) o;
+		return id == that.id && dataSourceName.equals(that.dataSourceName) && dataSourceType.equals(that.dataSourceType) && dataSourceHostIp.equals(that.dataSourceHostIp) && dataSourcePort.equals(that.dataSourcePort) && Objects.equals(username, that.username) && Objects.equals(password, that.password) && Objects.equals(integratedSecurity, that.integratedSecurity) && Objects.equals(properties, that.properties) && Objects.equals(authenticationScheme, that.authenticationScheme) && Objects.equals(status, that.status);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);
 	}
 }

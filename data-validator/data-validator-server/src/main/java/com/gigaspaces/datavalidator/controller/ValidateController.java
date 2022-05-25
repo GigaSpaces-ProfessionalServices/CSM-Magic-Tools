@@ -474,14 +474,32 @@ public class ValidateController {
 	}
     
     @DeleteMapping("/datasource/remove/{datasourceId}")
-    public Map<String,String> removeDataSource(@PathVariable String datasourceId
-            , @RequestParam(defaultValue="0") int executionTime
-    ) {
+    public Map<String,String> removeDataSource(@PathVariable String datasourceId)
+    {
         Map<String,String> response = new HashMap<>();
         try {
         	DataSource dataSource = dataSourceService.getDataSource(Long.parseLong(datasourceId));
         	dataSource.setStatus(ModelConstant.DELETED);
-        	dataSourceService.update(dataSource);
+            dataSourceService.update(dataSource);
+            // Update measurement status to Inactive as data source is deleted
+            logger.info("Update measurement status to Inactive as data source is deleted");
+            for (Measurement measurement : measurementService.getAll()) {
+                if(measurement.getDataSource().getId() == dataSource.getId()){
+                    measurement.setStatus(ModelConstant.INACTIVE);
+                    measurementService.update(measurement);
+                    logger.info("Updated measurement");
+                }
+            }
+            logger.info("Remove data source from agent as data source is deleted");
+            // Remove data source from agent as data source is deleted
+            for (Agent agent : agentService.getActiveAgents()) {
+                if(agent.getDataSources().contains(dataSource)) {
+                    agent.getDataSources().remove(dataSource);
+                    dataSource.setAgent(null);
+                    dataSourceService.update(dataSource);
+                }
+                agentService.update(agent);
+            }
             response.put("response", "DataSource with id '"+datasourceId+"' is removed");
             return response;
         } catch (Exception exe) {
@@ -592,7 +610,7 @@ public class ValidateController {
     public Map<String,String> getAssignmentList(){
         Map<String,String> response = new HashMap<>();
         List<Properties> agentDSList = new ArrayList<>();
-        List<Agent> agentList=agentService.getAll();
+        List<Agent> agentList=agentService.getActiveAgents();
         for (Agent agent: agentList) {
             for (DataSource dataSource: agent.getDataSources()) {
                 Properties properties = new Properties();
@@ -614,6 +632,13 @@ public class ValidateController {
     public Map<String,String> registerAgent(@RequestBody AgentRequestModel agentRequestModel) {
         Map<String,String> response = new HashMap<>();
         try {
+            for(Agent agent: agentService.getActiveAgents()){
+                if(agent.getHostIp().equals(agentRequestModel.getAgentHostIp())){
+                    response.put("response", "Agent with host Ip '"+agentRequestModel.getAgentHostIp()
+                            +"' already available");
+                    return response;
+                }
+            }
             Agent agent = new Agent(agentService.getAutoIncId()
                     ,agentRequestModel.getAgentHostIp()
                     ,agentRequestModel.getAgentUser());
