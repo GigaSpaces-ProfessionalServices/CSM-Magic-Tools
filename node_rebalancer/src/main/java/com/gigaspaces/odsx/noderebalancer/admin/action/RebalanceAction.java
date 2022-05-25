@@ -195,7 +195,7 @@ public class RebalanceAction extends BaseAction {
                                 logger.info(" Cluster information for the demote candidate space instance: " + spaceInstance.getClusterInfo());
                                 if (alternate) {
                                     demoteSpaceInstance(instance);
-                                    alternate = !alternate;
+                                    //alternate = !alternate; //Commented By : Himali satahvara. DEsc: to fix the issue of imbalance primary and backup instance on host raised by Josh
                                     //System.exit(0);
 
                                 } else {

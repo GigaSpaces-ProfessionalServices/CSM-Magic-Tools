@@ -1,5 +1,6 @@
 package com.gigaspaces.odsx.noderebalancer.engine;
 
+import com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerBalancerFlow;
 import com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerRecoveryFlow;
 import com.gigaspaces.odsx.noderebalancer.leumiflow.TieredStorageSpaceServerRecoveryFlow;
 import com.gigaspaces.odsx.noderebalancer.model.Flow;
@@ -22,6 +23,9 @@ public class FlowBuilder {
         }else if("com.gigaspaces.odsx.noderebalancer.leumiflow.TieredStorageSpaceServerRecoveryFlow".equals(definition)){
             logger.info("Building TieredStorageSpaceServerRecoveryFlow workflow for server with ip address:  " + ipAddress);
             flow=TieredStorageSpaceServerRecoveryFlow.build(name, ipAddress, parameters);
+        } else if("com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerBalancerFlow".equals(definition)){
+            logger.info("Building SpaceServerBalancerFlow workflow for server with ip address:  " + ipAddress);
+            flow= SpaceServerBalancerFlow.build(name, ipAddress, parameters);
         } else {
             logger.info("Can not build recovery flow as the provided definition is not supported :  " + definition);
         }

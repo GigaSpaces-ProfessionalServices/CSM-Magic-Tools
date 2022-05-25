@@ -9,6 +9,7 @@ import com.gigaspaces.odsx.noderebalancer.policy.ServerConfiguration;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.ui.context.Theme;
 
 public class RunRebalancer {
   protected String[] locators = new String[] { "" };
@@ -78,7 +79,6 @@ public class RunRebalancer {
   }
   
   public static void main(String[] args) {
-    System.out.println("Latest from CSM Tools---------------------------------------------------------------->");
     RunRebalancer launcher = new RunRebalancer();
     launcher.processArgs(args);
     if (!launcher.validateArguments()) {
@@ -107,6 +107,7 @@ public class RunRebalancer {
     System.out.println("Lookup Group: " + launcher.lookupGroup);
     logger.info("Starting the rebalance process, Lookup Group is: " + launcher.lookupGroup);
     final FlowEngine flowEngine = (FlowEngine)context.getBean(FlowEngine.class);
+
     Thread engineRunner = new Thread() {
         public void run() {
           flowEngine.run();
