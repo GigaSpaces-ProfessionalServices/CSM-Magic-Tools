@@ -12,19 +12,22 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 public class CommonUtil {
+    private static final Logger logger = Logger.getLogger(CommonUtil.class.getName());
+
     public static Properties readProperties(String propertiesFileName) throws FileNotFoundException {
+        logger.info("readProperties -> propertiesFileName=" + propertiesFileName);
         // Try to reload as resource from classpath
         InputStream inputStream = ObjectController.class.getClassLoader().getResourceAsStream(propertiesFileName + ".properties");
         BufferedReader br
                 = new BufferedReader(new FileReader(propertiesFileName + ".properties"));
-        System.out.println("Succeeded to load " + propertiesFileName + ".properties");
+        logger.info("Succeeded to load " + propertiesFileName + ".properties");
 
         if (inputStream == null) {
             String message = "Property file " + propertiesFileName + ".properties doesn't exist in classpath";
-            System.out.println(message);
-            // throw new RuntimeException(message);
+            logger.info(message);
         }
 
         Properties properties = new Properties();
@@ -34,6 +37,7 @@ public class CommonUtil {
         } catch (IOException e) {
             e.printStackTrace();
             String message = "Failed to load properties from file [" + propertiesFileName + "]";
+            logger.severe(e.getMessage());
             throw new RuntimeException(message);
         } finally {
             if (inputStream != null) {
@@ -64,13 +68,20 @@ public class CommonUtil {
 
     public static void addIndex(String indexField, String spaceIndexType, SpaceTypeDescriptorBuilder builder) {
         if (indexField != null & spaceIndexType != null) {
-
-            if (spaceIndexType.equals("EQUAL"))
-                builder.addPropertyIndex(indexField, SpaceIndexType.EQUAL);
-            if (spaceIndexType.equals("ORDERED"))
-                builder.addPropertyIndex(indexField, SpaceIndexType.ORDERED);
-            if (spaceIndexType.equals("EQUAL_AND_ORDERED"))
-                builder.addPropertyIndex(indexField, SpaceIndexType.EQUAL_AND_ORDERED);
+            String[] indexFieldArry = indexField.split(",");
+            String[] spaceIndexTypeArry = spaceIndexType.split(",");
+            if (indexFieldArry.length != spaceIndexTypeArry.length) {
+                logger.info("SEVERE: Check the properties file - the number of indexes must be equals to the number of indexes type");
+                return;
+            }
+            for (int idx = 0; idx < indexFieldArry.length; idx++) {
+                if (spaceIndexTypeArry[idx].equals("EQUAL"))
+                    builder.addPropertyIndex(indexFieldArry[idx], SpaceIndexType.EQUAL);
+                if (spaceIndexTypeArry[idx].equals("ORDERED"))
+                    builder.addPropertyIndex(indexFieldArry[idx], SpaceIndexType.ORDERED);
+                if (spaceIndexTypeArry[idx].equals("EQUAL_AND_ORDERED"))
+                    builder.addPropertyIndex(indexFieldArry[idx], SpaceIndexType.EQUAL_AND_ORDERED);
+            }
         }
     }
 
@@ -83,7 +94,7 @@ public class CommonUtil {
         try {
 
             gigaSpace.getTypeManager().registerTypeDescriptor(typeDescriptor);
-            System.out.println("######## Successfully Register type 0.1 " + typeDescriptor.getTypeName() + " ########");
+            logger.info("######## Successfully Register type " + typeDescriptor.getTypeName() + " ########");
 
             return true;
 
@@ -99,7 +110,7 @@ public class CommonUtil {
         try {
 
             gigaSpace.getTypeManager().unregisterTypeDescriptor(type);
-            System.out.println("######## Successfully UnRegister type 0.1 " + type + " ########");
+            logger.info("######## Successfully UnRegister type " + type + " ########");
             return true;
 
         } catch (Exception e) {

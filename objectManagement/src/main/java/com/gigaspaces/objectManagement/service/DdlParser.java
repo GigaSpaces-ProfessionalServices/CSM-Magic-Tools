@@ -1,8 +1,6 @@
 package com.gigaspaces.objectManagement.service;
 
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,12 +8,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+
 @Service
 public class DdlParser {
     private static final String CREATE_TABLE_PREFIX = "CREATE TABLE ";
     private static final String ALTER_TABLE_PREFIX = "ALTER TABLE ";
     private static final String PK_PREFIX = "PRIMARY KEY ";
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    // private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    private java.util.logging.Logger logger = java.util.logging.Logger.getLogger(this.getClass().getName());
+
 
     public Collection<SpaceTypeDescriptorBuilder> parse(Path path) throws IOException {
         byte[] data = Files.readAllBytes(path);
@@ -33,7 +35,8 @@ public class DdlParser {
             } else if (sw.startsWith(ALTER_TABLE_PREFIX)) {
                 parseAlterTableCommand(sw);
             } else if (!sw.s.isEmpty()) {
-                logger.info("Skipping unsupported command: [{}]", sw.getAbbreviation(30));
+                //    logger.info("Skipping unsupported command: [{}]", sw.getAbbreviation(30));
+                logger.info("Skipping unsupported command: [{}]" + sw.getAbbreviation(30));
             }
         }
 
@@ -93,7 +96,8 @@ public class DdlParser {
         // Read type name:
         String typeName = sql.readUntilWhiteSpace();
 
-        logger.warn("Skipping alter table command for " + typeName);
+        //logger.warn("Skipping alter table command for " + typeName);
+        logger.severe("Skipping alter table command for " + typeName);
     }
 
     protected Class<?> parseSqlType(String sqlType) {

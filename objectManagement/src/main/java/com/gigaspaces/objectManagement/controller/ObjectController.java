@@ -34,17 +34,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @RestController
 public class ObjectController {
 
-
+    private Logger logger = Logger.getLogger(this.getClass().getName());
     private GigaSpace gigaSpace;
     @Autowired
     private DdlParser parser;
 
     @GetMapping("/list")
     public JsonArray getObjectList(@RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) {
+        logger.info("start -- list ");
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
@@ -59,7 +62,7 @@ public class ObjectController {
         admin.getSpaces().waitFor("", 1, TimeUnit.SECONDS);
         for (Space space : admin.getSpaces()) {
             jsonObject = new JsonObject();
-            System.out.println("Space name:" + space.getUid());
+            logger.info("Space name:" + space.getUid());
             String spaceName = space.getName();
             if (spaceName != null && spaceName.equals("")) {
                 spaceName = space.getUid(); // Assign first space if it is blank
@@ -76,7 +79,7 @@ public class ObjectController {
                     JsonArray jsonArray2 = new JsonArray();
                     jsonObject3 = new JsonObject();
                     jsonObject3.addProperty("tablename", entry.getKey());
-                    System.out.println(entry.getKey() + " " + entry.getValue());
+                    logger.info(entry.getKey() + " " + entry.getValue());
                     for (PropertyInfo pi : entry.getValue().getProperties()) {
                         JsonObject jsonObject2 = new JsonObject();
                         SpaceObjectDto spaceObject = new SpaceObjectDto();
@@ -88,8 +91,7 @@ public class ObjectController {
                         spaceObject.setObjtype(String.valueOf(pi.getType()));
                         spaceObject.setSpaceId(String.valueOf(pi.isSpacePrimitive()));
                         spaceObject.setSpaceName(spaceName);
-                        System.out.println(pi.getName());
-                        System.out.println(pi.getType());
+                        logger.info(pi.getName() + " -> " + pi.getType());
                         spaceObjectDto.add(spaceObject);
                         jsonArray2.add(jsonObject2);
                     }
@@ -99,18 +101,19 @@ public class ObjectController {
                 jsonObject.add("objects", jsonArray3);
                 for (String className : strings) {
                     if (className.equals("java.lang.Object")) continue;
-                    System.out.println("ClassName: " + className);
+                    logger.info("className: " + className);
                 }
             }
             jsonArray.add(jsonObject);
         }
+        logger.info("end -- list ");
         return jsonArray;
     }
 
     @PostMapping("/registertype/batch")
     public String registerTypeBatch(@RequestParam("tableListfilePath") String tableListfilePath, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
-        System.out.println("tableListfilePath" + tableListfilePath);
-        System.out.println("ddlAndPropertiesBasePath" + ddlAndPropertiesBasePath);
+        logger.info("start -- registertype  batch");
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableListfilePath=" + tableListfilePath + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
@@ -125,7 +128,7 @@ public class ObjectController {
                 break;
             }
         }
-        System.out.println("gigaSpace: " + gigaSpace);
+        logger.info("gigaSpace: " + gigaSpace);
         String tablesList = null;
         try (BufferedReader br = new BufferedReader(new FileReader(new File(tableListfilePath)))) {
             for (String line; (line = br.readLine()) != null; ) {
@@ -165,7 +168,7 @@ public class ObjectController {
                 e.printStackTrace();
             }
             if (result != null) {
-                System.out.println("Number of DDLs: " + result.size());
+                logger.info("Number of DDLs: " + result.size());
 
                 for (SpaceTypeDescriptorBuilder builder : result) {
 
@@ -177,14 +180,17 @@ public class ObjectController {
                     CommonUtil.registerType(typeDescriptor, gigaSpace);
                 }
             } else {
-                System.out.println("Number of DDLs: null");
+                logger.info("Number of DDLs: null");
             }
         }
+        logger.info("end -- registertype  batch");
         return "Registered";
     }
 
     @PostMapping("/unregistertype")
-    public String unregisterType(@RequestParam("spaceName") String spaceName, @RequestParam("type") String type, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
+    public String unregisterType(@RequestParam("spaceName") String spaceName, @RequestParam("type") String type, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) {
+        logger.info("start -- unregistertype");
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",type=" + type + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
@@ -199,16 +205,17 @@ public class ObjectController {
                 break;
             }
         }
-        System.out.println("gigaSpace: " + gigaSpace);
+        logger.info("gigaSpace: " + gigaSpace);
         CommonUtil.unregisterType(type, gigaSpace);
+        logger.info("end -- unregistertype");
         return "Unregistered";
     }
 
 
     @PostMapping("/registertype/single")
     public String registerTypeSingle(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
-        System.out.println("tableName" + tableName);
-        System.out.println("ddlAndPropertiesBasePath" + ddlAndPropertiesBasePath);
+        logger.info("start -- registertype single");
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
@@ -223,7 +230,7 @@ public class ObjectController {
                 break;
             }
         }
-        System.out.println("gigaSpace: " + gigaSpace);
+        logger.info("gigaSpace: " + gigaSpace);
 
         if (!ddlAndPropertiesBasePath.endsWith("/")) {
             ddlAndPropertiesBasePath += "/";
@@ -246,7 +253,7 @@ public class ObjectController {
             e.printStackTrace();
         }
         if (result != null) {
-            System.out.println("Number of DDLs: " + result.size());
+            logger.info("Number of DDLs: " + result.size());
 
             for (SpaceTypeDescriptorBuilder builder : result) {
 
@@ -258,17 +265,20 @@ public class ObjectController {
                 CommonUtil.registerType(typeDescriptor, gigaSpace);
             }
         } else {
-            System.out.println("Number of DDLs: null");
+            logger.info("Number of DDLs: null");
         }
+        logger.info("end -- registertype single");
         return "Registered";
     }
 
 
     @PostMapping("/registertype/sandbox")
     public String registerTypeSandbox(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
+        logger.info("start -- registertype sandbox");
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath);
         String spaceName = "sandboxSpace";
-        System.out.println("tableName" + tableName);
-        System.out.println("ddlAndPropertiesBasePath" + ddlAndPropertiesBasePath);
+        logger.info("tableName" + tableName);
+        logger.info("ddlAndPropertiesBasePath" + ddlAndPropertiesBasePath);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
@@ -283,7 +293,7 @@ public class ObjectController {
 
         GigaSpace gigaSpace = pu.waitForSpace().getGigaSpace();
 
-        System.out.println("gigaSpace: " + gigaSpace);
+        logger.info("gigaSpace: " + gigaSpace);
 
         if (!ddlAndPropertiesBasePath.endsWith("/")) {
             ddlAndPropertiesBasePath += "/";
@@ -306,7 +316,7 @@ public class ObjectController {
             e.printStackTrace();
         }
         if (result != null) {
-            System.out.println("Number of DDLs: " + result.size());
+            logger.info("Number of DDLs: " + result.size());
 
             for (SpaceTypeDescriptorBuilder builder : result) {
 
@@ -316,17 +326,18 @@ public class ObjectController {
                 CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
                 SpaceTypeDescriptor typeDescriptor = builder.create();
                 CommonUtil.registerType(typeDescriptor, gigaSpace);
-                System.out.println("Registered object");
+                logger.info("Registered object");
             }
         } else {
-            System.out.println("Number of DDLs: null");
+            logger.info("Number of DDLs: null");
         }
-        System.out.println("Unregistering object");
+        logger.info("Unregistering object");
         CommonUtil.unregisterType(tableName, gigaSpace);
-        System.out.println("Unregistered object");
-        System.out.println("Removing PU");
+        logger.info("Unregistered object");
+        logger.info("Removing PU");
         pu.undeploy();
-        System.out.println("Removed PU");
+        logger.info("Removed PU");
+        logger.info("end -- registertype sandbox");
         return "Done";
     }
 
