@@ -26,7 +26,7 @@ function gc_run() {
             echo "ERROR: unable to connect to host: $n"
     else
         echo ">>> running garbage collection on host: ${n^^}"
-        for pid in $(ssh $n "ps ax | grep -v grep | grep GSC | grep java | grep zone=$ZONE" | awk '{print $1}'); do
+        for pid in $(ssh $n "ps ax | grep -v grep | grep GSC | grep java | grep zones=${ZONE}" | awk '{print $1}'); do
             ssh $n "jcmd $pid GC.run"
             sleep $WAIT
         done
