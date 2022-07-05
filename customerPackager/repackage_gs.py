@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import argparse
 import subprocess
 import yaml
 import ntpath
-
+import shutil
+import time
 
 def arg_parser():
 	parser = argparse.ArgumentParser(
@@ -49,40 +51,63 @@ def list_clients_from_yaml(the_yaml_data):
 		print(f"- {client}")
 	exit(0)
 
-def check_client_name(the_yaml_data, the_client):
+def get_client_name(the_yaml_data, the_client):
 	for client in the_yaml_data['clients']:
-		if client == the_client:
-			return True
-	return False
+		if client.lower() == the_client.lower():
+			return client
+	return ''
 
 def exec_repackager(the_package, the_client):
-	print(f'executing repackager operations on file:\n   {the_package}\nfor client:\n   {the_client}')	
+	if the_client == '':
+		print(f"client name: '{client_name}' is not listed in yaml file.")
+		print("use [-l] to list all available clients")
+		exit(0)
+	print(f"executing repackager operations...")
+	print(f"{'on file:':<14}{the_package}\n{'for client:':<14}{the_client}")	
 	# extract basedir and filename from path
 	dir_name, base_name = ntpath.split(the_package)
 	extracted_dir = ntpath.splitext(base_name)[0]
 	# extract archive
+	print(f"extracting gigaspaces archive...")
 	sh_cmd = f"cd {dir_name} ; unzip -q {the_package}"
 	response = subprocess.call(sh_cmd, shell=True)
+	if response != 0:
+		print(f"A problems occured while extracting {the_package}. aborting!")
+		exit(1)
 	# get list of all packages
 	client_packages = yaml_data['clients'][the_client]['packages']
 	# remove packages
+	print("deleting packages according to manifest:")
 	for pkg in client_packages:
-		# remove each package from extracted_dir
-		pass
-	# create archive with new name: archive-name_<client-name>.zip
-	#sh_cmd = "unzip "
-	
+		pkg_path = f"{dir_name}/{extracted_dir}/{pkg}"
+		print(f" {dir_name}/{extracted_dir}/{pkg}")
+		if os.path.exists(pkg_path):
+			shutil.rmtree(pkg_path)
+		time.sleep(0.2)
+	# create a new archive with client name: archive-name_<client-name>.zip
+	new_dir = f"{extracted_dir}_{the_client}"
+	print(f"renaming gigaspaces folder to: {dir_name}/{new_dir}")
+	sh_cmd = f"mv {dir_name}/{extracted_dir} {dir_name}/{new_dir}"
+	response = subprocess.call(sh_cmd, shell=True)
+	print(f"creating new archive: {new_dir}.zip")
+	sh_cmd = f"cd {dir_name} ; zip -qr {new_dir}.zip {new_dir}"
+	response = subprocess.call(sh_cmd, shell=True)
+	print(f"cleaning up extracted data...")
+	if os.path.exists(f"{dir_name}/{new_dir}"):
+		shutil.rmtree(f"{dir_name}/{new_dir}")
+
 
 # global variables
-packages = 'packages.yaml'
+manifest = 'manifest.yaml'
 
 
 if __name__ == '__main__':
 	arguments = arg_parser()
 	if arguments:
 		# get yaml data
-		if check_file_exist(packages):
-			yaml_data = get_yaml_data(packages)
+		manifest_full_path = f"{ntpath.split(sys.argv[0])[0]}/{manifest}"
+		if check_file_exist(manifest_full_path):
+			yaml_data = get_yaml_data(manifest_full_path)
 		else:
 			print('could not find yaml file')
 			exit(1)
@@ -101,10 +126,7 @@ if __name__ == '__main__':
 			exit(1)
 		# parse arguments
 		if check_file_exist(gs_archive):
-			if check_client_name(yaml_data, client_name):
-				exec_repackager(gs_archive, client_name)
-			else:
-				print(f"client name: '{client_name}' is not listed in yaml file.\nuse [-l] to list all available clients")
+			exec_repackager(gs_archive, get_client_name(yaml_data, client_name))
 		else:
 			print('gs archive file not found!')
 			exit(1)
