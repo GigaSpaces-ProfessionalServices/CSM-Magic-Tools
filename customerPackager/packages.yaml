@@ -1,0 +1,19 @@
+clients:
+  client1:
+    packages:
+      - 'package 1'
+  client2:
+    packages:
+      - 'package 1'
+      - 'package 2'
+  client3:
+    packages:
+      - 'package 1'
+      - 'package 2'
+      - 'package 3'
+  client4:
+    packages:
+      - 'package 1'
+      - 'package 2'
+      - 'package 3'
+      - 'package 4'
