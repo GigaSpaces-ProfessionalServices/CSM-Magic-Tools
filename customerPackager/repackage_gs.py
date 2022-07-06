@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from curses.ascii import isdigit
 import os
 import sys
 import argparse
@@ -8,15 +9,16 @@ import yaml
 import ntpath
 import shutil
 import time
+import readline
+import glob
 
 def arg_parser():
 	parser = argparse.ArgumentParser(
 		description='description: remove specific packages from gigaspaces archive and repackage',
-		# epilog='based on yaml file'
+		epilog='run without options for interactive mode'
 	)
-	required = parser.add_argument_group('required arguments')
-	required.add_argument('-f', action='store', dest='gs_archive', help='path to gigaspaces archive')
-	required.add_argument('-c', action='store', dest='client_name', help='the name of the client as appears in yaml file')
+	parser.add_argument('-f', action='store', dest='gs_archive', help='path to gigaspaces archive')
+	parser.add_argument('-c', action='store', dest='client_name', help='the name of the client as appears in yaml file')
 	parser.add_argument('-l', '--list', action='store_true', help='list client names from yaml file')
 
 	args = {}
@@ -46,16 +48,40 @@ def gs_archive_exist(gs_archive):
 		return True
 
 def list_clients_from_yaml(the_yaml_data):
-	print('clients listed in yaml file:')
 	for client in the_yaml_data['clients']:
-		print(f"- {client}")
-	exit(0)
+		print(f"{the_yaml_data['clients'][client]['id']} - {client}")
 
-def get_client_name(the_yaml_data, the_client):
+def get_client_from_user(the_yaml_data):
+	print('available clients:')
+	list_clients_from_yaml(the_yaml_data)
+	while True:
+		ans = input("Pick a client: ")
+		if ans.strip().isdigit():
+			if int(ans) > 0 and int(ans) < len(the_yaml_data['clients']) + 1:
+				for name in the_yaml_data['clients']:
+					# print(the_yaml_data['clients'][name]['id'])
+					# exit(0)
+					if int(ans) == the_yaml_data['clients'][name]['id']:
+						choice = name
+						return choice
+
+def check_client_name(the_yaml_data, the_client):
 	for client in the_yaml_data['clients']:
 		if client.lower() == the_client.lower():
 			return client
 	return ''
+
+def get_file_path():
+	readline.set_completer_delims('\t')
+	readline.parse_and_bind("tab: complete")
+	readline.set_completer(path_completer)
+	while True:
+		f = input("Enter path to gigaspaces file: ")
+		if os.path.exists(f):
+			break
+		else:
+			print(f"file not found. try again...")
+	return f
 
 def exec_repackager(the_package, the_client):
 	if the_client == '':
@@ -92,28 +118,35 @@ def exec_repackager(the_package, the_client):
 	print(f"creating new archive: {new_dir}.zip")
 	sh_cmd = f"cd {dir_name} ; zip -qr {new_dir}.zip {new_dir}"
 	response = subprocess.call(sh_cmd, shell=True)
-	print(f"cleaning up extracted data...")
-	if os.path.exists(f"{dir_name}/{new_dir}"):
-		shutil.rmtree(f"{dir_name}/{new_dir}")
+	# print(f"cleaning up extracted data...")
+	# if os.path.exists(f"{dir_name}/{new_dir}"):
+	# 	shutil.rmtree(f"{dir_name}/{new_dir}")
+
+def path_completer(text, state):
+    """ tabbed path autocomplete """
+    line = readline.get_line_buffer().split()
+    if '~' in text:
+        text = os.path.expanduser('~')
+    return [x for x in glob.glob(text+'*')][state]
 
 
 # global variables
 manifest = 'manifest.yaml'
 
-
 if __name__ == '__main__':
 	arguments = arg_parser()
+	# get yaml data
+	manifest_full_path = f"{ntpath.split(sys.argv[0])[0]}/{manifest}"
+	if check_file_exist(manifest_full_path):
+		yaml_data = get_yaml_data(manifest_full_path)
+	else:
+		print('could not find yaml file')
+		exit(1)
 	if arguments:
-		# get yaml data
-		manifest_full_path = f"{ntpath.split(sys.argv[0])[0]}/{manifest}"
-		if check_file_exist(manifest_full_path):
-			yaml_data = get_yaml_data(manifest_full_path)
-		else:
-			print('could not find yaml file')
-			exit(1)
 		# get arguments
 		if 'list' in arguments:
 			list_clients_from_yaml(yaml_data)
+			exit(0)
 		if 'gs_archive' in arguments:
 			gs_archive = arguments['gs_archive']
 		else:
@@ -126,13 +159,13 @@ if __name__ == '__main__':
 			exit(1)
 		# parse arguments
 		if check_file_exist(gs_archive):
-			exec_repackager(gs_archive, get_client_name(yaml_data, client_name))
+			exec_repackager(gs_archive, check_client_name(yaml_data, client_name))
 		else:
 			print('gs archive file not found!')
 			exit(1)
 	else:
-		print(f"missing required arguments. use [-h] for usage.")
-		exit(1)
-
-
+		print("[ INTERACTIVE MODE ]\n")
+		client_name = get_client_from_user(yaml_data)
+		gs_archive = get_file_path()
+		exec_repackager(gs_archive, check_client_name(yaml_data, client_name))
 exit(0)
