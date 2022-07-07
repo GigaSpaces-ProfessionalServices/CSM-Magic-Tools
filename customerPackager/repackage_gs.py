@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from curses.ascii import isdigit
+from curses.ascii import isalnum, isalpha, isdigit
 import os
 import sys
 import argparse
@@ -87,40 +87,45 @@ def exec_repackager(the_package, the_client):
 	if the_client == '':
 		print(f"client name: '{client_name}' is not listed in yaml file.")
 		print("use [-l] to list all available clients")
-		exit(0)
+		exit(1)
 	print(f"executing repackager operations...")
-	print(f"{'on file:':<14}{the_package}\n{'for client:':<14}{the_client}")	
 	# extract basedir and filename from path
-	dir_name, base_name = ntpath.split(the_package)
-	extracted_dir = ntpath.splitext(base_name)[0]
+	package_base_dir, package_base_name = ntpath.split(the_package)
+	package_base_dir = os.path.realpath(package_base_dir)
+	extracted_dir = ntpath.splitext(package_base_name)[0]
+	print(f"   {'file:':<14}{package_base_dir}/{package_base_name}\n   {'client:':<14}{the_client}")	
+
 	# extract archive
-	print(f"extracting gigaspaces archive...")
-	sh_cmd = f"cd {dir_name} ; unzip -q {the_package}"
+	print(f"   extracting gigaspaces archive...")
+	sh_cmd = f"cd {package_base_dir} ; unzip -q {package_base_name}"
 	response = subprocess.call(sh_cmd, shell=True)
 	if response != 0:
-		print(f"A problems occured while extracting {the_package}. aborting!")
+		print(f"A problems occured while extracting {package_base_name}. aborting!")
 		exit(1)
+	
 	# get list of all packages
 	client_packages = yaml_data['clients'][the_client]['packages']
+	
 	# remove packages
-	print("deleting packages according to manifest:")
+	print("   deleting packages:")
 	for pkg in client_packages:
-		pkg_path = f"{dir_name}/{extracted_dir}/{pkg}"
-		print(f" {dir_name}/{extracted_dir}/{pkg}")
+		pkg_path = f"{package_base_dir}/{extracted_dir}/{pkg}"
+		print(f"   .../{extracted_dir}/{pkg}")
 		if os.path.exists(pkg_path):
 			shutil.rmtree(pkg_path)
 		time.sleep(0.2)
-	# create a new archive with client name: archive-name_<client-name>.zip
-	new_dir = f"{extracted_dir}_{the_client}"
-	print(f"renaming gigaspaces folder to: {dir_name}/{new_dir}")
-	sh_cmd = f"mv {dir_name}/{extracted_dir} {dir_name}/{new_dir}"
+	
+	# create a new archive: archive-name-patch-<char>-<digit>.zip
+	new_dir_name = f"{extracted_dir}_patch-{patch_params['char']}-{patch_params['num']}"
+	print(f"   renaming gigaspaces folder to: {package_base_dir}/{new_dir_name}")
+	sh_cmd = f"mv {package_base_dir}/{extracted_dir} {package_base_dir}/{new_dir_name}"
 	response = subprocess.call(sh_cmd, shell=True)
-	print(f"creating new archive: {new_dir}.zip")
-	sh_cmd = f"cd {dir_name} ; zip -qr {new_dir}.zip {new_dir}"
+	print(f"   creating new archive: {new_dir_name}.zip")
+	sh_cmd = f"cd {package_base_dir} ; zip -qr {new_dir_name}.zip {new_dir_name}"
 	response = subprocess.call(sh_cmd, shell=True)
-	# print(f"cleaning up extracted data...")
-	# if os.path.exists(f"{dir_name}/{new_dir}"):
-	# 	shutil.rmtree(f"{dir_name}/{new_dir}")
+	print(f"   cleaning up extracted data...")
+	if os.path.exists(f"{package_base_dir}/{new_dir_name}"):
+		shutil.rmtree(f"{package_base_dir}/{new_dir_name}")
 
 def path_completer(text, state):
     """ tabbed path autocomplete """
@@ -128,7 +133,28 @@ def path_completer(text, state):
     if '~' in text:
         text = os.path.expanduser('~')
     return [x for x in glob.glob(text+'*')][state]
+	
+def get_patch_id(type):
+	while True:
+		try:
+			if type == 'character':
+				a = input("Enter a character id for this package [e.g. 'a']: ").lower()
+				if isalpha(a) and len(a) == 1:
+					return a
+			else:
+				a = input("Enter a number id for this package [e.g. '2']: ")
+				if isdigit(a) and len(a) == 1:
+					return a
+			if a == '':
+				raise EOFError
+			else:
+				raise TypeError
+		except TypeError:
+			print(f"bad input/type. please enter a single {type}")
+		except EOFError:
+			print(f"input cannot be empty")
 
+	
 
 # global variables
 manifest = 'manifest.yaml'
@@ -164,8 +190,15 @@ if __name__ == '__main__':
 			print('gs archive file not found!')
 			exit(1)
 	else:
-		print("[ INTERACTIVE MODE ]\n")
+		patch_params = {}
+		print()
 		client_name = get_client_from_user(yaml_data)
+		print()
 		gs_archive = get_file_path()
+		print()
+		patch_params['char'] = get_patch_id('character')
+		print()
+		patch_params['num'] = get_patch_id('digit')
+		print()
 		exec_repackager(gs_archive, check_client_name(yaml_data, client_name))
 exit(0)
