@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py
+# Servers
+expect "Enter your option"
+send -- "2\r"
+# Space
+expect "Enter your option"
+send -- "2\r"
+# Start
+expect "Enter your option"
+send -- "2\r"
+# "Press [Enter] to start all."
+expect "for exit"
+send -- "\r"
+# Sure
+expect "Are you sure want to start all servers"
+send -- "y\r"
+
+# Exit
+expect "Enter your option"
+send -- "99\r"
+expect "Enter your option"
+send -- "99\r"
+expect "Enter your option"
+send -- "99\r"
+
+expect eof

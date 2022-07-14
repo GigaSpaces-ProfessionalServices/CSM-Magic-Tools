@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers di remove
+# Are you sure want to remove DI servers
+expect "Are you sure want to remove DI servers"
+send -- "y\r"
+
+expect eof
