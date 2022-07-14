@@ -348,3 +348,4 @@ if __name__ == '__main__':
             print(f"{'Total number of records in PRIMARY instances:':<46}{p_total_display:<10}")
             print(f"{'Total number of records in BACKUP instances:':<46}{b_total_display:<10}")
 exit(0)
+
