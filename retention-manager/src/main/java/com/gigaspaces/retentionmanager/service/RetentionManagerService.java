@@ -92,21 +92,23 @@ public class RetentionManagerService {
                             objectRetentionPolicy.getConstraintField()!="" &&
                             objectRetentionPolicy.getConstraintField()!=null) {
                         String duration = objectRetentionPolicy.getRetentionPeriod();
-                        String[] spacePropertiesNames = spaceTypeDescriptor.getPropertiesNames();
-                        String spaceObjTypeOfConstraintField = "";
-                        for(int i=0;i<spacePropertiesNames.length;i++){
-                            if(spacePropertiesNames[i].equalsIgnoreCase(objectRetentionPolicy.getConstraintField())){
-                                spaceObjTypeOfConstraintField = spaceTypeDescriptor.getPropertiesTypes()[i];
-                                break;
+                        if(duration.trim().length()>0) {
+                            String[] spacePropertiesNames = spaceTypeDescriptor.getPropertiesNames();
+                            String spaceObjTypeOfConstraintField = "";
+                            for (int i = 0; i < spacePropertiesNames.length; i++) {
+                                if (spacePropertiesNames[i].equalsIgnoreCase(objectRetentionPolicy.getConstraintField())) {
+                                    spaceObjTypeOfConstraintField = spaceTypeDescriptor.getPropertiesTypes()[i];
+                                    break;
+                                }
                             }
-                        }
-                        String durationAmount = duration.substring(0, duration.length() - 1);
-                        String durationUnit = duration.substring(duration.length() - 1, duration.length());
+                            String durationAmount = duration.substring(0, duration.length() - 1);
+                            String durationUnit = duration.substring(duration.length() - 1, duration.length());
 
-                        Date dateParam = commonUtils.addSubstractFromDate(currentDate,-Integer.valueOf(durationAmount),durationUnit);
-                        Object obj = convertDateToSpaceObjType(dateParam, spaceObjTypeOfConstraintField);
-                        log.info(methodName,"Deleting objects prior to  ->"+dateParam);
-                        deleteFromSpaceObject(spaceTypeDescriptor, objectRetentionPolicy.getConstraintField(),obj);
+                            Date dateParam = commonUtils.addSubstractFromDate(currentDate, -Integer.valueOf(durationAmount), durationUnit);
+                            Object obj = convertDateToSpaceObjType(dateParam, spaceObjTypeOfConstraintField);
+                            log.info(methodName, "Deleting objects prior to  ->" + dateParam);
+                            deleteFromSpaceObject(spaceTypeDescriptor, objectRetentionPolicy.getConstraintField(), obj);
+                        }
                     }
 
                 } else{
