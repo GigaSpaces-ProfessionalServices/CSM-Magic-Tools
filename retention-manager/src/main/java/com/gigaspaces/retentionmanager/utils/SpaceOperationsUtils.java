@@ -25,6 +25,7 @@ public class SpaceOperationsUtils {
     private String JDBC_URL;
     public Integer executeSqlUpdate(String sql, Object obj){
         log.info("Entering into -> executeSqlUpdate");
+        sql = sql.replace("?",obj.toString());
         log.info("sql----------------->"+sql);
         Connection con=null;
         try{

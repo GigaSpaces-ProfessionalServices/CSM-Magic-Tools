@@ -86,12 +86,12 @@ public class RetentionManagerService {
 
                     log.info("Cleaning up "+objectRetentionPolicy.getObjectType());
                     log.info("Retention Period for "+objectRetentionPolicy.getObjectType()+" -> "+objectRetentionPolicy.getRetentionPeriod());
-                    String duration = objectRetentionPolicy.getRetentionPeriod();
-                    if (duration != null && duration != "" &&
+                    if (objectRetentionPolicy.getRetentionPeriod() != null &&
+                            objectRetentionPolicy.getRetentionPeriod() != "" &&
                             objectRetentionPolicy.getActive()==true &&
                             objectRetentionPolicy.getConstraintField()!="" &&
                             objectRetentionPolicy.getConstraintField()!=null) {
-
+                        String duration = objectRetentionPolicy.getRetentionPeriod();
                         String[] spacePropertiesNames = spaceTypeDescriptor.getPropertiesNames();
                         String spaceObjTypeOfConstraintField = "";
                         for(int i=0;i<spacePropertiesNames.length;i++){
