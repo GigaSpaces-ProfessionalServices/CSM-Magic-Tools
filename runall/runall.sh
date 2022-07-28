@@ -108,7 +108,10 @@ function list_all_servers() {
     for type in $target_env; do
         get_targeted_servers $type
         logit --text "${bold}$(text_align "${ENV_NAME^^}" "--title")${nbold}\n" -s
-        for node in $SERVER_LIST; do echo "$node" ; done
+		servers=""
+		for node in $SERVER_LIST; do
+			grep -q $node <<< $servers && continue || servers+="${node} "
+		for n in $servers; do echo "$n" | sed 's/ *//g' ; done
     done
 }
 
@@ -382,7 +385,7 @@ function run_health_checks() {
     local is_number='^[0-9]+$'
     get_targeted_servers $env_type
     logit --text "$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")\n" -fs "INFO"
-  $ERR_REPORT && CLUSTER_ERRORS[0]="$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")"
+	$ERR_REPORT && CLUSTER_ERRORS[0]="$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")"
     # dividing services to [R]emote and [L]ocal
     S_R=""; for R in $SERVICES; do [[ ${R:0:1} == "R" ]] && S_R="${S_R} ${R}"; done
     S_L=""; for L in $SERVICES; do [[ ${L:0:1} == "L" ]] && S_L="${S_L} ${L}"; done
@@ -407,12 +410,11 @@ function run_health_checks() {
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
         fi
-    # check remote services
+    	# check remote services
         for svc in $S_R; do
             local net_fail=false
             local port=$(echo $svc | cut -d: -f2)
             local service_name=$(echo $svc | cut -d: -f3)
-            #logit --text "$(text_align "[${host}]${R_SPC}$service_name on port: $port")" -s
             local retval=$(check_services $host $port $service_name)
             [[ $retval == 0 ]] && local severity="INFO" || local severity="ERROR"
             logit --text "$(text_align "[${host}]${R_SPC}$service_name on port: $port")" -fs $severity
@@ -458,6 +460,17 @@ function run_health_checks() {
         if $net_fail; then  # if remote checks are bad we go to next host
             logit --text "\n" -s
             continue
+        fi
+		# check NFS mount
+        local retval=$(ssh $host "findmnt /dbagigashare > /dev/null" ; echo $?)
+        if [[ $retval == 0 ]]; then
+            logit --text "$(text_align "[${host}]${R_SPC}NFS mount check")" -fs INFO
+            logit --state "Passed" -fs
+        else
+            logit --text "$(text_align "[${host}]${R_SPC}NFS mount check")" -fs ERROR
+            logit --state "Failed" -fs
+            $ERR_REPORT && \
+            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}NFS mount check"
         fi
         logit --text "[${host}]${H_SPC}Role related services\n" -fs "INFO"
         for svc in $S_L; do
