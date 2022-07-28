@@ -398,6 +398,7 @@ function run_health_checks() {
         local zk_test=false
     fi
     for host in $SERVER_LIST; do
+        local net_fail=false
         logit --text "[${host}]${H_SPC}Basic network connectivity\n" -fs "INFO"
         # check dns
         local retval=$(check_dns_resolve $host)
@@ -457,7 +458,8 @@ function run_health_checks() {
                     ;;
             esac
         done
-        if $net_fail; then  # if remote checks are bad we go to next host
+        # if remote checks are bad we go to next host
+        if $net_fail; then
             logit --text "\n" -s
             continue
         fi
