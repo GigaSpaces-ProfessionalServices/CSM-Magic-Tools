@@ -1,0 +1,20 @@
+#!/bin/bash
+_LOG=/var/log/auto_odsx.log
+_FULL_LOG=/dbagigalogs/auto_odsx_full.log
+cd /dbagiga/josh/auto_odsx
+echo -e "$(date) Starting bllspace space refresh" | tee -a $_LOG $_FULL_LOG
+echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
+./auto_spacestop 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Stopping ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+./auto_managerstop 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Cleaning ODS Manager and Space directories" | tee -a $_LOG $_FULL_LOG
+./auto_cleandirs 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Starting ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+./auto_managerstart 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Starting ODS Space servers" | tee -a $_LOG $_FULL_LOG
+./auto_spacestart 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Deploy TS after all bllspace GSC's are up" | tee -a $_LOG $_FULL_LOG
+./auto_tsdeploy_check 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Load benchmark data into bllspace" | tee -a $_LOG $_FULL_LOG
+./auto_benchmark 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Finished bllspace space refresh" | tee -a $_LOG $_FULL_LOG

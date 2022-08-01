@@ -86,27 +86,29 @@ public class RetentionManagerService {
 
                     log.info("Cleaning up "+objectRetentionPolicy.getObjectType());
                     log.info("Retention Period for "+objectRetentionPolicy.getObjectType()+" -> "+objectRetentionPolicy.getRetentionPeriod());
-                    String duration = objectRetentionPolicy.getRetentionPeriod();
-                    if (duration != null && duration != "" &&
+                    if (objectRetentionPolicy.getRetentionPeriod() != null &&
+                            objectRetentionPolicy.getRetentionPeriod() != "" &&
                             objectRetentionPolicy.getActive()==true &&
                             objectRetentionPolicy.getConstraintField()!="" &&
                             objectRetentionPolicy.getConstraintField()!=null) {
-
-                        String[] spacePropertiesNames = spaceTypeDescriptor.getPropertiesNames();
-                        String spaceObjTypeOfConstraintField = "";
-                        for(int i=0;i<spacePropertiesNames.length;i++){
-                            if(spacePropertiesNames[i].equalsIgnoreCase(objectRetentionPolicy.getConstraintField())){
-                                spaceObjTypeOfConstraintField = spaceTypeDescriptor.getPropertiesTypes()[i];
-                                break;
+                        String duration = objectRetentionPolicy.getRetentionPeriod();
+                        if(duration.trim().length()>0) {
+                            String[] spacePropertiesNames = spaceTypeDescriptor.getPropertiesNames();
+                            String spaceObjTypeOfConstraintField = "";
+                            for (int i = 0; i < spacePropertiesNames.length; i++) {
+                                if (spacePropertiesNames[i].equalsIgnoreCase(objectRetentionPolicy.getConstraintField())) {
+                                    spaceObjTypeOfConstraintField = spaceTypeDescriptor.getPropertiesTypes()[i];
+                                    break;
+                                }
                             }
-                        }
-                        String durationAmount = duration.substring(0, duration.length() - 1);
-                        String durationUnit = duration.substring(duration.length() - 1, duration.length());
+                            String durationAmount = duration.substring(0, duration.length() - 1);
+                            String durationUnit = duration.substring(duration.length() - 1, duration.length());
 
-                        Date dateParam = commonUtils.addSubstractFromDate(currentDate,-Integer.valueOf(durationAmount),durationUnit);
-                        Object obj = convertDateToSpaceObjType(dateParam, spaceObjTypeOfConstraintField);
-                        log.info(methodName,"Deleting objects prior to  ->"+dateParam);
-                        deleteFromSpaceObject(spaceTypeDescriptor, objectRetentionPolicy.getConstraintField(),obj);
+                            Date dateParam = commonUtils.addSubstractFromDate(currentDate, -Integer.valueOf(durationAmount), durationUnit);
+                            Object obj = convertDateToSpaceObjType(dateParam, spaceObjTypeOfConstraintField);
+                            log.info(methodName, "Deleting objects prior to  ->" + dateParam);
+                            deleteFromSpaceObject(spaceTypeDescriptor, objectRetentionPolicy.getConstraintField(), obj);
+                        }
                     }
 
                 } else{

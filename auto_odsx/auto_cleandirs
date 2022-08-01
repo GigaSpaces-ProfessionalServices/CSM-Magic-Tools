@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+cd /dbagiga/gs-odsx
+spawn ./odsx.py utilities cleandirectories
+expect "Enter your option"
+send -- "1\r"
+expect "Are you sure want to delete above directories"
+send -- "y\r"
+expect "Enter your option"
+send -- "2\r"
+expect "Are you sure want to delete above directories"
+send -- "y\r"
+expect "Enter your option"
+send -- "99\r"
+
+expect eof

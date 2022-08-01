@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py
+./odsx.py servers di stop
+# Press [Enter] Start current configuration.
+# Press [99] For exit.:
+expect "For exit"
+send -- "\r"
+# Are you sure want to start kafka service
+expect "Are you sure want to stop kafka service"
+send -- "\r"
+
+expect eof
