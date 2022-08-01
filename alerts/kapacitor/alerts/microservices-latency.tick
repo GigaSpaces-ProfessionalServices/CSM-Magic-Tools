@@ -1,0 +1,28 @@
+dbrp "mydb"."autogen"
+
+var snowType = 'App'
+var snowResource = 'Latency'
+var snowMetricName = 'App latency'
+
+var data = stream
+    |from()
+        .measurement('pu_ServiceRoute_service-latency')
+	.groupBy('host','pu_name','pu_instance_id')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |window()
+        .period(1m)
+        .every(1m)
+	.align()
+    |max('value')
+	.as('maxval')
+    |alert()
+        .crit(lambda: "maxval" > 150)
+        .stateChangesOnly(1d)
+        .id('microservices-latency_{{ index .Tags "host" }}-{{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }}')
+        .message('Latecy for MicroService {{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }} is {{ index .Fields "maxval" }}ms')
+	.post()
+		.endpoint('common-alert')

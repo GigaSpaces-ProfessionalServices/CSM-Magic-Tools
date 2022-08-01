@@ -1,0 +1,34 @@
+dbrp "mydb"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Core'
+var snowMetricName = 'Infra-process-status'
+
+var data = batch
+    |query('''
+SELECT  *
+FROM    "mydb"."autogen"."jvm_uptime"
+WHERE   "process_name" != ''
+AND     "process_name" != 'gsc'
+''')
+        .period(5m)
+        .every(10s)
+        .align()
+        .groupBy('host', 'pid', 'process_name')
+    |count('value')
+        .as('count')
+    |derivative('count')
+        .unit(10s)
+        .as('inc')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "inc" < 0)
+        .stateChangesOnly(1d)
+        .id('jvm-proc-failed_{{ index .Tags "host" }}-{{ index .Tags "process_name" }}')
+        .message('Process {{ index .Tags "process_name" }}[{{ index .Tags "pid" }}] went down')
+        .post()
+        .endpoint('common-alert')

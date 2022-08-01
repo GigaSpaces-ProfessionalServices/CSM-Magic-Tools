@@ -1,0 +1,24 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Northbound'
+var snowMetricName = 'Nginx-process-status'
+
+stream
+    |from()
+        .measurement('systemd_units')
+        .where(lambda: strHasPrefix("name", 'nginx.service'))
+        .groupBy('host', 'name')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "active" != 'active')
+        .stateChangesOnly(1d)
+        .message('Service {{ index .Tags "name" }} not running')
+        .id('nginx-status_{{ index .Tags "host" }}-{{ index .Tags "name" }}')
+        .post()
+        .endpoint('common-alert')
+
