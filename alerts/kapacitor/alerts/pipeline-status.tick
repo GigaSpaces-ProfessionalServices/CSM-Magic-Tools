@@ -1,0 +1,24 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Core'
+var snowMetricName = 'Gspace-pipeline-status'
+
+stream
+    |from()
+        .measurement('pipelineState')
+        .groupBy('pipeline')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: (int("last") + 60000000000) < unixNano(now()) )
+        .stateChangesOnly(1d)
+        .message('Pipeline {{ index .Tags "pipeline" }} is late')
+        .id('pipeline-status_{{ index .Tags "pipeline" }}')
+        .post()
+        .endpoint('common-alert')
+
+

@@ -1,0 +1,23 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Core'
+var snowMetricName = 'Gspace-process-status'
+
+stream
+    |from()
+        .measurement('gcState')
+        .groupBy('pu')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "state" == 'faulty')
+        .warn(lambda: "state" == 'partial')
+        .stateChangesOnly(1d)
+        .message('PU bllservice.{{ index .Tags "pu" }} is {{ index .Values "state" }}')
+        .id('space-status_bllspace.{{ index .Tags "pu" }}')
+        .post()
+        .endpoint('common-alert')
