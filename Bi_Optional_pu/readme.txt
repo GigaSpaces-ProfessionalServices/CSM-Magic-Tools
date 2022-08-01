@@ -1,4 +1,4 @@
-This Utility is basically for deploy space in both way with space properties + tiered storage with space properties
+This Utility is basically for deploy space in both way with space properties + tiered storage with space properties.
 Here basic steps with help of ODSX how to utilize this utility.
 ############################################
 For Space with bi_optional_pu-0.1.jar deploy
