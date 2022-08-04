@@ -10,7 +10,11 @@
 
     <script language="javascript" type="text/javascript">
     $(document).ready( function () {
-        $('#dataTable').DataTable();
+        $('#dataTable').DataTable({
+            "columnDefs": [
+                { "searchable": false, "targets": [1] }
+            ],
+        });
 
         $( "#dataTable_length" ).prepend( "<a href='#' onclick='reloadWindow();'> <img title='reload' src='../images/refresh_icon.png'/></a> &nbsp; &nbsp;&nbsp;&nbsp;" );
         $("#searchLabel").html("Filter By Table Name:");
