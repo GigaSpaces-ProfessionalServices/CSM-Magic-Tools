@@ -1,0 +1,6 @@
+C	com.gs.Data1	type='4'
+R	com.gs.Data2
+T	com.gs.Purchase	orderTime	P1D
+T	com.gs.Purchase	orderTime	P1M
+T	com.gs.Purchase	orderTime	PT24H
+A	com.gs.Data4
