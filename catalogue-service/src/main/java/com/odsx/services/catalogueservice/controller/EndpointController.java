@@ -50,6 +50,39 @@ public class EndpointController {
         return modelAndView;
     }
 
+
+    //@GetMapping("/service/{serviceName}/health")
+    public ModelAndView checkServiceHealth(@PathVariable String serviceName){
+
+        log.info("Entering into -> checkServiceHealth");
+        ModelAndView modelAndView = new ModelAndView();
+       /* List<EndpointResponse> endpointMetadataList = new ArrayList<>();
+        try{
+
+            List<String> endpointList = endpointUtils.getAllEndpoints();
+
+            log.info("Endpoint List Size -> "+(endpointList!=null ? endpointList.size() : "is null"));
+
+            *//*for(String endpoint : endpointList){
+
+                EndpointResponse endpointResponse = new EndpointResponse();
+                endpointResponse.setEndpointName(endpoint);
+                endpointMetadataList.add(endpointResponse);
+            }*//*
+            modelAndView.addObject("endpointList", endpointList);
+            //modelAndView.addObject("endpointResponseList", endpointMetadataList);
+        } catch (Exception e){
+            log.error(e.getLocalizedMessage());
+            modelAndView.addObject("error", "Error in retrieving endpoints from consul. ");
+        }*/
+        modelAndView.addObject("health","Health is success");
+        String viewName = "endpoints :: "+serviceName+"";
+        modelAndView.setViewName(viewName);
+
+        log.info("Exiting from -> checkServiceHealth");
+        return modelAndView;
+    }
+
     @PostMapping("/services")
     public ModelAndView getEndpointMetadata(@RequestParam(value = "allEndpoints") String endpoints){
 

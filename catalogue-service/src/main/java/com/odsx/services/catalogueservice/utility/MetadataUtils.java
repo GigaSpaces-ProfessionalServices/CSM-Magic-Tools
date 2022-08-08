@@ -21,7 +21,7 @@ public class MetadataUtils {
     @Resource
     private ConsulUtils consulUtils;
     @Resource
-    private ServiceDefinitionUtils serviceDefinitionUtils;
+    private InstanceDefinitionUtils instanceDefinitionUtils;
 
     @Resource
     private CommonUtils commonUtils;
@@ -43,7 +43,7 @@ public class MetadataUtils {
                 for(InstanceDefinition instanceDefinition : serviceDefinition.getInstances()) {
 
                     log.debug("InstanceDefinition -> " + instanceDefinition.toString());
-                    String metadataURL = serviceDefinitionUtils.buildMetadataURL(instanceDefinition);
+                    String metadataURL = instanceDefinitionUtils.buildMetadataURL(instanceDefinition);
                     try {
                         metadataList = getMetadataResponse(metadataURL);
                         log.debug(" Endpoint Metadata Response -> " + metadataList.toString());
@@ -89,38 +89,12 @@ public class MetadataUtils {
 
         String response = commonUtils.getStringRestResponse(metadataURL);
         log.info("Metadata Webservice Response -> " + response);
-
-        List<String> metadataList = convertMetadataWSResponse(response);
+        JsonObject jsonObject = new Gson().fromJson(response, JsonObject.class);
+        List<String> metadataList = commonUtils.getJsonArrayValue(jsonObject,"metadata");
 
         log.info("Exiting from -> "+methodName);
 
         return metadataList;
-    }
-
-    private List<String> convertMetadataWSResponse(String response){
-        String methodName = "convertMetadataWSResponse";
-        log.info("Entering into ->" + methodName);
-        try {
-            log.debug("Response -> " + response);
-            List<String> metadataList = new ArrayList<>();
-
-            JsonObject jsonObject = new Gson().fromJson(response, JsonObject.class);
-
-            String endpointName = jsonObject.get("endpoint").getAsString();
-            log.info("Endpoint Name -> " + endpointName);
-            JsonArray metadataArray = jsonObject.getAsJsonArray("metadata").getAsJsonArray();
-            log.info("Metadata Array -> " + metadataArray.toString());
-
-            for (JsonElement jsonElement : metadataArray) {
-                metadataList.add(jsonElement.getAsString());
-            }
-            log.info("Exiting from ->" + methodName);
-            return metadataList;
-        } catch (Exception e){
-            log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
-            //e.printStackTrace();
-            return null;
-        }
     }
 
     private List<MetadataResponse> parseServiceMetadataRespose(Map<String,String> tableServiceMap){

@@ -14,9 +14,14 @@ public class EndpointResponse {
 
     private List<String> metadata;
 
+    private String project;
+
+    private String description;
     private String errorMsg;
 
     private String portNumbers;
+
+    private HealthStatus healthStatus;
 
     public String getEndpointName() {
         return endpointName;
@@ -58,12 +63,38 @@ public class EndpointResponse {
         this.portNumbers = portNumbers;
     }
 
+    public String getProject() {
+        return project;
+    }
+
+    public void setProject(String project) {
+        this.project = project;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public HealthStatus getHealthStatus() {
+        return healthStatus;
+    }
+
+    public void setHealthStatus(HealthStatus healthStatus) {
+        this.healthStatus = healthStatus;
+    }
+
     @Override
     public String toString() {
         return "EndpointResponse{" +
                 "endpointName='" + endpointName + '\'' +
                 ", numberOfInstances=" + numberOfInstances +
                 ", metadata=" + metadata +
+                ", project='" + project + '\'' +
+                ", description='" + description + '\'' +
                 ", errorMsg='" + errorMsg + '\'' +
                 ", portNumbers='" + portNumbers + '\'' +
                 '}';
@@ -74,15 +105,12 @@ public class EndpointResponse {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         EndpointResponse that = (EndpointResponse) o;
-        return endpointName.equals(that.endpointName)
-                && Objects.equals(numberOfInstances, that.numberOfInstances)
-                && Objects.equals(metadata, that.metadata)
-                && Objects.equals(errorMsg, that.errorMsg)
-                && Objects.equals(portNumbers, that.portNumbers);
+        return endpointName.equals(that.endpointName) && Objects.equals(numberOfInstances, that.numberOfInstances) && Objects.equals(metadata, that.metadata) && Objects.equals(project, that.project) && Objects.equals(description, that.description) && Objects.equals(errorMsg, that.errorMsg) && Objects.equals(portNumbers, that.portNumbers);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(endpointName, numberOfInstances, metadata, errorMsg,portNumbers);
+        return Objects.hash(endpointName, numberOfInstances, metadata, project, description, errorMsg, portNumbers);
     }
 }
+
