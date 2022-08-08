@@ -10,7 +10,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <gs.version>16.0.0</gs.version>
+        <!--<gs.version>16.0.0</gs.version>-->
+        <gs.version>16.2.0-m26</gs.version>
         <slf4j.version>1.7.26</slf4j.version>
         <junit.version>4.12</junit.version>
     </properties>
