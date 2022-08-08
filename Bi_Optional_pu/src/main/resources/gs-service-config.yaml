@@ -2,4 +2,4 @@ space:
   name: space
   propertyFilePath: spaceproperty.properties
 tieredCriteriaConfig:
-  filePath: ''
+  filePath: TieredCriteria.tab
