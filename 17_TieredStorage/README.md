@@ -31,3 +31,7 @@
 19. Go to ops-ui Deploy space service as in step 5, then deploy the mirror service
 20. Repeat steps 6-15.
 
+
+To start Feeder:
+Build project jar with dependency and
+Run feeder by : java -jar feeder.jar 1000 xap-16.2.0
