@@ -111,6 +111,7 @@ function list_all_servers() {
 		servers=""
 		for node in $SERVER_LIST; do
 			grep -q $node <<< $servers && continue || servers+="${node} "
+        done
 		for n in $servers; do echo "$n" | sed 's/ *//g' ; done
     done
 }
