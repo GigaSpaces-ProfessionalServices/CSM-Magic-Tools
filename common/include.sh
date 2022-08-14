@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# global vars
+GS_ROOT="/dbagiga"
+UTILS_DIR="${GS_ROOT}/utils"
+LOGS_DIR="${UTILS_DIR}/logs"
+LOG_FILE="${LOGS_DIR}/$(echo $(basename ${0%.*}))"
+
 ### text styling globals ###
 
 bold=$(tput bold)        # bold text
