@@ -552,7 +552,7 @@ else
 fi
 
 LOG_FILE="/var/log/ods_sanity.log"
-CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
+CONFIG_FILE="/etc/runall/runall.conf"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
