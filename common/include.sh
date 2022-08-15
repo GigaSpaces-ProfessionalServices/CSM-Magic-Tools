@@ -51,7 +51,7 @@ function logit() {
     fi
 
     # exec logging
-    case $entry_type in
+    case $log_type in
         '--text')
             local txt_to_file="$(printf "%s %-8s %s" "${ts}" "$severity" "${log_text}")"
             local txt_to_screen="${log_text}"
