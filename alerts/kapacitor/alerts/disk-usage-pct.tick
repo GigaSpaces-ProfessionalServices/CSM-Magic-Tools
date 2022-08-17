@@ -1,0 +1,24 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Storage'
+var snowMetricName = 'disk-usage-pct'
+
+stream
+    |from()
+        .measurement('disk')
+	.groupBy('host', 'device', 'path')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: ("total" >= 10737418240000 AND "used_percent" > 95.0) OR ("total" < 10737418240000 AND "total" >= 107374182400 AND "used_percent" > 90.0) OR ("total" < 107374182400 AND "used_percent" > 85.0) )
+	.flapping(0.25, 0.5)
+        .stateChangesOnly(1d)
+        .id('disk-usage-pct_{{ index .Tags "host" }}_{{ index .Tags "device" }}')
+        .message('Storage {{ index .Tags "host" }}:{{ index .Tags "path" }} is {{ index .Fields "used_percent" | printf "%.2f" }}% full')
+        .post()
+        .endpoint('common-alert')
+

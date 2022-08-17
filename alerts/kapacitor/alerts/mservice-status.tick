@@ -1,0 +1,23 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'Infra'
+var snowResource = 'Northbound'
+var snowMetricName = 'microservices-status'
+
+stream
+    |from()
+        .measurement('consul_health_checks')
+	.where(lambda: "check_id" != 'serfHealth')
+        .groupBy('node','check_id')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "passing" == 0)
+        .stateChangesOnly(1d)
+        .message('Micro-Service {{ index .Tags "check_id" }} not running on host {{ index .Tags "node" }}')
+        .id('{{ index .Tags "node" }}_{{ index .Tags "check_id" }}')
+        .post()
+        .endpoint('common-alert')

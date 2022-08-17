@@ -1,0 +1,14 @@
+dbrp "telegraf"."autogen"
+
+var data = batch
+    |query('SELECT count(resp_code) as count FROM "telegraf"."autogen"."nginx_access_log" ')
+        .period(1d)
+        .every(1m)
+        .align()
+        .groupBy(time(1m), 'host')
+        .fill(0)
+    |last('count')
+        .as('rate')
+    |httpPost()
+        .endpoint('nginx-load-raw')
+

@@ -1,0 +1,6 @@
+
+#Data1	Criteria	type='4'
+#Data2	transient
+#Data4	all
+#Purchase	Time	orderTime	25d
+#Purchase	Time	weekDay='Sunday'

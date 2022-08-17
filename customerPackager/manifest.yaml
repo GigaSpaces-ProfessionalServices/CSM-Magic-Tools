@@ -1,0 +1,28 @@
+#
+# client packages manifest to remove packages from gigaspaces archive
+#
+# add relative path to file or folder
+
+clients:
+  Frequentis:
+    id: 1
+    packages:
+      - 'path/to/package1'
+  ibm:
+    id: 2
+    packages:
+      - 'path/to/package1'
+      - 'path/to/package2'
+  Bank Leumi:
+    id: 3
+    packages:
+      - 'path/to/package1'
+      - 'path/to/package2'
+      - 'path/to/package3'
+  klarna:
+    id: 4
+    packages:
+      - 'lib/optional/hibernate'
+      - 'lib/optional/cassandra'
+      - 'lib/optional/kafka'
+      - 'lib/platform/kubernetes'

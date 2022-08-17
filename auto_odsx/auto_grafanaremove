@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers grafana remove
+# User
+expect "Enter user to connect to Grafana"
+send -- "\r"
+# Sure
+expect "Are you sure want to remove Grafana servers"
+send -- "y\r"
+
+expect eof

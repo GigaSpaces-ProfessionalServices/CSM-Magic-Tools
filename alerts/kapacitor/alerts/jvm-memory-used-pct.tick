@@ -1,0 +1,27 @@
+dbrp "mydb"."autogen"
+
+var snowType = 'Infra'
+
+var snowResource = 'Core'
+
+var snowMetricName = 'Space-app-memory-status'
+
+stream
+    |from()
+        .measurement('jvm_memory_heap_used-percent')
+        .where(lambda: isPresent("pu_instance_id"))
+    |eval(lambda: int("value" * 100.0))
+        .as('pct')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "pct" > 88)
+        .stateChangesOnly(1d)
+        .id('jvm-memory-used-pct_{{ index .Tags "host" }}-{{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }}')
+        .message('PU {{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }}[{{ index .Tags "pid" }}] use {{ index .Fields "pct" }}% of memory, above threshold 88%')
+        .post()
+        .endpoint('common-alert')
+

@@ -1,0 +1,30 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'App'
+var snowResource = 'Northbound'
+var snowMetricName = 'Nginx-load-threshold'
+
+var limit = '150'
+
+var data = batch
+    |query('SELECT count(resp_code) as count FROM "telegraf"."autogen"."nginx_access_log" ')
+        .period(1d)
+        .every(1m)
+        .align()
+        .groupBy(time(1m), 'host')
+        .fill(0)
+    |last('count')
+        .as('rate')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "rate" > int(limit) * 60)
+        .stateChangesOnly(1d)
+        .id('nginx-load_{{ index .Tags "host" }}-nginx-high-load')
+        .message('HTTP hits grows above ' + limit + ' for this host')
+        .post()
+        .endpoint('common-alert')
+

@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.odsx.services.catalogueservice.model.InstanceDefinition;
 import com.odsx.services.catalogueservice.model.ServiceDefinition;
 import com.odsx.services.catalogueservice.response.EndpointResponse;
+import com.odsx.services.catalogueservice.response.HealthStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ public class EndpointUtils {
     private CommonUtils commonUtils;
 
     @Resource
-    private ServiceDefinitionUtils serviceDefinitionUtils;
+    private InstanceDefinitionUtils instanceDefinitionUtils;
 
     public List<String> getAllEndpoints() throws Exception {
         List<String> endpointList = consulUtils.getAllRegisteredEndpoints();
@@ -34,45 +35,40 @@ public class EndpointUtils {
         log.info("Entering into ->" + methodName);
         log.info("Endpoint Name -> " + endpointArr.toString());
         List<EndpointResponse> endpointResponseList = new ArrayList<>();
-        int count =0;
+
         for(String endpointName : endpointArr) {
             endpointName = endpointName.trim();
-            count++;
+            int totalInstances = 0;
+            int healthyInstances = 0;
+            InstanceDefinition tempInstanceDef = null;
             try {
                 ServiceDefinition serviceDefinition = consulUtils.getServiceDefinition(endpointName);
+                totalInstances=serviceDefinition.getInstances().size();
 
-                List<String> metadataList = new ArrayList<>();
-                EndpointResponse endpointResponse = new EndpointResponse();
-                endpointResponse.setEndpointName(endpointName);
-                boolean isServiceInError = true;
-
-                innerLoop:
                 for(InstanceDefinition instanceDefinition : serviceDefinition.getInstances()) {
-
-
                     log.debug("InstanceDefinition-> " + instanceDefinition);
-
-                    endpointResponse.setNumberOfInstances(serviceDefinition.getInstances().size());
-
-                    endpointResponse.setPortNumbers(instanceDefinition.getPortNumber());
-
-                    String metadataURL = serviceDefinitionUtils.buildMetadataURL(instanceDefinition);
-                    log.debug(" Endpoint Metadata URL -> " + metadataURL);
-
-                    try {
-                        metadataList = getEndpointResponse(metadataURL);
-                        isServiceInError = false;
-                        break innerLoop;
-                    } catch (Exception e){
-                        log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
-                        continue;
+                    boolean isHealthy = instanceDefinitionUtils.isHealthyInstance(instanceDefinition);
+                    if(isHealthy){
+                        healthyInstances+=1;
+                        tempInstanceDef = instanceDefinition;
                     }
                 }
-                if(!isServiceInError) {
-                    endpointResponse.setMetadata(metadataList);
+
+                EndpointResponse endpointResponse = new EndpointResponse();
+                endpointResponse.setEndpointName(endpointName);
+                endpointResponse.setNumberOfInstances(serviceDefinition.getInstances().size());
+                endpointResponse.setHealthStatus(getServiceHealthStatus(healthyInstances,totalInstances));
+                if(tempInstanceDef!=null) {
+                    endpointResponse.setPortNumbers(tempInstanceDef.getPortNumber());
+                    String metadataURL = instanceDefinitionUtils.buildMetadataURL(tempInstanceDef);
+                    log.debug("Endpoint Metadata URL -> " + metadataURL);
+
+                    endpointResponse = getEndpointResponse(metadataURL, endpointResponse);
+
                 } else{
-                    endpointResponse.setErrorMsg("Error in connecting Metadata endpoint URL.");
+                    endpointResponse.setErrorMsg("Error in connecting service endpoint");
                 }
+
                 endpointResponseList.add(endpointResponse);
                 log.info("Exiting from ->" + methodName);
             } catch (Exception e) {
@@ -83,48 +79,79 @@ public class EndpointUtils {
         return endpointResponseList;
     }
 
-    private List<String> getEndpointResponse(String metadataURL) throws Exception{
+    private EndpointResponse getEndpointResponse(String metadataURL, EndpointResponse endpointResponse) {
         String methodName = "getEndpointResponse";
         log.info("Entering into -> "+methodName);
         log.info("metadataURL -> "+metadataURL);
-        List<String> metadataList = new ArrayList<>();
-
-        String response = commonUtils.getStringRestResponse(metadataURL);
-        log.info("Metadata Webservice Response -> " + response);
-        metadataList = convertEndpointWSResponse(response);
-        log.info("Exiting from -> " + methodName);
-
-        return metadataList;
+        try {
+            String response = commonUtils.getStringRestResponse(metadataURL);
+            JsonObject jsonObject = new Gson().fromJson(response, JsonObject.class);
+            log.info("Metadata Webservice Response -> " + response);
+            List<String> metadataList = commonUtils.getJsonArrayValue(jsonObject, "metadata");
+            String project = commonUtils.getJsonStringValue(jsonObject, "project");
+            String description = commonUtils.getJsonStringValue(jsonObject, "description");
+            endpointResponse.setMetadata(metadataList);
+            endpointResponse.setProject(project);
+            endpointResponse.setDescription(description);
+            log.info("Exiting from -> " + methodName);
+        } catch (Exception e){
+            e.printStackTrace();
+            log.error(e.getMessage());
+            endpointResponse.setErrorMsg("Error in getting response from metadata endpoint.");
+        }
+        return endpointResponse;
     }
 
-    private List<String> convertEndpointWSResponse(String response) {
-        String methodName = "convertEndpointWSResponse";
+
+    private HealthStatus getServiceHealthStatus(int healthyInstances, int totalInstances) {
+        log.info("Entering into -> getServiceHealthStatus");
+        double healthPercentage = 0.0;
         try {
-
-            log.info("Entering into ->" + methodName);
-
-            log.debug("Response -> " + response);
-            List<String> metadataList = new ArrayList<>();
-
-            JsonObject jsonObject = new Gson().fromJson(response, JsonObject.class);
-
-            //jsonObject.
-            String endpointName = jsonObject.get("endpoint").getAsString();
-            log.info("Endpoint Name -> " + endpointName);
-            JsonArray metadataArray = jsonObject.getAsJsonArray("metadata").getAsJsonArray();
-            log.info("Metadata Array -> " + metadataArray.toString());
-
-            for (JsonElement jsonElement : metadataArray) {
-                metadataList.add(jsonElement.getAsString());
-            }
-            log.info("Exiting from ->" + methodName);
-            return metadataList;
-        } catch (Exception e) {
-            log.error("Error in "+methodName+" -> "+e.getLocalizedMessage());
-            e.printStackTrace();
-            return null;
+            healthPercentage = healthyInstances * 100 / totalInstances;
+            log.debug("Health Percentage of Service -> "+healthPercentage);
+        } catch (Exception e){
+            log.error("Error in calculating service health status "+e.getMessage());
+        }
+        if(healthPercentage == 100.0){
+            log.info("Exiting -> getServiceHealthStatus");
+            return HealthStatus.HEALTHY;
+        } else if(healthPercentage == 0.0){
+            log.info("Exiting -> getServiceHealthStatus");
+            return HealthStatus.UNHEALTHY;
+        } else{
+            log.info("Exiting -> getServiceHealthStatus");
+            return HealthStatus.DEGRADED;
         }
     }
 
+    public Boolean tryService(String serviceName){
+        log.info("Entering into -> tryService ");
+        try {
+            log.debug("serviceName-> "+serviceName);
+            ServiceDefinition serviceDefinition = consulUtils.getServiceDefinition(serviceName);
+            for(InstanceDefinition instanceDefinition : serviceDefinition.getInstances()) {
+                log.debug("Instance Definition -> "+instanceDefinition);
+                boolean isHealthy = instanceDefinitionUtils.isHealthyInstance(instanceDefinition);
+                if(isHealthy){
+                    String metadataURL = instanceDefinitionUtils.buildMetadataURL(instanceDefinition);
+                    String command = "curl -I "+metadataURL;
+                    log.debug("curl command to execute -> "+command);
+                    Process process = Runtime.getRuntime().exec(command);
+                    process.waitFor();
+                    process.destroy();
+                    log.info("process.exitValue -> "+process.exitValue());
+                    if(process.exitValue()==0){
+                        log.info("Exiting from tryService ");
+                        return true;
+                    }
+                }
+            }
+
+        }catch (Exception e){
+            log.error("Exception in tryService "+e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
 
 }

@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers influxdb install
+# directory
+expect "Enter data directory Influxdb server"
+send -- "\r"
+# Influxdb
+expect "Are you sure want to install Influxdb servers"
+send -- "y\r"
+
+expect eof

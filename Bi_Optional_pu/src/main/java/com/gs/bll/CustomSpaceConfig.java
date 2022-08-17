@@ -4,9 +4,11 @@ import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageConfig;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableConfig;
 import org.openspaces.core.config.annotation.EmbeddedSpaceBeansConfig;
 import org.openspaces.core.space.EmbeddedSpaceFactoryBean;
+import org.openspaces.core.space.TieredStorageCachePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.core.parameters.P;
 
 import java.io.*;
@@ -15,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+@PropertySource("classpath:gs-service-config.yaml")
 public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
     Logger logger = LoggerFactory.getLogger(CustomSpaceConfig.class);
     @Value("${tieredCriteriaConfig.filePath}")
@@ -70,30 +73,29 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
                             if (wordsArray[0].equalsIgnoreCase("C")) {
                                 System.out.println("Catagory :" + wordsArray[0] + " DataType :" + wordsArray[1] + " Property :" + wordsArray[2]);
                                 logger.info("Catagory :" + wordsArray[0] + " DataType :" + wordsArray[1] + " Property :" + wordsArray[2]);
-                                //tables.put("+className+".class.getName(), new TieredStorageTableConfig().setName("+className+".class.getName()).setCriteria(\""+criteria+"\")); \n";
-                                tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria(wordsArray[2]));
+                                //tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria(wordsArray[2]));
+                                tieredStorageConfig.addTable(new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria(wordsArray[2]));
                             }
                             if (wordsArray[0].equalsIgnoreCase("T")) {
                                 System.out.println("Time :");
                                 logger.info("Time :");
                                 System.out.println(wordsArray[1] + " :: " + wordsArray[2] + " : " + wordsArray[3]);
                                 logger.info(wordsArray[1] + " :: " + wordsArray[2] + " : " + wordsArray[3]);
-                                //tables.put("+className+".class.getName(), new TieredStorageTableConfig().setName("+className+".class.getName()).setTimeColumn(\""+property+"\").setPeriod(Duration.ofDays("+criteria.replace("d","")+"))); \n";
-                                //Period period = Period.parse("P1D");
                                 Duration duration = Duration.parse(wordsArray[3]);
-                                tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setTimeColumn(wordsArray[2]).setPeriod(duration));
-                                //tables.put(Purchase.class.getName(), new TieredStorageTableConfig().setName(Purchase.class.getName()).setTimeColumn("orderTime").setPeriod(Duration.ofDays(durationDays)));
+                                //tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setTimeColumn(wordsArray[2]).setPeriod(duration));
+                                tieredStorageConfig.addTable(new TieredStorageTableConfig().setName(wordsArray[1]).setTimeColumn(wordsArray[2]).setPeriod(duration));
                             }
                             if (wordsArray[0].equalsIgnoreCase("A")) {
                                 System.out.println(wordsArray[1] + "ALL ");
                                 logger.info(wordsArray[1] + "ALL ");
-                                tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria("all"));
+                                //tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria("all"));
+                                tieredStorageConfig.addTable(new TieredStorageTableConfig().setName(wordsArray[1]).setCriteria("all"));
                             }
                             if (wordsArray[0].equalsIgnoreCase("R")) {
                                 System.out.println(wordsArray[1] + "Transient :: ");
                                 logger.info(wordsArray[1] + "Transient :: ");
-                                //+ "		tables.put(Data2.class.getName(), new TieredStorageTableConfig().setName(Data2.class.getName()).setTransient(true));\n"
-                                tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setTransient(true));
+                                //tables.put(wordsArray[1], new TieredStorageTableConfig().setName(wordsArray[1]).setTransient(true));
+                                tieredStorageConfig.addTable(new TieredStorageTableConfig().setName(wordsArray[1]).setTransient(true));
                             }
                         }
                     }
@@ -105,8 +107,10 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
             System.out.println("MAP :" + tables);
             logger.info("MAP :" + tables);
             //TieredStorageImpl Ends...
-            tieredStorageConfig.setTables(tables);
-            factoryBean.setTieredStorageConfig(tieredStorageConfig);
+            //tieredStorageConfig.setTables(tables);
+
+            //factoryBean.setTieredStorageConfig(tieredStorageConfig);  // Removed
+            factoryBean.setCachePolicy(new TieredStorageCachePolicy(tieredStorageConfig));
         }else{
             logger.info("Skipping Tiered Storage file configuration.");
         }

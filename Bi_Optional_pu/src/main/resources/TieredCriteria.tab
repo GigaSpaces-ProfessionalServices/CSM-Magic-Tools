@@ -1,6 +1,6 @@
-C,com.j_spaces.examples.benchmark.messages.MessagePOJO,counter<'5000'
-C,com.gs.Data1,type='4'
-T,com.gs.Purchase,orderTime,P24D
-R,com.gs.Data2
-A,com.gs.Data4
-C,com.gs.Order,id<'900'
+C	com.j_spaces.examples.benchmark.messages.MessagePOJO	counter<'1000'
+C	com.gs.Data1	type='4'
+T	com.gs.Purchase	orderTime	P20D
+R	com.gs.Data2
+A	com.gs.Data4
+C	com.gs.Order	id<'550'

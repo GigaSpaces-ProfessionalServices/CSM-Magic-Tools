@@ -1,0 +1,15 @@
+#!/bin/bash
+
+auto_spacestop
+auto_managerstop
+auto_nbstop
+auto_distop
+auto_grafanastop
+auto_infulxdbstop
+
+auto_influxdbstart
+auto_grafanastart
+auto_distart
+auto_nbstart
+auto_managerstart
+auto_spacestart

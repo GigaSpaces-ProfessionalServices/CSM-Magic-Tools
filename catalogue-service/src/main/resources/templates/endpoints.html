@@ -12,48 +12,28 @@
     </style>
     <script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
     <script type="text/javascript" language="javascript" th:src="@{/js/jquery.dataTables.min.js}"></script>
+    <script type="text/javascript" language="javascript" th:src="@{/js/endpoints.js}"></script>
 
     <script language="javascript" type="text/javascript">
     $(document).ready( function () {
-        $('#dataTable').DataTable();
+        $('#dataTable').DataTable({
+            scrollY: '460px',
+            scrollCollapse: true,
+             "columnDefs": [
+                { "searchable": false, "targets": [1,2,3,4,5] },
+                { "sortable": false, "targets": [3,4] }
+              ],
+              language: {
+                searchBuilder: {
+                    title: 'Search Builder Title'
+                }
+            }
+        });
 
         $( "#dataTable_length" ).prepend( "<a href='#' onclick='reloadWindow();'> <img title='reload' src='../images/refresh_icon.png'/></a> &nbsp; &nbsp;&nbsp;&nbsp;" );
         $("#searchLabel").html("Filter By Service Name:");
     } );
     </script>
-
-    <script>
-        var hostName;
-		var reloadInterval = '30000';
-        window.setInterval('reloadWindow()','3000000');
-
-        function reloadWindow(){
-			window.location.href = window.location.href;
-        }
-        window.onload = function(){
-            hostName = location.host;
-            var errDiv = document.getElementById("errorMsg");
-            var elms = document.querySelectorAll("[id='inError']");
-            if(elms.length > 0){
-                document.getElementById("totalInError").innerHTML = elms.length;
-            }
-
-            if(errDiv==null){
-                var ele = document.getElementById("NoData");
-
-                if(ele!=null){
-
-                    setTimeout('submitForm()','5000'); // Submit form only once to load initial data
-                }
-            }
-        }
-
-        function submitForm(){
-            document.getElementById("form").submit();
-        }
-    </script>
-
-
     <title>Service Catalogue</title>
 
 </head>
@@ -85,7 +65,12 @@
                 <th> MicroService </th>
                 <th> Instances </th>
                 <th> Port Number </th>
+                <th> Health </th>
+               <!--  <th> &nbsp; </th> -->
+                <th> Project </th>
+                <th> Description </th>
                 <th> Tables </th>
+
             </tr>
             </thead>
             <tbody>
@@ -99,6 +84,10 @@
                 <td style="width:15%" ><span th:text="${endpoint}">   </span></td>
                 <td style="width:10%" ><span> - </span> </td>
                 <td style="width:10%" > <span> - </span> </td>
+                <td style="width:5%" > <span> - </span> </td>
+                <!-- <td style="width:5%" > <span> - </span> </td> -->
+                <td style="width:10%" > <span> - </span> </td>
+                <td style="width:10%" > <span> - </span> </td>
                 <td id="NoData"> No Data Found!! </td>
 
             </tr>
@@ -111,6 +100,28 @@
                 <td style="width:10%" th:if="${endpoint.numberOfInstances!=null}"><span th:text="${endpoint.numberOfInstances}"> </span></td>
                 <td style="width:10%" th:if="${endpoint.portNumbers==null}"> <span> - </span> </td>
                 <td style="width:10%" th:if="${endpoint.portNumbers!=null}"><span th:text="${endpoint.portNumbers}"> </span></td>
+                <td style="width:10%" th:if="${endpoint.healthStatus==null}"> <span> - </span> </td>
+                <td style="width:5%;vertical-align:center;text-align: center;" th:if="${endpoint.healthStatus!=null} ">
+                   <div >
+                        <div th:if="${endpoint.healthStatus.name() == 'HEALTHY'}" th:id="'Health'+${endpoint.endpointName}">
+                            <img title='Healthy' src='../images/healthy.png'/>
+                        </div>
+                        <div th:if="${endpoint.healthStatus.name() == 'UNHEALTHY'}" th:id="'Health'+${endpoint.endpointName}">
+                            <img title='Unhealthy' src='../images/unhealthy.png'/>
+                        </div>
+                        <div th:if="${endpoint.healthStatus.name() == 'DEGRADED'}" th:id="'Health'+${endpoint.endpointName}">
+                            <img title='Degraded' src='../images/degraded.png'/>
+                        </div>
+                   </div>
+
+                </td>
+                <!-- <td style="width:5%"><button th:id="${isStat.index}" th:data-url="@{/service/{name}/try(name=${endpoint.endpointName})}"
+                            onclick="return tryService(this.getAttribute('data-url'),this.id)">Try it!</button>
+                </td> -->
+                <td style="width:10%" th:if="${endpoint.project==null}"><span>  </span> </td>
+                <td style="width:10%" th:if="${endpoint.project!=null}"><span th:text="${endpoint.project}"> </span></td>
+                <td style="width:10%" th:if="${endpoint.description==null}"><span>  </span></td>
+                <td style="width:10%" th:if="${endpoint.description!=null}"><span th:text="${endpoint.description}"> </span></td>
                 <td class="table-danger" id="inError" th:if="${endpoint.errorMsg!=null}"> <span th:text="${endpoint.errorMsg}"> </span> </td>
                 <td class="table-success" th:if="${endpoint.metadata!=null && !endpoint.metadata.empty}">
 
