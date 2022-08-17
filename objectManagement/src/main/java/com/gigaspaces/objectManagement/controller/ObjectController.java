@@ -4,6 +4,7 @@ import com.gigaspaces.internal.metadata.ITypeDesc;
 import com.gigaspaces.internal.metadata.PropertyInfo;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
+import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.SpaceObjectDto;
 import com.gigaspaces.objectManagement.service.DdlParser;
 import com.gigaspaces.objectManagement.utils.CommonUtil;
@@ -33,6 +34,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -43,18 +45,34 @@ public class ObjectController {
     private GigaSpace gigaSpace;
     @Autowired
     private DdlParser parser;
+    private static final String TYPE_DISTINGUISHER_SUFFIX = "_C";
+    private static final int NUMBER_OF_RECORDS = 10;
+    Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap = new TreeMap<>();
+    Map<String, SpaceTypeDescriptor> suffixedTypeDescriptorMap = new TreeMap<>();
+    ReportData reportData;
 
     @GetMapping("/list")
-    public JsonArray getObjectList(@RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) {
+    public JsonArray getObjectList(@RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator, @RequestParam("isSecured") Boolean isSecured, @RequestParam("username") String username, @RequestParam("password") String password) {
         logger.info("start -- list ");
-        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator);
+        logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ", isSecured=" + isSecured);
         if (lookupLocator == null || "".equals(lookupLocator)) {
             lookupLocator = "localhost";
         }
         if (lookupGroup == null || "".equals(lookupGroup)) {
             lookupGroup = "xap-16.2.0";
         }
-        Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        if (isSecured != null && isSecured) {
+            if (username == null || password == null || "".equals(username) || "".equals(password)) {
+                logger.severe("username " + username + "password" + " is not proper");
+            }
+        }
+        Admin admin;
+        if (isSecured != null && isSecured) {
+            admin = new AdminFactory().addLocator(lookupLocator).credentials(username, password).addGroups(lookupGroup).createAdmin();
+        } else {
+            admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        }
+
         JsonArray jsonArray = new JsonArray();
         JsonObject jsonObject;
 
@@ -111,7 +129,7 @@ public class ObjectController {
     }
 
     @PostMapping("/registertype/batch")
-    public String registerTypeBatch(@RequestParam("tableListfilePath") String tableListfilePath, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
+    public String registerTypeBatch(@RequestParam("tableListfilePath") String tableListfilePath, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator, @RequestParam("isSecured") Boolean isSecured, @RequestParam("username") String username, @RequestParam("password") String password) throws ClassNotFoundException, FileNotFoundException {
         logger.info("start -- registertype  batch");
         logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableListfilePath=" + tableListfilePath + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
@@ -120,7 +138,18 @@ public class ObjectController {
         if (lookupGroup == null || "".equals(lookupGroup)) {
             lookupGroup = "xap-16.2.0";
         }
-        Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        if (isSecured != null && isSecured) {
+            if (username == null || password == null || "".equals(username) || "".equals(password)) {
+                logger.severe("username " + username + "password" + " is not proper");
+            }
+        }
+        Admin admin;
+        if (isSecured != null && isSecured) {
+            admin = new AdminFactory().addLocator(lookupLocator).credentials(username, password).addGroups(lookupGroup).createAdmin();
+        } else {
+            admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        }
+
         admin.getSpaces().waitFor("", 1, TimeUnit.SECONDS);
         for (Space space : admin.getSpaces()) {
             if (spaceName.equals(space.getName())) {
@@ -188,7 +217,7 @@ public class ObjectController {
     }
 
     @PostMapping("/unregistertype")
-    public String unregisterType(@RequestParam("spaceName") String spaceName, @RequestParam("type") String type, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) {
+    public String unregisterType(@RequestParam("spaceName") String spaceName, @RequestParam("type") String type, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator, @RequestParam("isSecured") Boolean isSecured, @RequestParam("username") String username, @RequestParam("password") String password) {
         logger.info("start -- unregistertype");
         logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",type=" + type + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
@@ -197,7 +226,17 @@ public class ObjectController {
         if (lookupGroup == null || "".equals(lookupGroup)) {
             lookupGroup = "xap-16.2.0";
         }
-        Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        if (isSecured != null && isSecured) {
+            if (username == null || password == null || "".equals(username) || "".equals(password)) {
+                logger.severe("username " + username + "password" + " is not proper");
+            }
+        }
+        Admin admin;
+        if (isSecured != null && isSecured) {
+            admin = new AdminFactory().addLocator(lookupLocator).credentials(username, password).addGroups(lookupGroup).createAdmin();
+        } else {
+            admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        }
         admin.getSpaces().waitFor("", 1, TimeUnit.SECONDS);
         for (Space space : admin.getSpaces()) {
             if (spaceName.equals(space.getName())) {
@@ -213,7 +252,7 @@ public class ObjectController {
 
 
     @PostMapping("/registertype/single")
-    public String registerTypeSingle(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
+    public String registerTypeSingle(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("spaceName") String spaceName, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator, @RequestParam("isSecured") Boolean isSecured, @RequestParam("username") String username, @RequestParam("password") String password) throws ClassNotFoundException, FileNotFoundException {
         logger.info("start -- registertype single");
         logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath + ",spaceName=" + spaceName);
         if (lookupLocator == null || "".equals(lookupLocator)) {
@@ -222,7 +261,17 @@ public class ObjectController {
         if (lookupGroup == null || "".equals(lookupGroup)) {
             lookupGroup = "xap-16.2.0";
         }
-        Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        if (isSecured != null && isSecured) {
+            if (username == null || password == null || "".equals(username) || "".equals(password)) {
+                logger.severe("username " + username + "password" + " is not proper");
+            }
+        }
+        Admin admin;
+        if (isSecured != null && isSecured) {
+            admin = new AdminFactory().addLocator(lookupLocator).credentials(username, password).addGroups(lookupGroup).createAdmin();
+        } else {
+            admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        }
         admin.getSpaces().waitFor("", 1, TimeUnit.SECONDS);
         for (Space space : admin.getSpaces()) {
             if (spaceName.equals(space.getName())) {
@@ -273,7 +322,7 @@ public class ObjectController {
 
 
     @PostMapping("/registertype/sandbox")
-    public String registerTypeSandbox(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator) throws ClassNotFoundException, FileNotFoundException {
+    public String registerTypeSandbox(@RequestParam("tableName") String tableName, @RequestParam("ddlAndPropertiesBasePath") String ddlAndPropertiesBasePath, @RequestParam("lookupGroup") String lookupGroup, @RequestParam("lookupLocator") String lookupLocator, @RequestParam("isSecured") Boolean isSecured, @RequestParam("username") String username, @RequestParam("password") String password) throws ClassNotFoundException, FileNotFoundException {
         logger.info("start -- registertype sandbox");
         logger.info("params received : lookupGroup=" + lookupGroup + ",lookupLocator=" + lookupLocator + ",tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath);
         String spaceName = "sandboxSpace";
@@ -285,7 +334,17 @@ public class ObjectController {
         if (lookupGroup == null || "".equals(lookupGroup)) {
             lookupGroup = "xap-16.2.0";
         }
-        Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        if (isSecured != null && isSecured) {
+            if (username == null || password == null || "".equals(username) || "".equals(password)) {
+                logger.severe("username " + username + "password" + " is not proper");
+            }
+        }
+        Admin admin;
+        if (isSecured != null && isSecured) {
+            admin = new AdminFactory().addLocator(lookupLocator).credentials(username, password).addGroups(lookupGroup).createAdmin();
+        } else {
+            admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
+        }
         GridServiceManager mgr = admin.getGridServiceManagers()
                 .waitForAtLeastOne();
         ProcessingUnit pu = mgr.deploy(new SpaceDeployment(spaceName)

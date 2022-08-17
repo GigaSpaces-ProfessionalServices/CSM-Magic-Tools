@@ -26,12 +26,16 @@ public class DdlParser {
     }
 
     public Collection<SpaceTypeDescriptorBuilder> parse(String sql) {
+        return parse(sql, "");
+    }
+
+    public Collection<SpaceTypeDescriptorBuilder> parse(String sql, String suffix) {
         Collection<SpaceTypeDescriptorBuilder> result = new ArrayList<>();
         String[] commands = sql.split(";");
         for (String command : commands) {
             StringWrapper sw = new StringWrapper(command.trim());
             if (sw.startsWith(CREATE_TABLE_PREFIX)) {
-                result.add(parseCreateTableCommand(sw));
+                result.add(parseCreateTableCommand(sw, suffix));
             } else if (sw.startsWith(ALTER_TABLE_PREFIX)) {
                 parseAlterTableCommand(sw);
             } else if (!sw.s.isEmpty()) {
@@ -43,11 +47,14 @@ public class DdlParser {
         return result;
     }
 
-    protected SpaceTypeDescriptorBuilder parseCreateTableCommand(StringWrapper sql) {
+    protected SpaceTypeDescriptorBuilder parseCreateTableCommand(StringWrapper sql, String suffix) {
         // Remove create table prefix:
         sql.skip(CREATE_TABLE_PREFIX);
         // Read type name:
         String typeName = sql.readUntilWhiteSpace();
+        if (suffix.trim().length() > 0) {
+            typeName += suffix;
+        }
         SpaceTypeDescriptorBuilder builder = new SpaceTypeDescriptorBuilder(typeName);
         // Remove everything outside 'create table (...) ...'
         sql.trimOutsideEnclosingPair('(', ')');
