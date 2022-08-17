@@ -111,6 +111,7 @@ function list_all_servers() {
 		servers=""
 		for node in $SERVER_LIST; do
 			grep -q $node <<< $servers && continue || servers+="${node} "
+        done
 		for n in $servers; do echo "$n" | sed 's/ *//g' ; done
     done
 }
@@ -551,7 +552,7 @@ else
 fi
 
 LOG_FILE="/var/log/ods_sanity.log"
-CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
+CONFIG_FILE="/etc/runall/runall.conf"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
