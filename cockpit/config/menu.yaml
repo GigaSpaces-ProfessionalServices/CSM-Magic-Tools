@@ -1,0 +1,246 @@
+---
+id: 'Main'
+type: 'menu'
+1:
+    id: 'Tasks'
+    type: 'menu'
+    description: 'add description here'
+    1: 
+        id: 'Tasks Catalog'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'List Tasks'
+            type: 'command'
+            exec-type: 'module'
+            exec: 'list_tasks()'
+        2:
+            id: 'Show Tasks'
+            type: 'command'
+            exec-type: 'module'
+            exec: 'show_task()'
+    2:
+        id: 'Create New Task'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+    3:
+        id: 'Edit Tasks'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'Name'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Policy'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        3:
+            id: 'Activate'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        4:
+            id: 'Deactivate'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        5:
+            id: 'Add job'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        6:
+            id: 'Remove job'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        7:
+            id: 'Show metadata'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    4:
+        id: 'Delete Tasks'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+2:
+    id: 'Jobs'
+    type: 'menu'
+    description: 'add description here'
+    1: 
+        id: 'Review Catalog'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'List Jobs'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Show Jobs'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    2:
+        id: 'Create New Job'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'Validate'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Start Feeder'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        3:
+            id: 'Pause Feeder'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        4:
+            id: 'Deploy Feeder'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    3:
+        id: 'Edit Job'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'Name'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'command'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        3:
+            id: 'Destination'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        4:
+            id: 'Metadata'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    4:
+        id: 'Delete job'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+3:
+    id: 'Policies'
+    type: 'menu'
+    description: 'add description here'
+    1: 
+        id: 'Policies Catalog'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'List Policies'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Show Policies'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    2:
+        id: 'Create new policy'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+    3:
+        id: 'Edit Policies'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'Name'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Schedule'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        3:
+            id: 'Retry'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        4:
+            id: 'Activate Policy'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        5:
+            id: 'Deactivate Policy'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    4:
+        id: 'Delete Policy'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+4:
+    id : 'Reporting'
+    type: 'menu'
+    description: 'add description here'
+    1: 
+        id: 'Task Execution'
+        type: 'menu'
+        description: 'add description here'
+        1:
+            id: 'List last 15'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+        2:
+            id: 'Show executions'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+    2:
+        id: 'Task Cancellation'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+    3:
+        id: 'Jobs Monitor'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+5:
+    id: 'Settings'
+    type: 'menu'
+    description: 'add description here'
+    1: 
+        id: 'IP/Endpoint for PROD'   
+        type: 'command'
+        exec-type: ''
+        exec: ''
+    2:
+        id: 'IP/Endpoint for DR'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+    3:
+        id: 'Cockpit DB'
+        type: 'command'
+        exec-type: ''
+        exec: ''
+...
