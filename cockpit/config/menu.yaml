@@ -1,4 +1,5 @@
 ---
+#
 # the menu file basically consists of two types of elements (set under 'type' key):
 # menu:    only shows a list of chioces
 # command: executes some routine/command
