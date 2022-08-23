@@ -92,9 +92,18 @@ if __name__ == '__main__':
             dict = yd
         print_locations(user_selections, yd)
         if dict['type'] == 'command':
+            # checking that exec-type key is set
             if dict['exec-type'] == '':
-                print(f"{Fore.RED}ERROR: id '{dict['id']}' in menu.yaml is missing 'exec-type' value.{Fore.RESET}")
-                input("press ENTER to continue")
+                print(f"{Fore.RED}YAML ERROR: missing 'exec-type' value in command '{dict['id']}'.{Fore.RESET}")
+                input("press ENTER to go back to menu")
+                user_selections.pop()
+                continue
+            # checking that exec key is set
+            if dict['exec'] == '':
+                print(f"{Fore.RED}YAML ERROR: missing 'exec' value in command '{dict['id']}'.{Fore.RESET}")
+                input("press ENTER to go back to menu")
+                user_selections.pop()
+                continue
             if dict['exec-type'] == 'module':
                 eval(f"{dict['exec']}")
             if dict['exec-type'] == 'script':
