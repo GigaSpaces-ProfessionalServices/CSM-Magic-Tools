@@ -15,32 +15,34 @@ def handler(signal_recieved, frame):
     exit(0)
 
 
-def update_selections(val, list):
+def update_selections(a_choice, choices_list):
     '''
     @param : val - last value selected by user
     @param : list - the list of selections 
     @returns : list - the list of selections 
     '''
-    if val == '99':
-        list.pop()
+    if a_choice == '99':
+        choices_list.pop()
     else:
-        list.append(val)
+        choices_list.append(a_choice)
 
 
 def print_locations(selections, dictionary):
-    flen = 56
-    v_pref = ' '*2
-    version = "ODS Cockpit 2022, v1.0 | Copyright © Gigaspaces Ltd.\n"
+    flen = 70
+    v_pref = ' ' * 8
+    version = "ODS Cockpit 2022, v1.0 | Copyright © Gigaspaces Ltd"
     index = ""
     location = f" @MAIN".upper()
     for i in selections:
         index += f"[{str(i)}]"
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
-    styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
+    styled_str = f"|{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
     subprocess.run("clear")
-    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
+    print(pyfiglet.figlet_format("  ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
-    print('=' * (len(location) + 1) + f"\n{styled_str}\n" + '=' * (len(location) + 1), "\n")
+    print('=' * flen)
+    print(f"{styled_str:<81}{'|':>2}")
+    print('=' * flen)
 
 
 def validate_input(the_dict, the_selections):
@@ -62,8 +64,14 @@ def validate_input(the_dict, the_selections):
 def print_menu(dict):
     for k in dict.keys():
         if str(k).isdigit():
-            print(f"{f'[{k}]':<4} - {dict[k]['id']}")    
-    print(f"{'[99]':<4} - ESC")
+            index = f"[{k}]"
+            item = f"{dict[k]['id']}"
+            if dict[k]['description'] != '':
+                desc = f"- {dict[k]['description']}"
+            else:
+                desc = ""
+            print(f'{index:<4} - {item:<20}{desc:<20}')
+    print(f"{'[99]':<4} - {'ESC':<20}{'- Go Back / Exit ':<20}")
 
 
 if __name__ == '__main__':
@@ -84,10 +92,14 @@ if __name__ == '__main__':
             dict = yd
         print_locations(user_selections, yd)
         if dict['type'] == 'command':
+            if dict['exec-type'] == '':
+                print(f"{Fore.RED}ERROR: id '{dict['id']}' in menu.yaml is missing 'exec-type' value.{Fore.RESET}")
+                input("press ENTER to continue")
             if dict['exec-type'] == 'module':
                 eval(f"{dict['exec']}")
             if dict['exec-type'] == 'script':
-                pass
+                script = f"./scripts/{dict['exec']}"
+                subprocess.call([script], shell=True)
             user_selections.pop()
             continue
         print_menu(dict)
