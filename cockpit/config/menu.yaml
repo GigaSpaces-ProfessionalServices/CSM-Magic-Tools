@@ -1,77 +1,105 @@
 ---
+# the menu file basically consists of two types of elements (set under 'type' key):
+# menu:    only shows a list of chioces
+# command: executes some routine/command
+#
+# the menu element: only requires adding an index under which it will reside in the yaml structure
+#
+# the command element: requires the same as menu element but also has specific keys
+# to allow the execution of commands/procedures
+# exec-type: distinguishes between types execution
+#            module :: python modules or functions
+#            script :: shell script
+# exec:      the name of the script / module / function to execute
+#
+
 id: 'Main'
 type: 'menu'
+description: ''
 1:
     id: 'Tasks'
     type: 'menu'
-    description: 'add description here'
+    description: 'this is a description for tasks'
     1: 
         id: 'Tasks Catalog'
         type: 'menu'
-        description: 'add description here'
+        description: 'this is a description for tasks catalog'
         1:
             id: 'List Tasks'
             type: 'command'
             exec-type: 'module'
             exec: 'list_tasks()'
+            description: 'this is a description for list tasks'
         2:
             id: 'Show Tasks'
             type: 'command'
             exec-type: 'module'
             exec: 'show_task()'
+            description: 'this is a description for tasks show tasks'
+
     2:
         id: 'Create New Task'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'this is a description for create new task'
+
     3:
         id: 'Edit Tasks'
         type: 'menu'
-        description: 'add description here'
+        description: 'this is a description for edit tasks'
         1:
             id: 'Name'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'Policy'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         3:
             id: 'Activate'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         4:
             id: 'Deactivate'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         5:
             id: 'Add job'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         6:
             id: 'Remove job'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         7:
             id: 'Show metadata'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     4:
         id: 'Delete Tasks'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
 2:
     id: 'Jobs'
     type: 'menu'
-    description: 'add description here'
+    description: 'this is a description for jobs'
     1: 
         id: 'Review Catalog'
         type: 'menu'
@@ -79,13 +107,15 @@ type: 'menu'
         1:
             id: 'List Jobs'
             type: 'command'
-            exec-type: ''
-            exec: ''
+            exec-type: 'script'
+            exec: 'job_sample.sh'
+            description: 'add description here'
         2:
             id: 'Show Jobs'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     2:
         id: 'Create New Job'
         type: 'menu'
@@ -95,21 +125,25 @@ type: 'menu'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'Start Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         3:
             id: 'Pause Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         4:
             id: 'Deploy Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     3:
         id: 'Edit Job'
         type: 'menu'
@@ -119,30 +153,35 @@ type: 'menu'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'command'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         3:
             id: 'Destination'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         4:
             id: 'Metadata'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     4:
         id: 'Delete job'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
 3:
     id: 'Policies'
     type: 'menu'
-    description: 'add description here'
+    description: 'this is a description for policies'
     1: 
         id: 'Policies Catalog'
         type: 'menu'
@@ -152,16 +191,19 @@ type: 'menu'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'Show Policies'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     2:
         id: 'Create new policy'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
     3:
         id: 'Edit Policies'
         type: 'menu'
@@ -171,35 +213,41 @@ type: 'menu'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'Schedule'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         3:
             id: 'Retry'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         4:
             id: 'Activate Policy'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         5:
             id: 'Deactivate Policy'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     4:
         id: 'Delete Policy'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
 4:
     id : 'Reporting'
     type: 'menu'
-    description: 'add description here'
+    description: 'this is a description for reporting'
     1: 
         id: 'Task Execution'
         type: 'menu'
@@ -209,38 +257,45 @@ type: 'menu'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
         2:
             id: 'Show executions'
             type: 'command'
             exec-type: ''
             exec: ''
+            description: 'add description here'
     2:
         id: 'Task Cancellation'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
     3:
         id: 'Jobs Monitor'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
 5:
     id: 'Settings'
     type: 'menu'
-    description: 'add description here'
+    description: 'this is a description for settings'
     1: 
         id: 'IP/Endpoint for PROD'   
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
     2:
         id: 'IP/Endpoint for DR'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
     3:
         id: 'Cockpit DB'
         type: 'command'
         exec-type: ''
         exec: ''
+        description: 'add description here'
 ...
