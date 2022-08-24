@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import pyfiglet
 import subprocess
 from colorama import Fore, Style
@@ -9,40 +8,47 @@ from signal import SIGINT, signal
 import sqlite3
 import yaml
 from modules.commands import *
+import os
+
 
 def handler(signal_recieved, frame):
     print('\n\nOperation aborted by user!')
     exit(0)
 
 
+def print_locations(selections, dictionary):
+    v_pref = ' ' * 8
+    version = "ODS Cockpit 2022, v1.0 | Copyright © Gigaspaces Ltd"
+    index = ""
+    location = f"@:: MAIN".upper()
+    for i in selections:
+        index += f"[{str(i)}]"
+        location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
+    styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
+    subprocess.run("clear")
+    print(pyfiglet.figlet_format("   ODS Cockpit", font='slant'))
+    print(f"{v_pref}{version}\n\n")
+    print(f"{styled_str:<81}\n")
+
+
+def print_menu(dict):
+    for k in dict.keys():
+        if str(k).isdigit():
+            index = f"[{k}]"
+            item = f"{dict[k]['id']}"
+            if dict[k]['description'] != '':
+                desc = f"- {dict[k]['description']}"
+            else:
+                desc = ""
+            print(f'{index:<4} - {item:<24}{desc:<20}')
+    print(f"{'[99]':<4} - {'ESC':<24}{'- Go Back / Exit ':<20}")
+
+
 def update_selections(a_choice, choices_list):
-    '''
-    @param : val - last value selected by user
-    @param : list - the list of selections 
-    @returns : list - the list of selections 
-    '''
     if a_choice == '99':
         choices_list.pop()
     else:
         choices_list.append(a_choice)
-
-
-def print_locations(selections, dictionary):
-    flen = 70
-    v_pref = ' ' * 8
-    version = "ODS Cockpit 2022, v1.0 | Copyright © Gigaspaces Ltd"
-    index = ""
-    location = f" @MAIN".upper()
-    for i in selections:
-        index += f"[{str(i)}]"
-        location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
-    styled_str = f"|{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
-    subprocess.run("clear")
-    print(pyfiglet.figlet_format("  ODS Cockpit", font='slant'))
-    print(f"{v_pref}{version}\n\n")
-    print('=' * flen)
-    print(f"{styled_str:<81}{'|':>2}")
-    print('=' * flen)
 
 
 def validate_input(the_dict, the_selections):
@@ -61,24 +67,11 @@ def validate_input(the_dict, the_selections):
             break
 
 
-def print_menu(dict):
-    for k in dict.keys():
-        if str(k).isdigit():
-            index = f"[{k}]"
-            item = f"{dict[k]['id']}"
-            if dict[k]['description'] != '':
-                desc = f"- {dict[k]['description']}"
-            else:
-                desc = ""
-            print(f'{index:<4} - {item:<20}{desc:<20}')
-    print(f"{'[99]':<4} - {'ESC':<20}{'- Go Back / Exit ':<20}")
-
-
 if __name__ == '__main__':
     # catch user CTRL+C key press
     signal(SIGINT, handler)
 
-    menu_file = "./config/menu.yaml"
+    menu_file = f"{os.path.dirname(os.path.abspath(__file__))}/config/menu.yaml"
     user_selections = []  
 
     # load yaml
