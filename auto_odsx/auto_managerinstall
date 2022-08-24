@@ -3,26 +3,8 @@
 set timeout -1
 
 cd /dbagiga/gs-odsx
-spawn ./odsx.py
-# Servers
-expect "Enter your option"
-send -- "2\r"
-# Manager
-expect "Enter your option"
-send -- "1\r"
-# Install
-expect "Enter your option"
-send -- "1\r"
-# Do you want to continue installation for above configuration
+spawn ./odsx.py servers manager install
 expect "Do you want to continue installation for above configuration"
 send -- "y\r"
-
-# Exit
-expect "Enter your option"
-send -- "99\r"
-expect "Enter your option"
-send -- "99\r"
-expect "Enter your option"
-send -- "99\r"
 
 expect eof

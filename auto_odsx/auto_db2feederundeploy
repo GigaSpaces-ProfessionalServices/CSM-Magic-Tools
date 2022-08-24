@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py dataengine db2-feeder remove-undeploy
+# sure
+expect "Proceeding with manager host"
+send -- "\r"
+expect "For exist"
+send -- "\r"
+expect "Enter drain mode"
+send -- "\r"
+expect "Enter drain mode timeout"
+send -- "\r"
+expect "Do you want to remove gsc"
+send -- "y\r"
+
+expect eof

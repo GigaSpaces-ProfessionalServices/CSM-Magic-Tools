@@ -10,4 +10,5 @@ while (( $containers < $expected_containers )); do
 	echo containers=$containers
 done
 echo containers=$containers
-auto_tsdeploy
+cd /dbagiga/josh/auto_odsx
+./auto_tsdeploy
