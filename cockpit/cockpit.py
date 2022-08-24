@@ -18,7 +18,7 @@ def handler(signal_recieved, frame):
 
 def print_locations(selections, dictionary):
     v_pref = ' ' * 8
-    version = "ODS Cockpit 2022, v1.0 | Copyright © Gigaspaces Ltd"
+    version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
     index = ""
     location = f"@:: MAIN".upper()
     for i in selections:
