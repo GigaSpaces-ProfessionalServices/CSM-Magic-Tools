@@ -28,7 +28,7 @@ def print_locations(selections, dictionary):
     subprocess.run("clear")
     print(pyfiglet.figlet_format("   ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
-    print(f"{styled_str:<81}\n")
+    print(f"{styled_str}\n")
 
 
 def print_menu(dict):
