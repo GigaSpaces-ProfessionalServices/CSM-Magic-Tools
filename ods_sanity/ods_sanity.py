@@ -480,17 +480,21 @@ def run_sanity_routine():
 
 def get_auth(host):
     auth_params = {}
+    if os.environ['ODSXARTIFACTS'].split('/')[2].upper() in ['PRD', 'DR']:
+        odsx_env = 'PRD'
+    else:
+        odsx_env = 'STG'
     opt_user = "PassProps.UserName"
     opt_pass = "Password"
     cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLLSTG ' \
-          f'-p Query="Safe=AIMODSUSERSBLLSTG;Folder=;Object=ACCHQudkodsl;" -o PassProps.UserName'
+          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
+          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o PassProps.UserName'
     sh_cmd = f"ssh {host} '{cmd}'"
     the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
     auth_params['user'] = the_response.strip("\\n'").strip("b'")
     cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLLSTG ' \
-          f'-p Query="Safe=AIMODSUSERSBLLSTG;Folder=;Object=ACCHQudkodsl;" -o Password'
+          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
+          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o Password'
     sh_cmd = f"ssh {host} '{cmd}'"
     the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
     auth_params['pass'] = the_response.strip("\\n'").strip("b'")
