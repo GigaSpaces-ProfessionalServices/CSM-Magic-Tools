@@ -124,8 +124,8 @@ description: ''
         1:
             id: 'Validate'
             type: 'command'
-            exec-type: ''
-            exec: ''
+            exec-type: 'module'
+            exec: 'validator()'
             description: 'add description here'
         2:
             id: 'Start Feeder'
