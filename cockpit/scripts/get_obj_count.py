@@ -2,28 +2,12 @@
 # *-* coding: utf-8 *-*
 
 
-from ast import arguments
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import subprocess
 import argparse
 import yaml
 import os
-
-
-def argument_parser():
-    parser = argparse.ArgumentParser()
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('env_name', action="store", help="target the named environment")
-    required.add_argument('type', action="store", help="target the named type")
-    the_arguments = {}
-    ns = parser.parse_args()
-    if ns.env_name:
-        the_arguments['env_name'] = ns.env_name
-    if ns.type:
-        the_arguments['type'] = ns.type
-    return the_arguments
-
 
 def get_auth(host):
     auth_params = {}
@@ -91,7 +75,7 @@ def get_object_count():
     url = f"http://{endpoint}:{defualt_port}/v2/spaces/{the_space['name']}/statistics/types"
     headers = {'Accept': 'application/json'}
     response_data = requests.get(url, auth=(auth['user'], auth['pass']), headers=headers, verify=False)
-    return response_data.json()[type]['entries']
+    return response_data.json()
 
 endpoint = "<SET ENDPOINT FOR REST API>"
 defualt_port = 8090
@@ -101,42 +85,33 @@ host_file = f"{os.environ['ODSXARTIFACTS']}/odsx/host.yaml"
 # main
 # disable insecure request warning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-arguments = argument_parser()
-if arguments:
-    # check REST status and set operational manager
-    managers = get_managers(host_file)
-    
-    # configure authentication
-    auth = {}
-    if is_env_secured(managers['host1']):
-        auth = get_auth(managers['host1'])
-    else:
-        auth['user'], auth['pass'] = '', ''
-    # configure manager
-    manager = ""
-    for m in managers.values():
-        url = f'http://{m}:{defualt_port}/v2/index.html'
-        if is_restful_ok(url):
-            manager = m
-            break
-    if manager == "":
-        print('REST status: DOWN')
-        exit(1)
-    
-    #######################################
-    endpoint = manager
-    #######################################
 
-    ### parse arguments ###
-    if 'env_name' not in arguments:
-        exit(1)
-    if 'type' not in arguments:
-        exit(1)
-    
-    ### execute operations ###    
-    the_space = get_space()
-    #space_instances = the_space['instancesIds']
-    # sum entries per instance
-    total_entries = get_object_count()
-    print(total_entries)
+# check REST status and set operational manager
+managers = get_managers(host_file)
 
+# configure authentication
+auth = {}
+if is_env_secured(managers['host1']):
+    auth = get_auth(managers['host1'])
+else:
+    auth['user'], auth['pass'] = '', ''
+
+# configure manager
+manager = ""
+for m in managers.values():
+    url = f'http://{m}:{defualt_port}/v2/index.html'
+    if is_restful_ok(url):
+        manager = m
+        break
+if manager == "":
+    print('REST status: DOWN')
+    exit(1)
+
+#######################################
+endpoint = manager
+#######################################
+
+### execute operations ###    
+the_space = get_space()
+total_entries = get_object_count()
+print(total_entries)
