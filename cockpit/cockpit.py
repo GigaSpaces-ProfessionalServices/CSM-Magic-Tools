@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
+from ast import arguments
 import pyfiglet
 import subprocess
 from colorama import Fore, Style
@@ -17,7 +18,7 @@ def handler(signal_recieved, frame):
 
 
 def print_locations(selections, dictionary):
-    v_pref = ' ' * 8
+    v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
     index = ""
     location = f"@:: MAIN".upper()
@@ -26,7 +27,7 @@ def print_locations(selections, dictionary):
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
     styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
     subprocess.run("clear")
-    print(pyfiglet.figlet_format("   ODS Cockpit", font='slant'))
+    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
     print(f"{styled_str}\n")
 
@@ -98,12 +99,13 @@ if __name__ == '__main__':
                 user_selections.pop()
                 continue
             if dict['exec-type'] == 'module':
-                eval(f"{dict['exec']}")
+                arguments = ', '.join(dict['arguments'])
+                eval(f"{dict['exec']}({arguments})")
             if dict['exec-type'] == 'script':
-                script = f"./scripts/{dict['exec']}"
+                arguments = ' '.join(dict['arguments'])
+                script = f"./scripts/{dict['exec']} {arguments}"
                 subprocess.call([script], shell=True)
             user_selections.pop()
             continue
         print_menu(dict)
         validate_input(dict, user_selections)
-        
