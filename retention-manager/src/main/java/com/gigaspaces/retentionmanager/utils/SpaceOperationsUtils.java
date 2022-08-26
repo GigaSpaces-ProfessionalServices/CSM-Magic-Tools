@@ -38,6 +38,7 @@ public class SpaceOperationsUtils {
             return recordsUpdated;
         }catch (Exception e){
             e.printStackTrace();
+            log.error("Error in -> executeSqlUpdate"+e.getMessage(),e);
             return 0;
         }
     }
@@ -69,6 +70,7 @@ public class SpaceOperationsUtils {
             //return recordsUpdated;
         }catch (Exception e){
             e.printStackTrace();
+            log.error("Error in -> executeQuery"+e.getMessage(),e);
             //return 0;
         }
     }
@@ -82,6 +84,7 @@ public class SpaceOperationsUtils {
             return DriverManager.getConnection(JDBC_URL, properties);
 
         } catch(SQLException ex) {
+            log.error("Error in -> getConnection"+ex.getMessage(),ex);
             System.err.println("SQLException: " + ex.getMessage());
         }
 
@@ -104,6 +107,7 @@ public class SpaceOperationsUtils {
             connection.setUseSingleSpace(false); //false = cluster, true=single
 
         } catch(SQLException ex) {
+            log.error("Error in -> getConnection"+ex.getMessage(),ex);
             System.err.println("SQLException: " + ex.getMessage());
         }
 

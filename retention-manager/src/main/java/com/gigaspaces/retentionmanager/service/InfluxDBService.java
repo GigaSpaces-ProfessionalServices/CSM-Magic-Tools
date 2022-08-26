@@ -53,18 +53,22 @@ public class InfluxDBService {
     public void writeMeasurement(String objectType,Integer deletedRecords, Date cleanupStarted){
         log.info("Entering in to -> writeMeasurement");
         log.debug("cleanupStarted->"+cleanupStarted);
-        connectToDatabase();
-        long executionTime = commonUtils.findDateDifference(cleanupStarted,new Date(),"");
-        Point point = Point.measurement("object_cleanup")
-                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-                .tag("object", objectType)
-                .addField("deletedRecords", deletedRecords)
-                .addField("executionTime", executionTime)
-                .build();
+        try {
+            connectToDatabase();
+            long executionTime = commonUtils.findDateDifference(cleanupStarted, new Date(), "");
+            Point point = Point.measurement("object_cleanup")
+                    .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                    .tag("object", objectType)
+                    .addField("deletedRecords", deletedRecords)
+                    .addField("executionTime", executionTime)
+                    .build();
 
-        influxDB.write(point);
-        log.info("Exiting from -> writeMeasurement");
-
+            influxDB.write(point);
+            log.info("Exiting from -> writeMeasurement");
+        } catch (Exception e){
+            e.printStackTrace();
+            log.error("Error in writeMeasurement -> "+e.getLocalizedMessage(),e);
+        }
     }
 
 }
