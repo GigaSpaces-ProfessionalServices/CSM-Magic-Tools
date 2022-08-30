@@ -25,8 +25,8 @@ def print_locations(selections, dictionary):
         index += f"[{str(i)}]"
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
     styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
-    #subprocess.run("clear")
-    #print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
+    subprocess.run("clear")
+    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
     print(f"{styled_str}\n")
 
