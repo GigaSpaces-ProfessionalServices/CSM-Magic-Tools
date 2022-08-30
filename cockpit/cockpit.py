@@ -1,15 +1,14 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-from ast import arguments
+import os
+from signal import SIGINT, signal
+import yaml
 import pyfiglet
 import subprocess
 from colorama import Fore, Style
-from signal import SIGINT, signal
 import sqlite3
-import yaml
 from modules.commands import *
-import os
 
 
 def handler(signal_recieved, frame):
@@ -26,8 +25,8 @@ def print_locations(selections, dictionary):
         index += f"[{str(i)}]"
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
     styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
-    subprocess.run("clear")
-    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
+    #subprocess.run("clear")
+    #print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
     print(f"{styled_str}\n")
 
@@ -99,11 +98,9 @@ if __name__ == '__main__':
                 user_selections.pop()
                 continue
             if dict['exec-type'] == 'module':
-                arguments = ', '.join(dict['arguments'])
-                eval(f"{dict['exec']}({arguments})")
+                eval(f"{dict['exec']}()")
             if dict['exec-type'] == 'script':
-                arguments = ' '.join(dict['arguments'])
-                script = f"./scripts/{dict['exec']} {arguments}"
+                script = f"./scripts/{dict['exec']}"
                 subprocess.call([script], shell=True)
             user_selections.pop()
             continue
