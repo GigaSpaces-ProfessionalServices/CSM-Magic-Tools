@@ -49,7 +49,6 @@ def main():
     cockpit_db = f"{sqlite_home}/cockpit.db"
     create_jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
                                             id integer PRIMARY KEY,
-                                            uid text NOT NULL,
                                             name text NOT NULL,
                                             metadata text,
                                             content text,
