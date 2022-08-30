@@ -1,0 +1,10 @@
+---
+envs:
+    prod:
+        pivot_addr: ''
+        REST_endpoint: ''
+    
+    dr:
+        pivot_addr: ''
+        REST_endpoint: ''
+...
