@@ -20,116 +20,103 @@ description: ''
 1:
     id: 'Tasks'
     type: 'menu'
-    description: 'this is a description for tasks'
+    description: 'Task is a collection of one or more jobs'
     1: 
         id: 'Tasks Catalog'
         type: 'menu'
-        description: 'this is a description for tasks catalog'
+        description: 'Catalog of registered tasks'
         1:
             id: 'List Tasks'
             type: 'command'
             exec-type: 'module'
             exec: 'list_tasks'
-            arguments: []
-            description: 'this is a description for list tasks'
+            description: 'List registered tasks'
         2:
             id: 'Show Tasks'
             type: 'command'
             exec-type: 'module'
             exec: 'show_task'
-            arguments: []
-            description: 'this is a description for tasks show tasks'
+            description: 'Show selected task information'
 
     2:
         id: 'Create New Task'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
-        description: 'this is a description for create new task'
+        description: 'Register a new task'
 
     3:
         id: 'Edit Tasks'
         type: 'menu'
-        description: 'this is a description for edit tasks'
+        description: 'Edit a registered task'
         1:
             id: 'Name'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'The task name'
         2:
             id: 'Policy'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'The policy associated with the task'
         3:
             id: 'Activate'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Set a task as active'
         4:
             id: 'Deactivate'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Set a task as inactive'
         5:
             id: 'Add job'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Associate a job with a task'
         6:
             id: 'Remove job'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Disassociate a job from a task'
         7:
             id: 'Show metadata'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Show task metadata'
     4:
         id: 'Delete Tasks'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
-        description: 'add description here'
+        description: 'Delete/Deregister a task'
 2:
     id: 'Jobs'
     type: 'menu'
-    description: 'this is a description for jobs'
+    description: 'Job is the atomic component associated with a task'
     1: 
-        id: 'Review Catalog'
+        id: 'Jobs Catalog'
         type: 'menu'
-        description: 'add description here'
+        description: 'Catalog of registered jobs'
         1:
             id: 'List Jobs'
             type: 'command'
             exec-type: 'script'
             exec: 'job_sample.sh'
-            arguments: ['Hello World', 'arg2']
-            description: 'add description here'
+            description: 'List registered jobs'
         2:
             id: 'Show Jobs'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
-            description: 'add description here'
+            description: 'Show selected job information'
     2:
         id: 'Create New Job'
         type: 'menu'
@@ -137,30 +124,26 @@ description: ''
         1:
             id: 'Validate'
             type: 'command'
-            exec-type: 'module'
-            exec: 'validator'
-            arguments: ["'34.245.201.149'"]
-            description: 'add description here'
+            exec-type: 'script'
+            exec: 'validation_generator.py'
+            description: 'Get entries count for a specific object type'
         2:
             id: 'Start Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         3:
             id: 'Pause Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         4:
             id: 'Deploy Feeder'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
     3:
         id: 'Edit Job'
@@ -171,35 +154,30 @@ description: ''
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         2:
             id: 'command'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         3:
             id: 'Destination'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         4:
             id: 'Metadata'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
     4:
         id: 'Delete job'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
 3:
     id: 'Policies'
@@ -214,21 +192,18 @@ description: ''
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         2:
             id: 'Show Policies'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
     2:
         id: 'Create new policy'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
     3:
         id: 'Edit Policies'
@@ -239,42 +214,36 @@ description: ''
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         2:
             id: 'Schedule'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         3:
             id: 'Retry'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         4:
             id: 'Activate Policy'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
         5:
             id: 'Deactivate Policy'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
     4:
         id: 'Delete Policy'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
 4:
     id : 'Reporting'
@@ -289,28 +258,25 @@ description: ''
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
+
             description: 'add description here'
         2:
             id: 'Show executions'
             type: 'command'
             exec-type: ''
             exec: ''
-            arguments: []
             description: 'add description here'
     2:
         id: 'Task Cancellation'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
     3:
         id: 'Jobs Monitor'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
 5:
     id: 'Settings'
@@ -321,20 +287,17 @@ description: ''
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
     2:
         id: 'IP/Endpoint for DR'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
     3:
         id: 'Cockpit DB'
         type: 'command'
         exec-type: ''
         exec: ''
-        arguments: []
         description: 'add description here'
 ...
