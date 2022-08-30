@@ -130,7 +130,7 @@ signal(SIGINT, handler)
 sqlite_home = '/tmp/sqlite'
 cockpit_db = f"{sqlite_home}/cockpit.db"
 
-environments = {1: ['PROD','PIVOT_PRD'], 2: ['DR', 'PIVOT_DR']}
+environments = {1: ['PRD','PIVOT_PRD'], 2: ['DR', 'PIVOT_DR']}
 space_types = get_object_types()
 # choice env
 choice = get_selected_env(environments)
