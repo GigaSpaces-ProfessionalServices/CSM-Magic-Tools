@@ -4,7 +4,6 @@
 
 import os
 from influxdb import InfluxDBClient
-import uuid
 import sqlite3
 from sqlite3 import Error
 import datetime
@@ -106,20 +105,17 @@ def register_job(conn, job):
 
 
 def generate_job(env_name, obj_type):
-    if env_name.lower() == 'prod':
-        pivot = 'PIVOT_PRD'
-    else:
-        pivot = 'PIVOT_DR'
+    env_name_low = env_name.lower()
+    pivot = f"PIVOT_{env_name}"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
     job_file = f"jobs/{job_file_name}"
-    ### job generation ###
-    cmd = "cat {exec_script} | ssh ${" + pivot + "} python3 -"
+    cmd = "cat {exec_script} | ssh ${" + os.environ[pivot] + "} python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.getcwd()}/scripts/get_obj_count_{env_name}.py"'.lower(),
-        f'cmd = f"{cmd}"',   
+        f'exec_script = "{os.getcwd()}/scripts/get_obj_count_{env_name_low}.py"',
+        f'cmd = f"{cmd}"',
         f'response = str({sp_exec}).strip(\'b"\').split(\'\\n\')',
         f'print(response)\n\n'
     ]
