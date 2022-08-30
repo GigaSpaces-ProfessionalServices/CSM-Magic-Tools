@@ -108,7 +108,7 @@ def generate_job(env_name, obj_type):
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
-    job_file = f"jobs/{job_file_name}"
+    job_file = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs/{job_file_name}"
     cmd = "cat {exec_script} | ssh ${" + pivot + "} python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
     lines = [
