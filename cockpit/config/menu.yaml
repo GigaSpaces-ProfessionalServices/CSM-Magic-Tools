@@ -117,6 +117,12 @@ description: ''
             exec-type: ''
             exec: ''
             description: 'Show selected job information'
+        3:
+            id: 'Test Job'
+            type: 'command'
+            exec-type: ''
+            exec: ''
+            description: 'Try/Test a selected job'
     2:
         id: 'Create New Job'
         type: 'menu'
