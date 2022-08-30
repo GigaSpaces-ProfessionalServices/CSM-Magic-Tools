@@ -109,7 +109,7 @@ def generate_job(env_name, obj_type):
     pivot = f"PIVOT_{env_name}"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
     job_file = f"jobs/{job_file_name}"
-    cmd = "cat {exec_script} | ssh ${" + os.environ[pivot] + "} python3 -"
+    cmd = "cat {exec_script} | ssh ${" + pivot + "} python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
     lines = [
         '#!/usr/bin/python3\n\n',
@@ -130,7 +130,7 @@ signal(SIGINT, handler)
 sqlite_home = '/tmp/sqlite'
 cockpit_db = f"{sqlite_home}/cockpit.db"
 
-environments = {1: ['PROD','PIVOT_PROD'], 2: ['DR', 'PIVOT_DR']}
+environments = {1: ['PROD','PIVOT_PRD'], 2: ['DR', 'PIVOT_DR']}
 space_types = get_object_types()
 # choice env
 choice = get_selected_env(environments)
