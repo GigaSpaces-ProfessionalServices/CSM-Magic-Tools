@@ -100,7 +100,8 @@ if __name__ == '__main__':
             if dict['exec-type'] == 'module':
                 eval(f"{dict['exec']}()")
             if dict['exec-type'] == 'script':
-                script = f"./scripts/{dict['exec']}"
+                cwd = os.path.abspath(os.path.dirname(__file__))
+                script = f"{cwd}/scripts/{dict['exec']}"
                 subprocess.call([script], shell=True)
             user_selections.pop()
             continue
