@@ -1,0 +1,9 @@
+params:
+  cockpit:
+    db: ''
+  dr:
+    REST_endpoint: ''
+    pivot_addr: ''
+  prd:
+    REST_endpoint: ''
+    pivot_addr: ''
