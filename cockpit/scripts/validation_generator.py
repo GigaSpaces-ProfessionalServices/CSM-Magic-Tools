@@ -3,12 +3,13 @@
 
 
 import os
+import yaml
 from influxdb import InfluxDBClient
 import sqlite3
 from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
-
+import subprocess
 
 def handler(signal_recieved, frame):
     print('\n\nOperation aborted by user!')
@@ -114,7 +115,7 @@ def generate_job(env_name, obj_type):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.getcwd()}/scripts/get_obj_count_{env_name_low}.py"',
+        f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_obj_count_{env_name_low}.py"',
         f'cmd = f"{cmd}"',
         f'response = str({sp_exec}).strip(\'b"\').split(\'\\n\')',
         f'print(response)\n\n'
@@ -129,6 +130,11 @@ signal(SIGINT, handler)
 
 sqlite_home = '/tmp/sqlite'
 cockpit_db = f"{sqlite_home}/cockpit.db"
+
+cmd = f'{os.path.dirname(os.path.abspath(__file__))}/get_prd_params.py'
+response = str(subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout).strip('b"').split('\\n')
+print(response[0])
+exit()
 
 environments = {1: ['PRD','PIVOT_PRD'], 2: ['DR', 'PIVOT_DR']}
 space_types = get_object_types()
