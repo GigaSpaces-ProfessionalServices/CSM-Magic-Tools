@@ -16,19 +16,31 @@ def handler(signal_recieved, frame):
     exit(0)
 
 
-def print_locations(selections, dictionary):
+def print_header():
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
+    subprocess.run("clear")
+    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
+    print(f"{v_pref}{version}\n\n")
+
+
+def pretty_print(string, color, style=None):
+    color = eval('Fore.' + f'{color}'.upper())
+    if style is None:
+        print(f"{color}{string}{Style.RESET_ALL}")
+    else:
+        style = eval('Style.' + f'{style}'.upper())
+        print(f"{color}{style}{string}{Style.RESET_ALL}")
+
+
+def print_locations(selections, dictionary):
     index = ""
     location = f"@:: MAIN".upper()
     for i in selections:
         index += f"[{str(i)}]"
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
-    styled_str = f"{Fore.GREEN}{Style.BRIGHT}{location}{Style.RESET_ALL}"
-    subprocess.run("clear")
-    print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
-    print(f"{v_pref}{version}\n\n")
-    print(f"{styled_str}\n")
+    print_header()
+    pretty_print(f'{location}\n', 'green', 'bright')
 
 
 def print_menu(dict):
@@ -61,21 +73,76 @@ def validate_input(the_dict, the_selections):
                 update_selections(the_choice, the_selections)
                 break
         if not the_choice.isdigit() or int(the_choice) not in dict.keys():
-            the_choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
+            pretty_print('ERROR: Input must be a menu index!', 'red')
+            the_choice = input("Enter you choice: ")
         else:
             update_selections(the_choice, the_selections)
             break
 
 
+def check_settings(menu, config):
+    # load cockpit configuration
+    with open(config, 'r') as yf:
+        data = yaml.safe_load(yf)
+
+    # get user acceptance to run
+    def get_user_permission(question):
+        q = f"{question} [yes/no]: "
+        answer = input(q)
+        while True:
+            if answer in ['yes', 'Yes', 'YES']:
+                return True
+            elif answer in ['no', 'No', 'NO']:
+                return False
+            else:
+                answer = input("invlid input! type 'yes' or 'no': ")
+
+    # cockpit database settings
+    cockpit_db = data['params']['cockpit']['db']
+    if cockpit_db == '' or cockpit_db is None:
+        pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
+        pretty_print('ERROR: Cockpit.db is not set in configuration file. Aborting!', 'red')
+        exit(1)
+    elif not os.path.exists(cockpit_db):
+        pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
+        print("cockpit.db configuration exists but database has not been created yet.")
+        if get_user_permission("Would you like to create the cockpit database now?"):
+            subprocess.call(['./create_db.py'], shell=True)
+        else:
+            pretty_print('ERROR: A cockpit database is required in order to run. Aborting!', 'red')
+            exit(1)
+    # cockpit enviroment settings
+    config_ok = True
+    for env_name in data['params']:
+        if env_name != 'cockpit':
+            pivot = data['params'][env_name]['pivot_addr']
+            if pivot == '' or pivot is None:
+                config_ok = False
+                break
+    if not config_ok:
+        pretty_print(f'[ cockpit environment settings ]'.upper(), 'yellow', 'bright')
+        pretty_print("ERROR: Environment settings are missing from configuration file!", 'red')
+        if get_user_permission("Would you like cockpit to setup environment parameters automatically?"):
+            for env_name in data['params']:
+                if env_name != 'cockpit':
+                    script = f"./scripts/get_{env_name}_params.py"
+                    subprocess.call([script], shell=True)
+        input("Press ENTER to continue")
+
 if __name__ == '__main__':
     # catch user CTRL+C key press
     signal(SIGINT, handler)
 
-    menu_file = f"{os.path.dirname(os.path.abspath(__file__))}/config/menu.yaml"
+    menu_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/config/menu.yaml"
+    config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/config/config.yaml"
+    
+    print_header() 
+    check_settings(menu_yaml, config_yaml)
+   
     user_selections = []  
 
-    # load yaml
-    with open(menu_file, 'r') as yf:
+    # load menu yaml
+    with open(menu_yaml, 'r') as yf:
         yd = yaml.safe_load(yf)
 
     while True:
@@ -87,13 +154,13 @@ if __name__ == '__main__':
         if dict['type'] == 'command':
             # checking that exec-type key is set
             if dict['exec-type'] == '':
-                print(f"{Fore.RED}YAML ERROR: missing 'exec-type' value in command '{dict['id']}'.{Fore.RESET}")
+                pretty_print(f"YAML ERROR: missing 'exec-type' value in command '{dict['id']}'", 'red')
                 input("press ENTER to go back to menu")
                 user_selections.pop()
                 continue
             # checking that exec key is set
             if dict['exec'] == '':
-                print(f"{Fore.RED}YAML ERROR: missing 'exec' value in command '{dict['id']}'.{Fore.RESET}")
+                pretty_print(f"YAML ERROR: missing 'exec' value in command '{dict['id']}'", 'red')
                 input("press ENTER to go back to menu")
                 user_selections.pop()
                 continue
