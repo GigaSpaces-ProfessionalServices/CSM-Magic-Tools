@@ -26,17 +26,19 @@ public class SpaceConfiguration {
     @Value("${manager.host}")
     private String managerHost;
 
+    @Value("${lookup.group}")
+    private String lookupGroup;
+
     @Bean
     public GigaSpace gigaSpace(){
         String lookupLocators =managerHost+":4174";
-        String lookupGroup=getLookupGroup();
         return new GigaSpaceConfigurer(new SpaceProxyConfigurer(spaceName)
                 .lookupGroups(lookupGroup)
                 .lookupLocators(lookupLocators)
                 ).create();
     }
 
-    private String getLookupGroup(){
+    /*private String getLookupGroup(){
         String lookupGroup = "";
 
         RestTemplate template = new RestTemplate();
@@ -45,7 +47,7 @@ public class SpaceConfiguration {
         JsonObject jsonObject = new Gson().fromJson(strResponse, JsonObject.class);
         lookupGroup = jsonObject.get("lookupGroups").getAsString();
         return lookupGroup;
-    }
+    }*/
 
 }
 
