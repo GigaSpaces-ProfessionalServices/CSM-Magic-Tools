@@ -1,6 +1,8 @@
 package com.gigaspaces.objectManagement.service;
 
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,7 +18,7 @@ public class DdlParser {
     private static final String PK_PREFIX = "PRIMARY KEY ";
     // private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private java.util.logging.Logger logger = java.util.logging.Logger.getLogger(this.getClass().getName());
+    private Logger logger = LoggerFactory.getLogger(DdlParser.class);
 
 
     public Collection<SpaceTypeDescriptorBuilder> parse(Path path) throws IOException {
@@ -44,26 +46,38 @@ public class DdlParser {
             }
         }
 
+        logger.info("result........................."+result.toString());
+
         return result;
     }
 
     protected SpaceTypeDescriptorBuilder parseCreateTableCommand(StringWrapper sql, String suffix) {
+
+
         // Remove create table prefix:
         sql.skip(CREATE_TABLE_PREFIX);
+
+
         // Read type name:
         String typeName = sql.readUntilWhiteSpace();
+
+
+
         if (suffix.trim().length() > 0) {
             typeName += suffix;
         }
+
         SpaceTypeDescriptorBuilder builder = new SpaceTypeDescriptorBuilder(typeName);
         // Remove everything outside 'create table (...) ...'
         sql.trimOutsideEnclosingPair('(', ')');
+        //logger.info("StringWrapper sql -3-> "+sql.toString());
         // Split and parse table items:
         Collection<String> items = sql.splitExcludingEnclosingPair(',', '(', ')');
+
         for (String item : items) {
-            if (item.startsWith(PK_PREFIX))
+            if (item.startsWith(PK_PREFIX)) {
                 parsePrimaryKey(item, builder);
-            else
+            }else
                 parseColumn(item, builder);
         }
 
@@ -71,6 +85,7 @@ public class DdlParser {
     }
 
     private void parsePrimaryKey(String item, SpaceTypeDescriptorBuilder builder) {
+
         StringWrapper sw = new StringWrapper(item);
         sw.skip(PK_PREFIX);
         sw.trim();
@@ -88,13 +103,18 @@ public class DdlParser {
     }
 
     private void parseColumn(String column, SpaceTypeDescriptorBuilder builder) {
+
+        logger.info("Entering into -> parseColumn");
+        logger.info("column -> "+column);
         StringWrapper sw = new StringWrapper(column);
         String name = sw.readUntilWhiteSpace();
+        logger.info("name -> "+name);
         sw.trim();
         String sqlType = sw.readUntilWhiteSpace();
 
         Class<?> javaType = parseSqlType(sqlType);
         builder.addFixedProperty(name, javaType);
+        logger.info("name -> "+name+" & javaType -> "+javaType);
     }
 
     protected void parseAlterTableCommand(StringWrapper sql) {
@@ -104,7 +124,7 @@ public class DdlParser {
         String typeName = sql.readUntilWhiteSpace();
 
         //logger.warn("Skipping alter table command for " + typeName);
-        logger.severe("Skipping alter table command for " + typeName);
+        logger.error("Skipping alter table command for " + typeName);
     }
 
     protected Class<?> parseSqlType(String sqlType) {
@@ -278,6 +298,13 @@ public class DdlParser {
 
         private String getAbbreviation(int maxLength) {
             return s.length() < maxLength ? s : s.substring(0, maxLength) + "...";
+        }
+
+        @Override
+        public String toString() {
+            return "StringWrapper{" +
+                    "s='" + s + '\'' +
+                    '}';
         }
     }
 }

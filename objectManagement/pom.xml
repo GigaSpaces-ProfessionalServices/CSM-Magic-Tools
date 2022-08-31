@@ -14,10 +14,10 @@
     <name>objectManagement</name>
     <description>Object management api</description>
     <properties>
-        <java.version>11</java.version>
+        <java.version>8</java.version>
         <gs.version.leumi>16.2.0-m18</gs.version.leumi>
         <gs.version.old>16.2.0-m4-sun-10</gs.version.old>
-        <gs.version>16.2.0-m18-tue-32</gs.version>
+        <gs.version>16.2.0-m26-thu-30</gs.version>
     </properties>
     <repositories>
         <repository>
