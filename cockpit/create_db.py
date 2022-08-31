@@ -3,6 +3,7 @@
 
 
 import os
+import yaml
 import sqlite3
 from sqlite3 import Error
 
@@ -13,8 +14,13 @@ def create_database_home(db_folder):
     @param db_folder: sqlite3 path
     @return:
     '''
-    if not os.path.exists(db_folder): os.mkdir(db_folder)
-
+    if not os.path.exists(db_folder):
+        try:
+            os.makedirs(db_folder)
+        except OSError as e:
+            if 'Errno 13' in str(e):
+                print(f"\n{e}\n *try changing the path in config.yaml")
+            exit(1)
 
 def create_connection(db_file):
     '''
@@ -26,7 +32,6 @@ def create_connection(db_file):
     conn = None
     try:
         conn = sqlite3.connect(db_file)
-        print(f"sqlite module {sqlite3.version}")
     except Error as e:
         print(e)
     return conn
@@ -45,8 +50,15 @@ def create_table(conn, create_table_sql):
         print(e)
 
 def main():
-    sqlite_home = '/tmp/sqlite'
-    cockpit_db = f"{sqlite_home}/cockpit.db"
+    config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/config/config.yaml"
+    # load config yaml
+    with open(config_yaml, 'r') as yf:
+        data = yaml.safe_load(yf)
+    cockpit_db = data['params']['cockpit']['db']
+    if cockpit_db == '':
+        print("ERROR: config.yaml is missing the path to cockpit.db database file!")
+    else:
+        cockpit_db_home = os.path.dirname(cockpit_db)
     create_jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
                                             id integer PRIMARY KEY,
                                             name text NOT NULL,
@@ -75,13 +87,14 @@ def main():
         os.remove(cockpit_db)
 
     # create sqlite3 home directory if it doesn't exists
-    create_database_home(sqlite_home)
+    create_database_home(cockpit_db_home)
     
     # create database and/or tables from sql statements
     conn = create_connection(cockpit_db)
     if conn is not None:
         create_table(conn, create_tasks_table)
         create_table(conn, create_jobs_table)
+        print("\nDatabase created successfully!\n")
     else:
         print("ERROR: unable to establish database connection.")
 
