@@ -303,7 +303,7 @@ description: ''
     3:
         id: 'Cockpit DB'
         type: 'command'
-        exec-type: ''
-        exec: ''
-        description: 'add description here'
+        exec-type: 'script'
+        exec: 'db_info.py'
+        description: 'Show database information'
 ...
