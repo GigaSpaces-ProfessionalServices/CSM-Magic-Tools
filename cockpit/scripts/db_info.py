@@ -36,7 +36,8 @@ def list_db_tables(conn):
         print("\n[Cockpit database tables]")
         for table_name in tables:
             c.execute(f"SELECT count(*) FROM {table_name[0]};")
-            num_records = f"{len(c.fetchall())} record(s)"
+            num = c.fetchall()[0][0]
+            num_records = f"{num} record(s)"
             print(f"   {table_name[0]:<6} : {num_records:<10}")
         c.close()
     conn.close()
