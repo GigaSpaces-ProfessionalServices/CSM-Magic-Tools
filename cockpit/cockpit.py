@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
+
 import os
 from signal import SIGINT, signal
 import yaml
@@ -90,44 +91,66 @@ def check_settings(menu, config):
         q = f"{question} [yes/no]: "
         answer = input(q)
         while True:
-            if answer in ['yes', 'Yes', 'YES']:
-                return True
-            elif answer in ['no', 'No', 'NO']:
-                return False
-            else:
-                answer = input("invlid input! type 'yes' or 'no': ")
+            if answer in ['yes', 'Yes', 'YES']: return True
+            elif answer in ['no', 'No', 'NO']: return False
+            else: answer = input("invlid input! type 'yes' or 'no': ")
 
     # cockpit database settings
-    cockpit_db = data['params']['cockpit']['db']
-    if cockpit_db == '' or cockpit_db is None:
+    cockpit_db_home = data['params']['cockpit']['db_home']
+    cockpit_db_name = data['params']['cockpit']['db_name']
+    cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+    if cockpit_db_home == '' or cockpit_db_home is None or cockpit_db_name == '' or cockpit_db_name is None:
         pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
-        pretty_print('ERROR: Cockpit.db is not set in configuration file. Aborting!', 'red')
+        pretty_print('ERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
         exit(1)
     elif not os.path.exists(cockpit_db):
         pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
-        print("cockpit.db configuration exists but database has not been created yet.")
-        if get_user_permission("Would you like to create the cockpit database now?"):
+        print("cockpit.db configuration exists but database has not been created.")
+        if get_user_permission("would you like to create the cockpit database now?"):
             subprocess.call(['./create_db.py'], shell=True)
+            if not os.path.exists(cockpit_db): exit(1)
         else:
-            pretty_print('ERROR: A cockpit database is required in order to run. Aborting!', 'red')
+            pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
             exit(1)
     # cockpit enviroment settings
-    config_ok = True
+    env_set_required = False
     for env_name in data['params']:
         if env_name != 'cockpit':
-            pivot = data['params'][env_name]['pivot_addr']
+            pivot = data['params'][env_name]['endpoints']['pivot']
             if pivot == '' or pivot is None:
+                env_set_required = True
                 config_ok = False
                 break
-    if not config_ok:
+    if env_set_required:
         pretty_print(f'[ cockpit environment settings ]'.upper(), 'yellow', 'bright')
-        pretty_print("ERROR: Environment settings are missing from configuration file!", 'red')
-        if get_user_permission("Would you like cockpit to setup environment parameters automatically?"):
+        while not config_ok:
             for env_name in data['params']:
                 if env_name != 'cockpit':
-                    script = f"./scripts/get_{env_name}_params.py"
-                    subprocess.call([script], shell=True)
+                    if os.environ.get(data['params'][env_name]['variables']['pivot']) == None:
+                        errstr = "ERROR: environment variable for " + f"{env_name}".upper() + " pivot is not set. aborting!"
+                        pretty_print(errstr, 'red')
+                        exit(1)
+            pretty_print("ERROR: required parameters are not in configuration file!", 'red')
+            if get_user_permission("would you like cockpit to setup parameters automatically?"):
+                for env_name in data['params']:
+                    if env_name != 'cockpit':
+                        script = f"./scripts/get_{env_name}_params.py"
+                        subprocess.call([script], shell=True)
+                # reload cockpit configuration after changes
+                with open(config, 'r') as yf:
+                    data = yaml.safe_load(yf)
+            else:
+                print(f"\nplease set required parameters in: '{config_yaml}'\n")
+                exit()
+            config_ok = True
+            for env_name in data['params']:
+                if env_name != 'cockpit':
+                    pivot = data['params'][env_name]['endpoints']['pivot']
+                    if pivot == '' or pivot is None:
+                        config_ok = False
+                        break
         input("Press ENTER to continue")
+
 
 if __name__ == '__main__':
     # catch user CTRL+C key press
