@@ -20,6 +20,8 @@ def create_database_home(db_folder):
         except OSError as e:
             if 'Errno 13' in str(e):
                 print(f"\n{e}\n *try changing the path in config.yaml")
+            else:
+                print(e)
             exit(1)
 
 def create_connection(db_file):
@@ -54,11 +56,12 @@ def main():
     # load config yaml
     with open(config_yaml, 'r') as yf:
         data = yaml.safe_load(yf)
-    cockpit_db = data['params']['cockpit']['db']
+    cockpit_db_home = data['params']['cockpit']['db_home']
+    cockpit_db_name = data['params']['cockpit']['db_name']
+    cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
     if cockpit_db == '':
         print("ERROR: config.yaml is missing the path to cockpit.db database file!")
-    else:
-        cockpit_db_home = os.path.dirname(cockpit_db)
+    
     create_jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
                                             id integer PRIMARY KEY,
                                             name text NOT NULL,
