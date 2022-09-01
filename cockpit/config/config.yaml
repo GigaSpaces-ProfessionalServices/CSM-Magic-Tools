@@ -1,9 +1,18 @@
 params:
   cockpit:
-    db: ''
+    db_home: /tmp/sqlite
+    db_name: cockpit.db
   dr:
-    REST_endpoint: ''
-    pivot_addr: ''
+    endpoints:
+      pivot: 2.2.2.2
+      rest: null
+    variables:
+      pivot: PIVOT_DR
+      rest: ENDPOINT_DR
   prd:
-    REST_endpoint: ''
-    pivot_addr: ''
+    endpoints:
+      pivot: 1.1.1.1
+      rest: null
+    variables:
+      pivot: PIVOT_PRD
+      rest: ENDPOINT_PRD
