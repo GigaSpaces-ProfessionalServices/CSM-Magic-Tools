@@ -100,11 +100,11 @@ def check_settings(menu, config):
     cockpit_db_name = data['params']['cockpit']['db_name']
     cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
     if cockpit_db_home == '' or cockpit_db_home is None or cockpit_db_name == '' or cockpit_db_name is None:
-        pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
+        pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         pretty_print('ERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
         exit(1)
     elif not os.path.exists(cockpit_db):
-        pretty_print("[ cockpit db settings ]".upper(), 'yellow', 'bright')
+        pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         print("cockpit.db configuration exists but database has not been created.")
         if get_user_permission("would you like to create the cockpit database now?"):
             subprocess.call(['./create_db.py'], shell=True)
@@ -122,7 +122,7 @@ def check_settings(menu, config):
                 config_ok = False
                 break
     if env_set_required:
-        pretty_print(f'[ cockpit environment settings ]'.upper(), 'yellow', 'bright')
+        pretty_print(f'@:: cockpit environment settings'.upper(), 'green', 'bright')
         while not config_ok:
             for env_name in data['params']:
                 if env_name != 'cockpit':
