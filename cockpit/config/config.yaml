@@ -1,18 +1,20 @@
 params:
   cockpit:
-    db_home: /tmp/sqlite
-    db_name: cockpit.db
+    db_home: 
+    db_name: 
   dr:
     endpoints:
-      pivot: 2.2.2.2
+      pivot: 
       rest: null
+    # environment variable names are required!
     variables:
       pivot: PIVOT_DR
       rest: ENDPOINT_DR
   prd:
     endpoints:
-      pivot: 1.1.1.1
+      pivot: 
       rest: null
+    # environment variable names are required!
     variables:
       pivot: PIVOT_PRD
       rest: ENDPOINT_PRD
