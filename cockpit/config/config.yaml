@@ -1,20 +1,18 @@
 params:
   cockpit:
-    db_home: 
-    db_name: 
+    db_home: ''
+    db_name: ''
   dr:
     endpoints:
-      pivot: 
-      rest: null
-    # environment variable names are required!
+      pivot: ''
+      rest: ''
     variables:
       pivot: PIVOT_DR
       rest: ENDPOINT_DR
   prd:
     endpoints:
-      pivot: 
-      rest: null
-    # environment variable names are required!
+      pivot: ''
+      rest: ''
     variables:
       pivot: PIVOT_PRD
       rest: ENDPOINT_PRD
