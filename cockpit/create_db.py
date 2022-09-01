@@ -97,7 +97,7 @@ def main():
     if conn is not None:
         create_table(conn, create_tasks_table)
         create_table(conn, create_jobs_table)
-        print("\nDatabase created successfully!\n")
+        print("Database created successfully!\n")
     else:
         print("ERROR: unable to establish database connection.")
 

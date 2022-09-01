@@ -82,6 +82,8 @@ def validate_input(the_dict, the_selections):
 
 
 def check_settings(menu, config):
+    db_set_required = False
+    env_set_required = False
     # load cockpit configuration
     with open(config, 'r') as yf:
         data = yaml.safe_load(yf)
@@ -104,6 +106,7 @@ def check_settings(menu, config):
         pretty_print('ERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
         exit(1)
     elif not os.path.exists(cockpit_db):
+        db_set_required = True
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         print("cockpit.db configuration exists but database has not been created.")
         if get_user_permission("would you like to create the cockpit database now?"):
@@ -113,7 +116,6 @@ def check_settings(menu, config):
             pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
             exit(1)
     # cockpit enviroment settings
-    env_set_required = False
     for env_name in data['params']:
         if env_name != 'cockpit':
             pivot = data['params'][env_name]['endpoints']['pivot']
@@ -149,7 +151,9 @@ def check_settings(menu, config):
                     if pivot == '' or pivot is None:
                         config_ok = False
                         break
-        input("Press ENTER to continue")
+    if db_set_required or env_set_required:
+        pretty_print("\nSetup and verification of required settings completed successfully.", 'green')
+        input("Press ENTER to continue to the main menu.")
 
 
 if __name__ == '__main__':
