@@ -89,12 +89,13 @@ def register_job(conn, job):
     return cur.lastrowid
 
 
-def generate_job(env_name, obj_type):
+def generate_job(env_name, obj_type, yaml_data):
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
     job_file = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs/{job_file_name}"
-    cmd = "cat {exec_script} | ssh ${" + pivot + "} python3 -"
+    pivot = os.environ.get(yaml_data['params'][env_name_low]['variables']['pivot'])
+    cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
     lines = [
         '#!/usr/bin/python3\n\n',
@@ -120,6 +121,7 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+
 
 # cmd = f'{os.path.dirname(os.path.abspath(__file__))}/get_prd_params.py'
 # print(cmd)
@@ -150,7 +152,7 @@ for e in envs.values():
         the_type = t[0]
         conn = create_connection(cockpit_db)
         print(f"the type = {the_type}")
-        generate_job(the_env, the_type)
+        generate_job(the_env, the_type, data)
         job_name = f"validation_{the_env}_{the_type}"
         job_metadata = ""
         job_content = ""
