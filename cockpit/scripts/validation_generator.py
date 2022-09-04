@@ -94,7 +94,7 @@ def generate_job(env_name, obj_type, yaml_data):
     pivot = f"PIVOT_{env_name}"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
     job_file = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs/{job_file_name}"
-    pivot = os.environ.get(yaml_data['params'][env_name_low]['variables']['pivot'])
+    pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
     cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
     lines = [
@@ -102,8 +102,8 @@ def generate_job(env_name, obj_type, yaml_data):
         'import subprocess\n',
         f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_obj_count_{env_name_low}.py"',
         f'cmd = f"{cmd}"',
-        f'response = str({sp_exec}).strip(\'b"\').split(\'\\n\')',
-        f'print(response)\n\n'
+        f'response = {sp_exec}',
+        f'print(response.decode())\n\n'
     ]
     with open(job_file, 'w') as j:
         j.writelines('\n'.join(lines))
@@ -121,16 +121,10 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-
-
-# cmd = f'{os.path.dirname(os.path.abspath(__file__))}/get_prd_params.py'
-# print(cmd)
-# response = str(subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout).strip('b"').split('\\n')
-# print(response[0])
-# input("press ENTER ...")
-# exit()
-
-environments = {1: ['PRD','PIVOT_PRD'], 2: ['DR', 'PIVOT_DR']}
+environments = {
+    1: ['DR',data['params']['dr']['variables']['pivot']], 
+    2: ['PRD', data['params']['prd']['variables']['pivot']]
+    }
 space_types = get_object_types()
 # choice env
 choice = get_selection(environments, 'environments')
