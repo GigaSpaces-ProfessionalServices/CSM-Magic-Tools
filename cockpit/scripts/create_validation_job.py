@@ -104,8 +104,9 @@ def register_job(conn, job):
 def generate_job(env_name, obj_type, yaml_data):
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
+    jobs_home = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
-    job_file = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs/{job_file_name}"
+    job_file = f"{jobs_home}/{job_file_name}"
     pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
     cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
     sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
@@ -117,6 +118,12 @@ def generate_job(env_name, obj_type, yaml_data):
         f'response = {sp_exec}',
         f'print(response.decode())\n\n'
     ]
+    # create jobs home folder if not exists
+    if not os.path.exists(jobs_home):
+        try:
+            os.makedirs(jobs_home)
+        except OSError as e:
+            print(e)
     with open(job_file, 'w') as j:
         j.writelines('\n'.join(lines))
     # set execution bit for job file
