@@ -7,7 +7,6 @@ import yaml
 import subprocess
 from modules.commands import *
 from modules.func import *
-import sqlite3
 
 
 if __name__ == '__main__':
