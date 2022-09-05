@@ -52,7 +52,7 @@ def create_table(conn, create_table_sql):
         print(e)
 
 def main():
-    config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/config/config.yaml"
+    config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
     # load config yaml
     with open(config_yaml, 'r') as yf:
         data = yaml.safe_load(yf)
