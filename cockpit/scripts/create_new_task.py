@@ -123,21 +123,6 @@ def register_task(conn, task):
     return cur.lastrowid
 
 
-def register_job(conn, job):
-    """
-    Register a new job
-    @param conn: database connection object
-    @param job: job data
-    @return: job id
-    """
-    sql = ''' INSERT INTO jobs(name,metadata,content,command,destination,created)
-              VALUES(?,?,?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, job)
-    conn.commit()
-    return cur.lastrowid
-
-
 # main
 config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
 
@@ -156,33 +141,39 @@ t_uid = str(uuid.uuid4())
 # get task type from user
 result = get_type_selection(data['types'])
 if result == -1:
-    exit()
+    input("\nPress ENTER to go back to the menu")
 else:
     t_type = data['types'][result]
     t_type_sn = result
-t_metadata = "NULL"
-t_content = "NULL"
-t_state = "NULL"
-t_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-# list jobs from db
-print("\nChoose jobs to associate with this task.")
-note = "* Multiple selection available (i.e: 1,3,4) and range (i.e: 2-4)"
-print(f"{note}\n" + '='*len(note))
-conn = create_connection(cockpit_db)
-jobs = list_registered_jobs(conn)
-if len(jobs) > 0:
-    for j in jobs:
-        index = f"[{j[0]}]"
-        print(f'{index:<4} - {j[1]:<24}')
-    print(f'{"[99]":<4} - {"Skip (can be selected later from the Edit Tasks menu)":<24}')
-    selected_jobs = parse_jobs_selections(jobs)
-    for job_id in selected_jobs:
-        task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
+    t_metadata = "NULL"
+    t_content = "NULL"
+    t_state = "NULL"
+    t_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # list jobs from db
+    print("\nChoose jobs to associate with this task.")
+    note = "* Multiple selection available (i.e: 1,3,4) and range (i.e: 2-4)"
+    print(f"{note}\n" + '='*len(note))
+    conn = create_connection(cockpit_db)
+    jobs = list_registered_jobs(conn)
+    if len(jobs) > 0:
+        for j in jobs:
+            index = f"[{j[0]}]"
+            print(f'{index:<4} - {j[1]:<24}')
+        print(f'{"[99]":<4} - {"Skip (can be selected later from the Edit Tasks menu)":<24}')
+        selected_jobs = parse_jobs_selections(jobs)
+        if selected_jobs[0] == -1:
+            task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
+            r = register_task(conn, task_data)
+            print(f"Task (type = {t_type} ; uid = {t_uid}) registered successfully.")
+        else:
+            for job_id in selected_jobs:
+                task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
+                register_task(conn, task_data)
+                print(f"Task (type = {t_type} ; uid = {t_uid}) registered successfully.")
+    else:
+        print("There are no jobs registered yet\n* can be selected later from the Edit Tasks menu")
+        task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         register_task(conn, task_data)
-else:
-    print("There are no jobs registered yet\n* can be selected later from the Edit Tasks menu")
-    task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
-    register_task(conn, task_data)
-    input("\nPress ENTER to go back to continue")
+        print(f"Task (type = {t_type} ; uid = {t_uid}) registered successfully.")
 
-exit()
+input("\nPress ENTER to go back to the menu")
