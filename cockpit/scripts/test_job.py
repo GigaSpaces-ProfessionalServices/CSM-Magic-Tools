@@ -77,6 +77,7 @@ if len(jobs) > 0:
     choice = validate_input(jobs)
 else:
     print("No jobs found")
+    input("\nPress ENTER to go back to the main menu")
 if choice != -1:
     print(f"Testing Job: '{jobs[choice]}'")
     job_file = f"{jobs[choice]}.py".lower()
