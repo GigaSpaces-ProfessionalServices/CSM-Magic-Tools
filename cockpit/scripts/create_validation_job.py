@@ -167,7 +167,7 @@ for e in envs.values():
         job_creation_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (job_name, job_metadata, job_content, job_command, job_dest, job_creation_timestamp)
         if jobs_exist(conn, job_name):
-            print(f"Job: {job_name} already exists. skipping")
+            print(f"Job: {job_name} already exists.")
         else:
             generate_job(the_env, the_type, data)
             r = register_job(conn, job)
