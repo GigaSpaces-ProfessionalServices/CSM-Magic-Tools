@@ -41,9 +41,9 @@ description: ''
     2:
         id: 'Create New Task'
         type: 'command'
-        exec-type: ''
-        exec: ''
-        description: 'Register a new task'
+        exec-type: 'script'
+        exec: 'create_new_task.py'
+        description: 'Create a new task'
 
     3:
         id: 'Edit Tasks'
@@ -100,7 +100,7 @@ description: ''
 2:
     id: 'Jobs'
     type: 'menu'
-    description: 'Job is the atomic component associated with a task'
+    description: 'Job represents the "atomic component" associated with a task'
     1: 
         id: 'Jobs Catalog'
         type: 'menu'
@@ -131,7 +131,7 @@ description: ''
             id: 'Validate'
             type: 'command'
             exec-type: 'script'
-            exec: 'validation_generator.py'
+            exec: 'create_validation_job.py'
             description: 'Get entries count for a specific object type'
         2:
             id: 'Start Feeder'
