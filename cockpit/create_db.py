@@ -77,7 +77,7 @@ def main():
                                         uid text NOT NULL,
                                         type text NOT NULL,
                                         sn_type integer,
-                                        job_id integer NOT NULL,
+                                        job_id integer,
                                         metadata text,
                                         content text,
                                         state text,
