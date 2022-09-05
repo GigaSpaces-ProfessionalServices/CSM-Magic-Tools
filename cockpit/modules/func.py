@@ -150,5 +150,5 @@ def check_settings(config):
                         config_ok = False
                         break
     if db_set_required or env_set_required:
-        pretty_print("\nSetup and verification of required settings completed successfully.", 'green')
+        pretty_print("\nCockpit setup and verification completed successfully.", 'green')
         input("Press ENTER to continue to the main menu.")
