@@ -1,18 +1,26 @@
 params:
   cockpit:
-    db_home: ''
-    db_name: ''
+    db_home: /tmp/sqlite
+    db_name: cp.db
   dr:
     endpoints:
-      pivot: ''
+      pivot: 2.2.2.2
       rest: ''
     variables:
       pivot: PIVOT_DR
       rest: ENDPOINT_DR
   prd:
     endpoints:
-      pivot: ''
+      pivot: 1.1.1.1
       rest: ''
     variables:
       pivot: PIVOT_PRD
       rest: ENDPOINT_PRD
+types:
+  1: 'Validate'
+  2: 'Deploy MS'
+  3: 'Deploy Feeder'
+  4: 'Feeder Job'
+  5: 'IIDR Job'
+  6: 'Adabas Consumer Job'
+  7: 'MSSQL Job'
