@@ -108,7 +108,7 @@ def check_settings(config):
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         print("cockpit.db configuration exists but database has not been created.")
         if get_user_permission("would you like to create the cockpit database now?"):
-            subprocess.call(['./create_db.py'], shell=True)
+            subprocess.call(['./scripts/create_db.py'], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
             pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
