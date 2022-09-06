@@ -82,5 +82,6 @@ if choice != -1:
     print(f"Testing Job: '{jobs[choice]}'")
     job_file = f"{jobs[choice]}.py".lower()
     script = f'{jobs_home}/{job_file}'
-    response = subprocess.call([script], shell=True)
+    response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
+    print(f"[TEST JOB RESULT]\n{response}")
     input("\nPress ENTER to go back to the main menu")
