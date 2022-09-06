@@ -109,14 +109,14 @@ def generate_job(env_name, obj_type, yaml_data):
     job_file = f"{jobs_home}/{job_file_name}"
     pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
     cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
-    sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout'
+    sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()'
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
         f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_obj_count_{env_name_low}.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
-        f'print(response.decode())\n\n'
+        f'print(response)\n\n'
     ]
     # create jobs home folder if not exists
     if not os.path.exists(jobs_home):
