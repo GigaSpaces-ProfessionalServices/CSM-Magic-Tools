@@ -89,10 +89,10 @@ def check_settings(config):
     # get user acceptance to run
     def get_user_permission(question):
         q = f"{question} [yes/no]: "
-        answer = input(q)
+        answer = input(q).lower()
         while True:
-            if answer in ['yes', 'Yes', 'YES']: return True
-            elif answer in ['no', 'No', 'NO']: return False
+            if answer == 'yes': return True
+            elif answer == 'no': return False
             else: answer = input("invlid input! type 'yes' or 'no': ")
 
     # cockpit database settings
