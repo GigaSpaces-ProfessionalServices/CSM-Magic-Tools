@@ -85,6 +85,18 @@ def main():
                                         FOREIGN KEY (job_id) REFERENCES jobs (id)
                                     );"""
 
+    create_policies_table = """CREATE TABLE IF NOT EXISTS policies (
+                                        id integer PRIMARY KEY,
+                                        schedule integer NOT NULL,
+                                        repeat integer NOT NULL,
+                                        task_id integer,
+                                        metadata text,
+                                        content text,
+                                        state text,
+                                        created text NOT NULL,
+                                        FOREIGN KEY (task_id) REFERENCES tasks (id)
+                                    );"""
+
     # drop database if drop_db is set
     if 'drop_db' in globals():
         os.remove(cockpit_db)
@@ -97,6 +109,7 @@ def main():
     if conn is not None:
         create_table(conn, create_tasks_table)
         create_table(conn, create_jobs_table)
+        create_table(conn, create_policies_table)
         print("Database created successfully!\n")
     else:
         print("ERROR: unable to establish database connection.")
