@@ -10,7 +10,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import subprocess
 import yaml
 import os
-from influxdb import InfluxDBClient
+#from influxdb import InfluxDBClient
 import datetime
 
 def get_auth(host):
