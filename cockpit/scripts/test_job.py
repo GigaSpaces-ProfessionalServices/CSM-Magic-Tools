@@ -4,6 +4,7 @@
 
 import os
 import yaml
+import json
 import sqlite3
 from sqlite3 import Error
 from signal import SIGINT, signal
@@ -83,5 +84,12 @@ if choice != -1:
     job_file = f"{jobs[choice]}.py".lower()
     script = f'{jobs_home}/{job_file}'
     response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
-    print(f"[TEST JOB RESULT]\n{response}")
+    # converting string to dictionary
+    response = json.loads(response.replace("\'", "\""))
+    print("[TEST JOB RESULT]")
+    for k,v in response.items():
+        if k != 'java.lang.Object':
+            print(f"{'Object type:':<14} {k}")
+            print(f"{'# of entries:':<14} {v['entries']}")
+    
     input("\nPress ENTER to go back to the main menu")
