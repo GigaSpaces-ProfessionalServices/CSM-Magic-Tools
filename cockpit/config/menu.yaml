@@ -2,16 +2,16 @@
 #
 # the menu file basically consists of two types of elements (set under 'type' key):
 # menu:    only shows a list of chioces
-# command: executes some routine/command
+# command: executes some script/command
 #
-# the menu element: only requires adding an index under which it will reside in the yaml structure
+# every menu/sub-menu element requires an index key to represent its place in the yaml structure
 #
-# the command element: requires the same as menu element but also has specific keys
+# the command element requires the same as the menu element but also has specific keys
 # to allow the execution of commands/procedures
-# exec-type: distinguishes between types execution
-#            module :: python modules or functions
-#            script :: shell script
-# exec:      the name of the script / module / function to execute
+# exec-type: distinguishes between execution types
+#            module :: for python modules or functions imports
+#            script :: shell/python scripts
+# exec:      the name of the script/module/function to execute
 #
 
 id: 'Main'
@@ -104,7 +104,7 @@ description: ''
     1: 
         id: 'Jobs Catalog'
         type: 'menu'
-        description: 'Catalog of registered jobs'
+        description: 'The catalog of registered jobs'
         1:
             id: 'List Jobs'
             type: 'command'
@@ -188,23 +188,23 @@ description: ''
 3:
     id: 'Policies'
     type: 'menu'
-    description: 'A policy defines when and how a task is executed'
+    description: 'A policy defines when and how task(s) are executed'
     1: 
         id: 'Policies Catalog'
         type: 'menu'
-        description: 'add description here'
+        description: 'The catalog of registered jobs'
         1:
             id: 'List Policies'
             type: 'command'
-            exec-type: ''
-            exec: ''
-            description: 'add description here'
+            exec-type: 'script'
+            exec: 'list_policies.py'
+            description: 'List registered policies'
         2:
             id: 'Show Policies'
             type: 'command'
-            exec-type: ''
-            exec: ''
-            description: 'add description here'
+            exec-type: 'script'
+            exec: 'show_policy.py'
+            description: 'Show selected job information'
     2:
         id: 'Create new policy'
         type: 'command'
