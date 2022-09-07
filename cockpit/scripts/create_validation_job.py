@@ -52,7 +52,8 @@ def get_selection(the_dict, description):
         print(f'{index:<4} - {v[0]:<24}')
     if len(the_dict) > 1:
         index = f"[{k+1}]"
-        print(f'{index:<4} - {"All Environments":<24}')
+        item = "All " + description.capitalize()
+        print(f'{index:<4} - {item:<24}')
     print(f'{"[99]":<4} - {"ESC":<24}')
     result = validate_input(the_dict)
     if result != -1:
