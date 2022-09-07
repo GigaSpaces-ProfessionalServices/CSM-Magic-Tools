@@ -10,8 +10,8 @@ from sqlite3 import Error
 
 def create_database_home(db_folder):
     '''
-    :desc: create sqlite3 home directory if doesn't exists
-    :param db_folder: sqlite3 path
+    create sqlite3 home directory if doesn't exists
+    :param db_folder: sqlite3 home path
     :return:
     '''
     if not os.path.exists(db_folder):
@@ -26,7 +26,7 @@ def create_database_home(db_folder):
 
 def create_connection(db_file):
     '''
-    :desc: establish a database connection (or create a new db file)
+    establish a database connection (or create a new db file)
     :param db_file: path to db file
     :return: connection object
     '''
@@ -40,9 +40,10 @@ def create_connection(db_file):
 
 def create_table(conn, create_table_sql):
     '''
-    :desc: create a table from sql create_table_sql
+    create a table from sql create_table_sql
     :param conn: connection object
     :param create_table_sql: sqlite create table statement
+    :return:
     '''
     try:
         c = conn.cursor()
