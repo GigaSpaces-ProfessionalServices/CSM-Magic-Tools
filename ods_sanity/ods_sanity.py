@@ -71,6 +71,20 @@ def get_managers_from_runall_conf():
     return mng_hosts
 
 
+def get_iidr_from_runall_conf():
+    """
+    Get ODS management hosts from runall.conf
+    :return: List of management hosts
+    """
+    with open(runall_conf, 'r') as cfile:
+        for line in cfile:
+            if '_c_SERVER_LIST' in line:
+                _hosts = line.split('=')
+                _hosts = _hosts[1].split()
+                break
+    return _hosts
+
+
 def is_restful_ok(the_url):
     """
     send REST GET query and get the response [200 = OK]
@@ -391,7 +405,8 @@ def show_total_objects():
 
 def show_hardware_info():
     print('#' * 80 + '\n' + '#' * 29 + ' [ HARDWARE REPORT ] ' + '#' * 30 + '\n' + '#' * 80)
-    sh_cmd = f"{runall_exe} -hw"
+    sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
+        -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
     subprocess.call([sh_cmd], shell=True)
 
 
@@ -461,6 +476,14 @@ def run_sanity_routine():
     print('\n')
     if interactive_mode:
         input("Press Enter to continue...")
+    show_iidr_subscriptions()
+    print('\n')
+    if interactive_mode:
+        input("Press Enter to continue...")
+    show_di_pipeline_info()
+    print('\n')
+    if interactive_mode:
+        input("Press Enter to continue...")
     show_hardware_info()
     print('\n')
     if interactive_mode:
@@ -476,7 +499,6 @@ def run_sanity_routine():
     show_recovery_report(recmon_script)
     print('\n')
     
-
 
 def get_auth(host):
     auth_params = {}
@@ -510,6 +532,44 @@ def is_env_secured(the_manager):
         return True
     else:
         return False
+
+
+def show_di_pipeline_info():
+    logger = logging.getLogger()
+    print('#' * 80 + '\n' + '#' * 31 + ' [ DI PIPELINES ] ' + '#' * 31 + '\n' + '#' * 80)
+    server = get_iidr_from_runall_conf()[0]
+    port = "6080"
+    url = f"http://{server}:{port}/api/v1/pipeline/"
+    response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
+    r = response_data.json()[0]
+    for k,v in r.items():
+        key = f"{k}:"
+        print(f"{k:<18} {v}")
+    logging.shutdown()
+
+
+def show_iidr_subscriptions():
+    logger = logging.getLogger()
+    print('#' * 80 + '\n' + '#' * 28 + ' [ IIDR SUBSCRIPTIONS ] ' + '#' * 28 + '\n' + '#' * 80)
+    server = get_iidr_from_runall_conf()[0]
+    user = "USERNAME"
+    as_home = f"/home/{user}/iidr_cdc/as"
+    monitor_home = f"/home/{user}/iidr_cdc/iidr_monitor"
+    ss_file = "status_subscription.chcclp"
+    exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -v '(^$|Repl|---)'"
+    sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
+    response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+    lnum = 1
+    for line in response.splitlines():
+        f = line.strip().split()
+        if 'mirror' in f[1].lower():
+            print(f"{f[0]:<15} | {f[1]} {f[2]}")
+            continue
+        else:
+            print(f"{f[0]:<15} | {f[1]:<30}")
+        if lnum == 1: print("="*36)
+        lnum += 1
+    logging.shutdown()
 
 
 # globals
