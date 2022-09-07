@@ -72,10 +72,10 @@ function get_targeted_servers() {
     esac
     ENV_NAME="$(cat $CONFIG_FILE | grep "${env_grep}ENV_NAME" | cut -d'=' -f2)"
     [[ ${#svc_grep[@]} -eq 1 ]] && SERVICES="$(cat $CONFIG_FILE | grep "${svc_grep[0]}SERVICES" | cut -d'=' -f2)"
+    servers=""
+    for s in ${svc_grep[@]}; do servers+=" $(cat $CONFIG_FILE | grep "${s}SERVER_LIST" | cut -d'=' -f2)" ; done
     SERVER_LIST=""
-    for s in ${svc_grep[@]}; do
-        SERVER_LIST+=" $(cat $CONFIG_FILE | grep "${s}SERVER_LIST" | cut -d'=' -f2)"
-    done
+    for node in $servers; do grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+="${node} " ; done
 }
 
 function text_align() {
@@ -108,11 +108,7 @@ function list_all_servers() {
     for type in $target_env; do
         get_targeted_servers $type
         logit --text "${bold}$(text_align "${ENV_NAME^^}" "--title")${nbold}\n" -s
-		servers=""
-		for node in $SERVER_LIST; do
-			grep -q $node <<< $servers && continue || servers+="${node} "
-        done
-		for n in $servers; do echo "$n" | sed 's/ *//g' ; done
+		for node in $SERVER_LIST; do echo "$node" | sed 's/ *//g' ; done
     done
 }
 
@@ -604,7 +600,7 @@ while [[ $# -gt 0 ]]; do
                 allcmd="$1"
                 for node in $SERVER_LIST; do
                     echo
-                    logit --text "$(text_align "Gathering info on node :: $node" "--title")\n" -s
+                    logit --text "$(text_align "Executing command(s) on :: $node" "--title")\n" -s
                     ssh "${node}" "${allcmd}" ; echo
                 done
             else
