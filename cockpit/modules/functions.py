@@ -388,6 +388,54 @@ def parse_jobs_selections(jobs):
                 choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
 
 
+def parse_multi_select(choice_list):
+    """
+    parse user selected choices
+    :param choice_list: list of choices
+    :return: list of selections
+    """
+    from colorama import Fore
+    choice = input("\nEnter your choice: ")
+    
+    # check if choice in range
+    def choice_ok(value, limit):
+        if not value.isdigit() or int(value) < 1 or int(value) > limit:
+            return False
+        return True
+        
+    while True:
+        valid_selections = []
+        if choice == '99':
+            valid_selections.append(-1)
+            return valid_selections
+        else:
+            selected_ok = False
+            selected = choice.split(',')
+            for c in selected:
+                if '-' in c:
+                    range_select = c.split('-')
+                    if len(range_select) != 2:
+                        selected_ok = False
+                        break
+                    for i in range(int(range_select[0]), int(range_select[1])+1):
+                        if choice_ok(str(i), len(choice_list)):
+                            selected_ok = True
+                            valid_selections.append(i)
+                        else:
+                            selected_ok = False
+                            break
+                elif choice_ok(c, len(choice_list)):
+                    selected_ok = True
+                    valid_selections.append(int(c))
+                else:
+                    selected_ok = False
+                    break
+            if selected_ok:
+                return list(set(valid_selections))
+            else:
+                choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
+
+
 def jobs_exist(conn, new_job_name):
     """
     check if job exists
@@ -530,3 +578,19 @@ def list_policies(conn, *columns):
     cur.execute(sql)
     rows = cur.fetchall()
     return rows
+
+
+def register_policy(conn, policy):
+    """
+    register a new policy
+    :param conn: database connection object
+    :param policy: policy data
+    :return: policy id
+    """
+    sql = ''' INSERT INTO policies(name,metadata,content,command,destination,created)
+              VALUES(?,?,?,?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, policy)
+    conn.commit()
+    return cur.lastrowid
+
