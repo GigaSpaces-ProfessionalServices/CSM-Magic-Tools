@@ -3,12 +3,9 @@
 
 import os
 import yaml
-import sqlite3
 from signal import SIGINT, signal
 from functions import handler, create_connection, \
     list_tables
-
-
 
 # main #
 config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
