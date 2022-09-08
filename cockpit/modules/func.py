@@ -11,11 +11,20 @@ from colorama import Fore, Style
 
 
 def handler(signal_recieved, frame):
+    '''
+    catch CTRL+C keybaord press
+    :param signal_recieved: caught by signal class
+    :param frame:
+    :return:
+    '''
     print('\n\nOperation aborted by user!')
     exit(0)
 
 
 def print_header():
+    '''
+    print menu header
+    '''
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
     subprocess.run("clear")
@@ -24,6 +33,12 @@ def print_header():
 
 
 def pretty_print(string, color, style=None):
+    '''
+    pretty print
+    :param string: the string to pretify
+    :param color: the color to print 
+    :param style: the style to apply
+    '''
     color = eval('Fore.' + f'{color}'.upper())
     if style is None:
         print(f"{color}{string}{Style.RESET_ALL}")
@@ -33,6 +48,12 @@ def pretty_print(string, color, style=None):
 
 
 def print_locations(selections, dictionary):
+    '''
+    print locations line accordding to menu positions
+    :param selections: the selections list
+    :param dictionary: dictionary of menu items
+    :return:
+    '''
     index = ""
     location = f"@:: MAIN".upper()
     for i in selections:
@@ -43,6 +64,10 @@ def print_locations(selections, dictionary):
 
 
 def print_menu(the_dict):
+    '''
+    print the main menu
+    :param dictionary: dictionary of menu items
+    '''
     for k in the_dict.keys():
         if str(k).isdigit():
             index = f"[{k}]"
@@ -56,6 +81,11 @@ def print_menu(the_dict):
 
 
 def update_selections(the_choice, choices_list):
+    '''
+    update user selections list
+    :param the_choice: the user choice
+    :param choices_list: the choices options
+    '''
     if the_choice == '99':
         choices_list.pop()
     else:
@@ -63,6 +93,11 @@ def update_selections(the_choice, choices_list):
 
 
 def validate_input(the_dict, the_selections):
+    '''
+    ensure user choice is valid
+    :param the_dict: a dictionary of choices
+    :param the_selections: the list of choices
+    '''
     the_choice = input("\nEnter your choice: ")
     while True:
         if the_choice == '99':
@@ -80,6 +115,11 @@ def validate_input(the_dict, the_selections):
 
 
 def check_settings(config):
+    '''
+    check required settings of db and network in yaml file
+    :param config: the yaml file
+    :return:
+    '''
     db_set_required = False
     env_set_required = False
     # load cockpit configuration
