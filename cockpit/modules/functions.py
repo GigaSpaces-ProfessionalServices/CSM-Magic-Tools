@@ -1,14 +1,7 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-import os
-from signal import SIGINT, signal
-import yaml
-import pyfiglet
-import subprocess
-import sqlite3
-from colorama import Fore, Style
-
+from signal import signal, SIGINT
 
 ###
 ### GENERAL ###
@@ -29,6 +22,8 @@ def print_header():
     '''
     print menu header
     '''
+    import pyfiglet
+    import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
     subprocess.run("clear")
@@ -43,6 +38,7 @@ def pretty_print(string, color, style=None):
     :param color: the color to print 
     :param style: the style to apply
     '''
+    from colorama import Fore, Style
     color = eval('Fore.' + f'{color}'.upper())
     if style is None:
         print(f"{color}{string}{Style.RESET_ALL}")
@@ -135,6 +131,9 @@ def check_settings(config):
     :param config: the yaml file
     :return:
     '''
+    import os
+    import yaml
+    import subprocess
     db_set_required = False
     env_set_required = False
     # load cockpit configuration
@@ -235,6 +234,7 @@ def create_database_home(db_folder):
     :param db_folder: sqlite3 home path
     :return:
     '''
+    import os
     if not os.path.exists(db_folder):
         try:
             os.makedirs(db_folder)
@@ -252,6 +252,8 @@ def create_connection(db_file):
     :param db_file: path to db file
     :return: connection object
     '''
+    import sqlite3
+    from sqlite3 import Error
     conn = None
     try:
         conn = sqlite3.connect(db_file)
@@ -267,6 +269,7 @@ def create_table(conn, create_table_sql):
     :param create_table_sql: sqlite create table statement
     :return:
     '''
+    from sqlite3 import Error
     try:
         c = conn.cursor()
         c.execute(create_table_sql)
@@ -404,6 +407,8 @@ def generate_job_file(env_name, obj_type, yaml_data):
     :param yaml_data: data from config yaml
     :return:
     """
+    import os
+    import subprocess
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
     jobs_home = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs"
