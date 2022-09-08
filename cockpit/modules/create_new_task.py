@@ -45,7 +45,7 @@ if result != -1:
             index = f"[{j[0]}]"
             print(f'{index:<4} - {j[1]:<24}')
         print(f'{"[99]":<4} - {"Skip (can be selected later from the Edit Tasks menu)":<24}')
-        selected_jobs = parse_jobs_selections(jobs)
+        selected_jobs = parse_jobs_selections(jobs) ##### SHOULD CHANGE TO GENERIC PARSE_MULTI_SELECT INSTEAD
         if selected_jobs[0] == -1:
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
