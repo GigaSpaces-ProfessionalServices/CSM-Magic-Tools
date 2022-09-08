@@ -1,15 +1,10 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
-import os
-import yaml
-import sqlite3
-from sqlite3 import Error
-from functions import create_database_home, create_connection, create_table
-
-
 def main():
+    import os
+    import yaml
+    from functions import create_database_home, create_connection, create_table
     config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
     # load config yaml
     with open(config_yaml, 'r') as yf:
