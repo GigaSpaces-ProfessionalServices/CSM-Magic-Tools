@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-from signal import signal, SIGINT
+
 
 ###
 ### GENERAL ###
@@ -108,6 +108,28 @@ def get_type_selection(the_dict):
         print(f'{index:<4} - {v:<24}')
     print(f'{"[99]":<4} - {"ESC":<24}')
     return int(validate_input(the_dict))
+
+
+def validate_main_menu_input(the_dict, the_selections):
+    '''
+    ensure user choice is valid
+    :param the_dict: a dictionary of choices
+    :param the_selections: the list of choices
+    '''
+    the_choice = input("\nEnter your choice: ")
+    while True:
+        if the_choice == '99':
+            if the_dict['id'] == 'Main':
+                exit(0)
+            else:
+                update_selections(the_choice, the_selections)
+                break
+        if not the_choice.isdigit() or int(the_choice) not in the_dict.keys():
+            pretty_print('ERROR: Input must be a menu index!', 'red')
+            the_choice = input("Enter you choice: ")
+        else:
+            update_selections(the_choice, the_selections)
+            break
 
 
 def validate_input(items_dict):
