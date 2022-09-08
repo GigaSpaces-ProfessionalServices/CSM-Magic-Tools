@@ -5,8 +5,29 @@
 import os
 import yaml
 import subprocess
-from modules.commands import *
-from modules.func import *
+from modules.functions import *
+
+
+def validate_input(the_dict, the_selections):
+    '''
+    ensure user choice is valid
+    :param the_dict: a dictionary of choices
+    :param the_selections: the list of choices
+    '''
+    the_choice = input("\nEnter your choice: ")
+    while True:
+        if the_choice == '99':
+            if the_dict['id'] == 'Main':
+                exit(0)
+            else:
+                update_selections(the_choice, the_selections)
+                break
+        if not the_choice.isdigit() or int(the_choice) not in the_dict.keys():
+            pretty_print('ERROR: Input must be a menu index!', 'red')
+            the_choice = input("Enter you choice: ")
+        else:
+            update_selections(the_choice, the_selections)
+            break
 
 
 if __name__ == '__main__':
@@ -46,8 +67,8 @@ if __name__ == '__main__':
             if dict['exec-type'] == 'module':
                 eval(f"{dict['exec']}()")
             if dict['exec-type'] == 'script':
-                cwd = os.path.abspath(os.path.dirname(__file__))
-                script = f"{cwd}/scripts/{dict['exec']}"
+                #cwd = os.path.abspath(os.path.dirname(__file__))
+                script = f"{os.path.abspath(os.path.dirname(__file__))}/modules/{dict['exec']}"
                 subprocess.call([script], shell=True)
             user_selections.pop()
             continue
