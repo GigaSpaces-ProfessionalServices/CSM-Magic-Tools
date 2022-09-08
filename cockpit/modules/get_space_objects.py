@@ -65,7 +65,7 @@ def get_space():
     url = f"http://{endpoint}:{defualt_port}/v2/spaces"
     headers = {'Accept': 'application/json'}
     response_data = requests.get(url, auth=(auth['user'], auth['pass']), headers=headers, verify=False)
-    return response_data.json()[0]
+    return response_data.json()
 
 
 def get_object_count():
@@ -136,7 +136,11 @@ if endpoint == "":
     endpoint = manager
 
 ### execute operations ###
-the_space = get_space()
+s = get_space()
+if len(s) == 0:
+    print("ERROR: No space found")
+else:
+    the_space = s[0]
 total_entries = get_object_count()
 
 #inject_to_influx(test)
