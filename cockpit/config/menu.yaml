@@ -208,9 +208,9 @@ description: ''
     2:
         id: 'Create New Policy'
         type: 'command'
-        exec-type: ''
-        exec: ''
-        description: 'add description here'
+        exec-type: 'script'
+        exec: 'create_new_policy.py'
+        description: 'Create a new policy for existing tasks'
     3:
         id: 'Edit Policies'
         type: 'menu'
