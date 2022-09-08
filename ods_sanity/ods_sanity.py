@@ -5,6 +5,7 @@ import os
 import requests
 import json
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from signal import SIGINT, signal
 import subprocess
 import argparse
 import sys
@@ -16,6 +17,17 @@ import random
 import itertools
 import threading
 import pyfiglet
+
+
+def handler(signal_recieved, frame):
+    '''
+    catch CTRL+C keybaord press
+    :param signal_recieved: caught by signal class
+    :param frame:
+    :return:
+    '''
+    print('\n\nOperation aborted by user!')
+    exit(0)
 
 
 def argument_parser():
@@ -585,6 +597,9 @@ defualt_port = 8090
 k6_test = f"{utils_dir}/sanity/run_k6.sh"
 
 if __name__ == '__main__':
+    # catch user CTRL+C key press
+    signal(SIGINT, handler)
+    
     # creating logger
     log_format = "%(asctime)s %(levelname)s %(message)s"
     log_file = "/var/log/ods_sanity.log"
