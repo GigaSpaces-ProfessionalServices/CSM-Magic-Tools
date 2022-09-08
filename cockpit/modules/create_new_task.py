@@ -50,15 +50,15 @@ if result != -1:
         if selected_jobs[0] == -1:
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
-            print(f"Task id {r} (type = {t_type} ; job_id = None) registered successfully.")
+            print(f"Task id {r} (type: {t_type} ; job_id: None) registered successfully.")
         else:
             for job_id in selected_jobs:
                 task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
                 r = register_task(conn, task_data)
-                print(f"Task id {r} (type = {t_type} ; job_id = {job_id}) registered successfully.")
+                print(f"Task id {r} (type: {t_type} ; job_id: {job_id}) registered successfully.")
     else:
         print("There are no jobs registered yet\n* can be selected later from the Edit Tasks menu")
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
-        print(f"Task id {r} (type = {t_type} ; job_id = None) registered successfully.")
+        print(f"Task id {r} (type: {t_type} ; job_id: None) registered successfully.")
     input("\nPress ENTER to go back to the menu")
