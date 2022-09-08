@@ -8,7 +8,8 @@ import sqlite3
 from sqlite3 import Error
 from signal import SIGINT, signal
 from functions import *
-from functions import handler, create_connection, list_tasks
+from functions import handler, create_connection, \
+    list_tasks #, list_tasks_grouped
 
 
 # main
@@ -25,6 +26,7 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 tasks = list_tasks(conn, 'id', 'uid', 'type')
+#tasks = list_tasks_grouped(conn, 'id', 'uid', 'type')
 if len(tasks) > 0:
     w = 62
     print("-"*w + f'\n| {"Id":^4} | {"UID":^40} | {"Type":^8} |\n' + "-"*w)
