@@ -2,7 +2,6 @@
 # *-* coding: utf-8 *-*
 
 import os
-from posixpath import split
 import yaml
 import uuid
 import datetime
