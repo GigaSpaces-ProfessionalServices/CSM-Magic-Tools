@@ -2,7 +2,7 @@
 # *-* coding: utf-8 *-*
 
 #
-# get entry count for dr
+# get objects data from space
 #
 
 import requests
