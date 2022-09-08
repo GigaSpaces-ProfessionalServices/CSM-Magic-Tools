@@ -114,7 +114,7 @@ def generate_job(env_name, obj_type, yaml_data):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_obj_count_{env_name_low}.py"',
+        f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_space_objects.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
         f'print(response)\n\n'
