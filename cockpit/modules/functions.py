@@ -480,6 +480,22 @@ def list_tasks(conn, *columns):
     return rows
 
 
+def list_tasks_grouped(conn, *columns):
+    '''
+    list registered tasks in database
+    :param conn: connection object
+    :param columns: collection of table columns
+    :return: list of rows
+    '''
+    cur = conn.cursor()
+    args = ','.join(columns)
+    if len(columns) == 0:
+        args = '*'
+    sql = f"SELECT {args} FROM tasks GROUP BY uid"
+    cur.execute(sql)
+    rows = cur.fetchall()
+    return rows
+
 def register_task(conn, task):
     """
     register a new task
