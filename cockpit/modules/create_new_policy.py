@@ -10,7 +10,8 @@ import uuid
 from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
-from functions import handler, create_connection, get_type_selection, list_registered_tasks
+from functions import handler, create_connection, \
+    get_type_selection, list_jobs
 
 
 def validate_input(items_dict):
@@ -102,7 +103,7 @@ else:
     note = "* Multiple selection available (i.e: 1,3,4) and range (i.e: 2-4)"
     print(f"{note}\n" + '='*len(note))
     conn = create_connection(cockpit_db)
-    jobs = list_registered_jobs(conn)
+    jobs = list_jobs(conn)
     if len(jobs) > 0:
         for j in jobs:
             index = f"[{j[0]}]"

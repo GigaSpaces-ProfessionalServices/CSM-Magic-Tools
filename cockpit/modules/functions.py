@@ -1,14 +1,18 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import os
 from signal import SIGINT, signal
 import yaml
 import pyfiglet
 import subprocess
+import sqlite3
 from colorama import Fore, Style
 
+
+###
+### GENERAL ###
+###
 
 def handler(signal_recieved, frame):
     '''
@@ -27,7 +31,7 @@ def print_header():
     '''
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    #subprocess.run("clear")
+    subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -62,6 +66,9 @@ def print_locations(selections, dictionary):
     print_header()
     pretty_print(f'{location}\n', 'green', 'bright')
 
+###
+### MENU AND VALIDATION
+###
 
 def print_menu(the_dict):
     '''
@@ -90,6 +97,36 @@ def update_selections(the_choice, choices_list):
         choices_list.pop()
     else:
         choices_list.append(the_choice)
+
+
+def get_type_selection(the_dict):
+    """
+    get object type selection from user
+    :param the_dict: menu dictionary object
+    :return: int of user choice
+    """
+    q = f"What type of task do you want to create?"
+    print(q + "\n" + '=' * len(q))
+    for k, v in the_dict.items():
+        index = f"[{k}]"
+        print(f'{index:<4} - {v:<24}')
+    print(f'{"[99]":<4} - {"ESC":<24}')
+    return int(validate_input(the_dict))
+
+
+def validate_input(items_dict):
+    from colorama import Fore
+    choice = input("\nEnter your choice: ")
+    while True:
+        if choice == '99':
+            return -1
+        if len(items_dict) > 1:
+            if choice == str(len(items_dict) + 1): # if 'ALL' is selected
+                return "ALL"
+        if not choice.isdigit() or int(choice) not in items_dict.keys():
+            choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
+        else:
+            return int(choice)
 
 
 def check_settings(config):
@@ -126,7 +163,7 @@ def check_settings(config):
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         print("cockpit.db configuration exists but database has not been created.")
         if get_user_permission("would you like to create the cockpit database now?"):
-            subprocess.call(['./scripts/create_db.py'], shell=True)
+            subprocess.call(['./modules/create_db.py'], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
             pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
@@ -171,6 +208,26 @@ def check_settings(config):
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
         input("Press ENTER to continue to the main menu.")
 
+
+def discover_object_types():
+    """
+    get object types from space
+    :param [TBD]: 
+    :return: dictionary of objects 
+    """
+    types = {
+        1: ['msgPojo-1', 1001], 
+        2: ['msgPojo-2', 1002], 
+        3: ['msgPojo-3', 1003], 
+        4: ['msgPojo-4', 1004], 
+        5: ['msgPojo-5', 1005]
+        }
+    return types
+
+
+###
+### SQLITE DATABASE ###
+###
 
 def create_database_home(db_folder):
     '''
@@ -217,72 +274,45 @@ def create_table(conn, create_table_sql):
         print(e)
 
 
-def get_type_selection(the_dict):
+def list_tables(conn):
     """
-    get object type selection from user
-    :param the_dict: menu dictionary object
-    :return: int of user choice
-    """
-    q = f"What type of task do you want to create?"
-    print(q + "\n" + '=' * len(q))
-    for k, v in the_dict.items():
-        index = f"[{k}]"
-        print(f'{index:<4} - {v:<24}')
-    print(f'{"[99]":<4} - {"ESC":<24}')
-    return int(validate_input(the_dict))
+    list tables in database
+    :param conn: database connection object
+    :return:
+    """    
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = c.fetchall()
+    if len(tables) > 0:
+        print("\n[Cockpit database tables]")
+        for table_name in tables:
+            c.execute(f"SELECT count(*) FROM {table_name[0]};")
+            num = c.fetchall()[0][0]
+            num_records = f"{num} record(s)"
+            print(f"   {table_name[0]:<10} : {num_records:<10}")
+        c.close()
+    conn.close()
 
 
-def list_registered_jobs(conn):
+###
+### JOBS ###
+###
+
+def list_jobs(conn, *columns):
     """
     list registered jobs in database
     :param conn: database connection object
-    :return: list of db rows
+    :param columns: collection of table columns
+    :return: list of rows
     """
     cur = conn.cursor()
-    cur.execute("SELECT * FROM jobs")
+    args = ','.join(columns)
+    if len(columns) == 0:
+        args = '*'
+    sql = f"SELECT {args} FROM jobs"
+    cur.execute(sql)
     rows = cur.fetchall()
     return rows
-
-
-
-def list_registered_job_names(conn):
-    '''
-    list registered job names in database
-    :param conn: connection object
-    :return: list of results
-    '''
-    c = conn.cursor()
-    c.execute("SELECT id, name FROM jobs;")
-    registered_job_names = c.fetchall()
-    return registered_job_names
-
-
-
-def list_registered_tasks(conn):
-    """
-    list registered tasks in database
-    :param conn: database connection object
-    :return: list of db rows
-    """
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks")
-    rows = cur.fetchall()
-    return rows
-
-
-def register_task(conn, task):
-    """
-    register a new task
-    :param conn: database connection object
-    :param task: task data
-    :return: task id
-    """
-    sql = ''' INSERT INTO tasks(uid,type,sn_type,job_id,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, task)
-    conn.commit()
-    return cur.lastrowid
 
 
 def parse_jobs_selections(jobs):
@@ -331,22 +361,6 @@ def parse_jobs_selections(jobs):
                 return list(set(valid_selections))
             else:
                 choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
-
-
-def discover_object_types():
-    """
-    get object types from space
-    :param [TBD]: 
-    :return: dictionary of objects 
-    """
-    types = {
-        1: ['msgPojo-1', 1001], 
-        2: ['msgPojo-2', 1002], 
-        3: ['msgPojo-3', 1003], 
-        4: ['msgPojo-4', 1004], 
-        5: ['msgPojo-5', 1005]
-        }
-    return types
 
 
 def jobs_exist(conn, new_job_name):
@@ -418,46 +432,58 @@ def generate_job_file(env_name, obj_type, yaml_data):
     subprocess.run([f"chmod +x {job_file}"], shell=True)
 
 
-def list_db_tables(conn):
+###
+### TASKS ###
+###
+
+def list_tasks(conn, *columns):
+    '''
+    list registered tasks in database
+    :param conn: connection object
+    :param columns: collection of table columns
+    :return: list of rows
+    '''
+    cur = conn.cursor()
+    args = ','.join(columns)
+    if len(columns) == 0:
+        args = '*'
+    sql = f"SELECT {args} FROM tasks"
+    cur.execute(sql)
+    rows = cur.fetchall()
+    return rows
+
+
+def register_task(conn, task):
     """
-    list tables in database
+    register a new task
     :param conn: database connection object
-    :return:
-    """    
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = c.fetchall()
-    if len(tables) > 0:
-        print("\n[Cockpit database tables]")
-        for table_name in tables:
-            c.execute(f"SELECT count(*) FROM {table_name[0]};")
-            num = c.fetchall()[0][0]
-            num_records = f"{num} record(s)"
-            print(f"   {table_name[0]:<10} : {num_records:<10}")
-        c.close()
-    conn.close()
+    :param task: task data
+    :return: task id
+    """
+    sql = ''' INSERT INTO tasks(uid,type,sn_type,job_id,metadata,content,state,created)
+              VALUES(?,?,?,?,?,?,?,?) '''
+    cur = conn.cursor()
+    cur.execute(sql, task)
+    conn.commit()
+    return cur.lastrowid
 
 
-def list_policies(conn):
+###
+### POLICIES ###
+###
+
+def list_policies(conn, *columns):
     '''
-    get the list of policies from database
+    list registered policies in database
     :param conn: connection object
-    :return: list of results
+    :param columns: collection of table columns
+    :return: list of rows
     '''
-    c = conn.cursor()
-    c.execute("SELECT * FROM policies;")
-    registered_policies = c.fetchall()
-    return registered_policies
-
-
-def list_tasks(conn):
-    '''
-    get the list of tasks from database
-    :param conn: connection object
-    :return: list of results
-    '''    
-    c = conn.cursor()
-    c.execute("SELECT id, uid, type FROM tasks;")
-    registered_tasks = c.fetchall()
-    return registered_tasks
-
+    cur = conn.cursor()
+    args = ','.join(columns)
+    if len(columns) == 0:
+        args = '*'
+    sql = f"SELECT {args} FROM policies"
+    cur.execute(sql)
+    rows = cur.fetchall()
+    return rows

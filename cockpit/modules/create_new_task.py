@@ -9,25 +9,9 @@ import uuid
 from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
-from modules.functions import handler, create_connection, \
+from functions import handler, create_connection, \
     parse_jobs_selections, get_type_selection, \
-        list_registered_jobs, register_task
-
-
-def validate_input(items_dict):
-    from colorama import Fore
-    choice = input("\nEnter your choice: ")
-    while True:
-        if choice == '99':
-            return -1
-        if len(items_dict) > 1:
-            if choice == str(len(items_dict) + 1): # if 'ALL' is selected
-                return "ALL"
-        if not choice.isdigit() or int(choice) not in items_dict.keys():
-            choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
-        else:
-            return int(choice)
-
+        list_jobs, register_task
 
 # main
 config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
@@ -60,7 +44,7 @@ else:
     note = "* Multiple selection available (i.e: 1,3,4) and range (i.e: 2-4)"
     print(f"{note}\n" + '='*len(note))
     conn = create_connection(cockpit_db)
-    jobs = list_registered_jobs(conn)
+    jobs = list_jobs(conn)
     if len(jobs) > 0:
         for j in jobs:
             index = f"[{j[0]}]"

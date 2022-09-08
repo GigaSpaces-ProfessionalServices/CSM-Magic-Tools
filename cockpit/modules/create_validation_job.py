@@ -10,7 +10,7 @@ from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
 import subprocess
-from modules.functions import handler, discover_object_types, \
+from functions import handler, discover_object_types, \
     create_connection, jobs_exist, \
         generate_job_file, register_job
 

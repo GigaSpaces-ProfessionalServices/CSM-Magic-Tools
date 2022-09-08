@@ -5,8 +5,8 @@ import os
 import yaml
 import sqlite3
 from signal import SIGINT, signal
-from modules.functions import handler, create_connection, \
-    list_db_tables
+from functions import handler, create_connection, \
+    list_tables
 
 
 
@@ -27,7 +27,7 @@ cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 print(f"[Cockpit DB location]\n   {cockpit_db}\n")
 conn = create_connection(cockpit_db)
 if conn is not None:
-    list_db_tables(conn)
+    list_tables(conn)
 else:
     print("ERROR: unable to establish database connection.")
 input("\nPress ENTER to return to main menu")

@@ -7,7 +7,7 @@ import yaml
 import sqlite3
 from sqlite3 import Error
 from signal import SIGINT, signal
-from modules.functions import handler, create_connection, list_policies
+from functions import handler, create_connection, list_policies
 
 
 # main
