@@ -4,9 +4,7 @@
 import os
 from posixpath import split
 import yaml
-import sqlite3
 import uuid
-from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
 from functions import handler, create_connection, \
@@ -30,9 +28,7 @@ cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 t_uid = str(uuid.uuid4())
 # get task type from user
 result = get_type_selection(data['types'])
-if result == -1:
-    input("\nPress ENTER to go back to the menu")
-else:
+if result != -1:
     t_type = data['types'][result]
     t_type_sn = result
     t_metadata = "NULL"
@@ -54,16 +50,15 @@ else:
         if selected_jobs[0] == -1:
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
-            print(f"Task id {r} (type = {t_type} ; uid = {t_uid}) registered successfully.")
+            print(f"Task id {r} (type = {t_type} ; job_id = None) registered successfully.")
         else:
             for job_id in selected_jobs:
                 task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
                 r = register_task(conn, task_data)
-                print(f"Task id {r} (type = {t_type} ; uid = {t_uid}) registered successfully.")
+                print(f"Task id {r} (type = {t_type} ; job_id = {job_id}) registered successfully.")
     else:
         print("There are no jobs registered yet\n* can be selected later from the Edit Tasks menu")
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
-        print(f"Task id {r} (type = {t_type} ; uid = {t_uid}) registered successfully.")
-
-input("\nPress ENTER to go back to the menu")
+        print(f"Task id {r} (type = {t_type} ; job_id = None) registered successfully.")
+    input("\nPress ENTER to go back to the menu")
