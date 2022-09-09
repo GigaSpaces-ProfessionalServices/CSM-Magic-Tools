@@ -36,7 +36,7 @@ if result != -1:
     t_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     # list jobs from db
     print("\nChoose jobs to associate with this task.")
-    note = "* Multiple selection available (i.e: 1,3,4) and range (i.e: 2-4)"
+    note = "(!) Collections are supported (i.e: 1,3,2-5)"
     print(f"{note}\n" + '='*len(note))
     conn = create_connection(cockpit_db)
     jobs = list_jobs(conn)
