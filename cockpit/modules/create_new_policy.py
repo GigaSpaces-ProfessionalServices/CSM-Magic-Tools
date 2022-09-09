@@ -29,7 +29,6 @@ print(f"{note}\n" + '='*len(note))
 conn = create_connection(cockpit_db)
 # get the task(s) to be associated with the policy
 tasks = sort_tuples_list(list_tasks_grouped(conn, 'id', 'uid', 'type'))
-print(tasks)
 if len(tasks) > 0:
     index = 1
     for task in tasks:
