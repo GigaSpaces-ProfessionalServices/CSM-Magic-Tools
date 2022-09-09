@@ -42,12 +42,12 @@ def main():
                                         id integer PRIMARY KEY,
                                         schedule integer NOT NULL,
                                         repeat integer NOT NULL,
-                                        task_id integer,
+                                        task_uid text,
                                         metadata text,
                                         content text,
                                         state text,
                                         created text NOT NULL,
-                                        FOREIGN KEY (task_id) REFERENCES tasks (id)
+                                        FOREIGN KEY (task_uid) REFERENCES tasks (uid)
                                     );"""
 
     # drop database if drop_db is set
