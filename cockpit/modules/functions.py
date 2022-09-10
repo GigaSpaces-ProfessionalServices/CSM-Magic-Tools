@@ -3,9 +3,9 @@
 
 
 
-###
-### GENERAL ###
-###
+###############################################################
+##################          GENERAL          ##################
+###############################################################
 
 def handler(signal_recieved, frame):
     '''
@@ -36,7 +36,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    subprocess.run("clear")
+    #subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -72,9 +72,10 @@ def print_locations(selections, dictionary):
     print_header()
     pretty_print(f'{location}\n', 'green', 'bright')
 
-###
-### MENU AND VALIDATION
-###
+
+###############################################################
+##################    MENU AND VALIDATION    ##################
+###############################################################
 
 def print_menu(the_dict):
     '''
@@ -304,9 +305,9 @@ def discover_object_types():
     return types
 
 
-###
-### SQLITE DATABASE ###
-###
+###############################################################
+##################         DATABASE          ##################
+###############################################################
 
 def create_database_home(db_folder):
     '''
@@ -377,9 +378,9 @@ def list_tables(conn):
     conn.close()
 
 
-###
-### JOBS ###
-###
+###############################################################
+##################           JOBS            ##################
+###############################################################
 
 def list_jobs(conn, *columns):
     """
@@ -394,6 +395,23 @@ def list_jobs(conn, *columns):
         args = '*'
     sql = f"SELECT {args} FROM jobs"
     cur.execute(sql)
+    rows = cur.fetchall()
+    return rows
+
+
+def list_jobs_by_task_uid(conn, task_uid):
+    '''
+    list jobs associated with a task uid
+    :param conn: connection object
+    :param task_uid: the task uid
+    :return: list of rows
+    '''
+    cur = conn.cursor()
+    sql = ''' SELECT j.name, j.id 
+              FROM tasks t INNER JOIN jobs j 
+              ON j.id = t.job_id 
+              WHERE t.uid = ?; '''
+    cur.execute(sql, task_uid)
     rows = cur.fetchall()
     return rows
 
@@ -459,9 +477,8 @@ def jobs_exist(conn, new_job_name):
     registered_job_names = c.fetchall()
     for name in registered_job_names:
         if new_job_name in name:
-            job_exists = True
-            break
-    return job_exists
+            return True
+    return False
 
 
 def register_job(conn, job):
@@ -517,9 +534,9 @@ def generate_job_file(env_name, obj_type, yaml_data):
     subprocess.run([f"chmod +x {job_file}"], shell=True)
 
 
-###
-### TASKS ###
-###
+###############################################################
+##################           TASKS           ##################
+###############################################################
 
 def list_tasks(conn, *columns):
     '''
@@ -569,9 +586,23 @@ def register_task(conn, task):
     return cur.lastrowid
 
 
-###
-### POLICIES ###
-###
+def list_tasks_by_policy_schedule(conn, policy_schedule):
+    '''
+    list tasks associated with a policy id
+    :param conn: connection object
+    :param policy_id: the policy id
+    :return: list of rows
+    '''
+    cur = conn.cursor()
+    sql = "SELECT task_uid FROM policies WHERE policies.schedule = ?;"
+    cur.execute(sql, policy_schedule)
+    rows = cur.fetchall()
+    return rows
+
+
+###############################################################
+##################         POLICIES          ##################
+###############################################################
 
 def list_policies(conn, *columns):
     '''
@@ -604,3 +635,19 @@ def register_policy(conn, policy):
     conn.commit()
     return cur.lastrowid
 
+
+def policy_schedule_exists(conn, policy_schedule):
+    """
+    check if policy id exists
+    :param conn: database connection object
+    :param policy_id: the id number of the policy to check
+    :return Boolean: True/False
+    """
+    job_exists = False
+    c = conn.cursor()
+    c.execute("SELECT schedule FROM policies;")
+    policies = c.fetchall()
+    for schedules in policies:
+        if policy_schedule in schedules:
+            return True
+    return False
