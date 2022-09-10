@@ -4,12 +4,11 @@
 
 import os
 import yaml
-import sqlite3
-from sqlite3 import Error
+# import sqlite3
+# from sqlite3 import Error
 from signal import SIGINT, signal
 from functions import *
-from functions import handler, create_connection, \
-    list_tasks #, list_tasks_grouped
+from functions import handler, create_connection, list_tasks_grouped
 
 
 # main
@@ -25,13 +24,16 @@ cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
-tasks = list_tasks(conn, 'id', 'uid', 'type')
-#tasks = list_tasks_grouped(conn, 'id', 'uid', 'type')
+tasks = list_tasks_grouped(conn, 'uid', 'type')
 if len(tasks) > 0:
-    w = 62
-    print("-"*w + f'\n| {"Id":^4} | {"UID":^40} | {"Type":^8} |\n' + "-"*w)
-    for task_id, task_uid, task_type in tasks:
-        print(f'| {task_id:<4} | {task_uid:<40} | {task_type:<8} |')
+    w = 70
+    print("-"*w + f'\n| {"Type":^10} | {"UID":^40} | {"# of Jobs":^9} |\n' + "-"*w)
+    for task_uid, task_type in tasks:
+        # count number of jobs for each task uid
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM tasks WHERE uid = ?;", (task_uid,))
+        num_of_jobs = len(cur.fetchall())
+        print(f'| {task_type:<10} | {task_uid:<40} | {num_of_jobs:<9} |')
     print("-"*w)
 else:
     print("No tasks found")
