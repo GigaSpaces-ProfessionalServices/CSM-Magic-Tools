@@ -25,10 +25,14 @@ cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 policies = list_policies(conn)
 if len(policies) > 0:
-    w = 62
-    print("-"*w + f'\n| {"Id":^4} | {"UID":^40} | {"Type":^8} |\n' + "-"*w)
-    for p_id, p_uid, p_type in policies:
-        print(f'| {p_id:<4} | {p_uid:<40} | {p_type:<8} |')
+    w = 76
+    print("-"*w + f'\n| {"Id":<4} | {"Schedule":<10} | {"Repeat":<10}| {"Associated Task":<40} |\n' + "-"*w)
+    for policy in policies:
+        p_id = policy[0]
+        p_sched = policy[1]
+        p_repeat = policy[2]
+        p_assoc_task = policy[3]
+        print(f'| {p_id:<4} | {p_sched:<10} | {p_repeat:<10}| {p_assoc_task:<40} |')
     print("-"*w)
 else:
     print("No policies found")
