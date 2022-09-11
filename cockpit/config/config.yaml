@@ -1,32 +1,21 @@
-#
-# minimal required params are:
-# - cockpit (db_home & db_name)
-# - variables (pivot & rest) for each environment.
-# the rest can be filled automatically by the main script
-#
 params:
   cockpit:
-    # where the sqlite database resides
     db_home: 
-    # the name of the database file
     db_name: 
   dr:
     endpoints:
       pivot: 
       rest: 
-    # the os variables to access pivot & REST
     variables:
-      pivot: 
-      rest: 
+      pivot: PIVOT_DR
+      rest: ENDPOINT_DR
   prd:
     endpoints:
       pivot: 
-      rest: ''
-    # the os variables to access pivot & REST
-    variables:
-      pivot: 
       rest: 
-# add types of jobs here
+    variables:
+      pivot: PIVOT_PRD
+      rest: ENDPOINT_PRD
 types:
   1: 'Validate'
   2: 'Deploy MS'
