@@ -265,8 +265,11 @@ def check_settings(config):
                         exit(1)
             pretty_print("ERROR: required parameters are not in configuration file!", 'red')
             if get_user_permission("would you like cockpit to setup parameters automatically?"):
-                script = f"./modules/set_cockpit_params.py"
-                subprocess.call([script], shell=True)
+                for env_name in data['params']:
+                    if env_name != 'cockpit':
+                        script = f"./modules/get_{env_name}_params.py"
+                        subprocess.call([script], shell=True)
+                # reload cockpit configuration after changes
                 with open(config, 'r') as yf:
                     data = yaml.safe_load(yf)
             else:
