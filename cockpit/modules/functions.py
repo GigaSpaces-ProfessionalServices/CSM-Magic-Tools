@@ -267,7 +267,7 @@ def check_settings(config):
             if get_user_permission("would you like cockpit to setup parameters automatically?"):
                 for env_name in data['params']:
                     if env_name != 'cockpit':
-                        script = f"./scripts/get_{env_name}_params.py"
+                        script = f"./modules/get_{env_name}_params.py"
                         subprocess.call([script], shell=True)
                 # reload cockpit configuration after changes
                 with open(config, 'r') as yf:
