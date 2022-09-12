@@ -50,6 +50,10 @@ def main():
                                         FOREIGN KEY (task_uid) REFERENCES tasks (uid)
                                     );"""
 
+    create_types_table = """CREATE TABLE IF NOT EXISTS types (
+                                        name text
+                                    );"""
+
     # drop database if drop_db is set
     if 'drop_db' in globals():
         os.remove(cockpit_db)
@@ -63,6 +67,7 @@ def main():
         create_table(conn, create_tasks_table)
         create_table(conn, create_jobs_table)
         create_table(conn, create_policies_table)
+        create_table(conn, create_types_table)
         print("Database created successfully!\n")
     else:
         print("ERROR: unable to establish database connection.")
