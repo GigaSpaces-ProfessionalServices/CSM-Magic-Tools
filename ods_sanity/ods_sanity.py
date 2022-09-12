@@ -549,10 +549,13 @@ def is_env_secured(the_manager):
 def show_di_pipeline_info():
     logger = logging.getLogger()
     print('#' * 80 + '\n' + '#' * 31 + ' [ DI PIPELINES ] ' + '#' * 31 + '\n' + '#' * 80)
-    server = get_iidr_from_runall_conf()[0]
+    servers = get_iidr_from_runall_conf()
     port = "6080"
-    url = f"http://{server}:{port}/api/v1/pipeline/"
-    response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
+    for server in servers:
+        url = f"http://{server}:{port}/api/v1/pipeline/"
+        response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
+        if len(response_data.json()) != 0:
+            break
     r = response_data.json()[0]
     for k,v in r.items():
         key = f"{k}:"
