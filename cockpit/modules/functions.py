@@ -285,11 +285,21 @@ def check_settings(config):
     if db_set_required or env_set_required:
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
         input("Press ENTER to continue to the main menu.")
-    from .spinner import Spinner
-    spinner = Spinner
+    from . import spinner
+    spinner = spinner.Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
-        get_object_types(data)
-    input("Press ENTER to continue to the main menu.")
+        conn = create_connection(cockpit_db)
+        register_types(conn, get_object_types(data))
+        
+        ### DEBUG ###
+        # object_types = {
+        #     1: ['com.j_spaces.examples.benchmark.messages.MessagePOJO', 100000],
+        #     2: ['com.j_spaces.examples.benchmark.messages.MessagePOJO1', 110000],
+        #     3: ['com.j_spaces.examples.benchmark.messages.MessagePOJO2', 120000],
+        #     4: ['com.j_spaces.examples.benchmark.messages.MessagePOJO3', 130000],
+        #     5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
+        #     }
+        # register_types(conn, object_types)
 
 
 def get_object_types(yaml_data):
@@ -319,6 +329,20 @@ def get_object_types(yaml_data):
         object_types[k] = v
         k += 1
     return object_types
+
+
+def register_types(conn, types):
+    """
+    register types
+    :param conn: database connection object
+    :param types: types data
+    :return:
+    """
+    cur = conn.cursor()
+    for type in types.values():
+        sql =f"INSERT INTO types(name) VALUES(?);"
+        cur.execute(sql, (type[0],))
+    conn.commit()
 
 
 ###############################################################
