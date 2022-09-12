@@ -551,39 +551,60 @@ def show_di_pipeline_info():
     print('#' * 80 + '\n' + '#' * 31 + ' [ DI PIPELINES ] ' + '#' * 31 + '\n' + '#' * 80)
     servers = get_iidr_from_runall_conf()
     port = "6080"
+    service_active = False
     for server in servers:
         url = f"http://{server}:{port}/api/v1/pipeline/"
         response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
         if len(response_data.json()) != 0:
+            service_active = True
             break
-    r = response_data.json()[0]
-    for k,v in r.items():
-        key = f"{k}:"
-        print(f"{k:<18} {v}")
+    if not service_active:
+        print(f"ERROR: API is not available on any of the DI servers.")
+        logger.error("[IIDR] API is not available on any of the DI servers.")
+    else:
+        r = response_data.json()[0]
+        for k,v in r.items():
+            key = f"{k}:"
+            print(f"{k:<18} {v}")
+            logger.info(f"[IIDR] {k:<18} {v}")
     logging.shutdown()
 
 
 def show_iidr_subscriptions():
+    import socket
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     logger = logging.getLogger()
     print('#' * 80 + '\n' + '#' * 28 + ' [ IIDR SUBSCRIPTIONS ] ' + '#' * 28 + '\n' + '#' * 80)
-    server = get_iidr_from_runall_conf()[0]
+    servers = get_iidr_from_runall_conf()
+    port = 10101
     user = "USERNAME"
-    as_home = f"/home/{user}/iidr_cdc/as"
-    monitor_home = f"/home/{user}/iidr_cdc/iidr_monitor"
-    ss_file = "status_subscription.chcclp"
-    exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -v '(^$|Repl|---)'"
-    sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
-    response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-    lnum = 1
-    for line in response.splitlines():
-        f = line.strip().split()
-        if 'mirror' in f[1].lower():
-            print(f"{f[0]:<15} | {f[1]} {f[2]}")
-            continue
-        else:
-            print(f"{f[0]:<15} | {f[1]:<30}")
-        if lnum == 1: print("="*36)
-        lnum += 1
+    service_active = False
+    for server in servers:
+        location = (server, port)
+        check_port = a_socket.connect_ex(location)
+        if check_port == 0:
+            service_active = True
+            break
+    if not service_active:
+        print(f"ERROR: none of the DI server listens on port {port}")
+        logger.error(f"[IIDR] none of the DI server listens on port {port}")
+    else:
+        as_home = f"/home/{user}/iidr_cdc/as"
+        monitor_home = f"/home/{user}/iidr_cdc/iidr_monitor"
+        ss_file = "status_subscription.chcclp"
+        exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -v '(^$|Repl|---)'"
+        sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
+        response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+        lnum = 1
+        for line in response.splitlines():
+            f = line.strip().split()
+            if 'mirror' in f[1].lower():
+                print(f"{f[0]:<15} | {f[1]} {f[2]}")
+                continue
+            else:
+                print(f"{f[0]:<15} | {f[1]:<30}")
+            if lnum == 1: print("="*36)
+            lnum += 1
     logging.shutdown()
 
 
