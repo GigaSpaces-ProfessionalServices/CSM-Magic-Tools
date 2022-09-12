@@ -284,53 +284,42 @@ def check_settings(config):
                         break
     if db_set_required or env_set_required:
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
-        get_object_types2(data)
         input("Press ENTER to continue to the main menu.")
-    get_object_types2(data)
+    from .spinner import Spinner
+    spinner = Spinner
+    with spinner('Loading cockpit data... ', delay=0.1):
+        get_object_types(data)
     input("Press ENTER to continue to the main menu.")
 
 
-def get_object_types2(yaml_data):
+def get_object_types(yaml_data):
+    """
+    get object types from space
+    :param yaml_data: the data from yaml file 
+    :return: formatted dictionary as {key : [object_type, num_entries]}
+    """
     import os
     import subprocess
+    import json
+    types = []
     for env_name in yaml_data['params']:
         if env_name != 'cockpit':
             pivot = yaml_data['params'][env_name]['endpoints']['pivot']
             exec_script = f"{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"
             cmd = f"cat {exec_script} | ssh {pivot} python3 -"
             response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-            print(response)
-    # pivot = f"PIVOT_{env_name}"
-    # jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
-    # job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
-    # job_file = f"{jobs_home}/{job_file_name}"
-    # pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
-    # cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
-    # sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()'
-    # lines = [
-    #     '#!/usr/bin/python3\n\n',
-    #     'import subprocess\n',
-    #     f'exec_script = "{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"',
-    #     f'cmd = f"{cmd}"',
-    #     f'response = {sp_exec}',
-    #     f'print(response)\n\n'
-    # ]
-    
+            response = json.loads(response.replace("\'", "\""))
+            for k in response.keys():
+                if k != 'java.lang.Object':
+                    types.append(k)
+    k = 1
+    object_types = {}
+    for the_type in set(types):
+        v = [ the_type, response[the_type]['entries']]
+        object_types[k] = v
+        k += 1
+    return object_types
 
-def get_object_types(yaml_data):
-    """
-    get object types from space
-    :param [TBD]: 
-    :return: dictionary of objects 
-    """
-    types = {
-        1: ['msgPojo-1', 1001], 
-        2: ['msgPojo-2', 1002], 
-        3: ['msgPojo-3', 1003], 
-        4: ['msgPojo-4', 1004], 
-        5: ['msgPojo-5', 1005]
-        }
-    return types
 
 ###############################################################
 ##################         DATABASE          ##################
