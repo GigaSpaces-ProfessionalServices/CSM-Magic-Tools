@@ -5,12 +5,9 @@
 import os
 import yaml
 from influxdb import InfluxDBClient
-import sqlite3
-from sqlite3 import Error
 import datetime
 from signal import SIGINT, signal
-import subprocess
-from functions import handler, discover_object_types, \
+from functions import handler, get_object_types, \
     create_connection, jobs_exist, \
         generate_job_file, register_job
 
@@ -63,7 +60,7 @@ environments = {
     1: ['DR',data['params']['dr']['variables']['pivot']], 
     2: ['PRD', data['params']['prd']['variables']['pivot']]
     }
-space_types = discover_object_types()
+space_types = get_object_types(data)
 # choice env
 choice = get_selection(environments, 'environments')
 envs = {}
