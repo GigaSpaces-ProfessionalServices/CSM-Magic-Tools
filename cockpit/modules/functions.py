@@ -340,9 +340,41 @@ def register_types(conn, types):
     """
     cur = conn.cursor()
     for type in types.values():
-        sql =f"INSERT INTO types(name) VALUES(?);"
-        cur.execute(sql, (type[0],))
+        the_type = type[0]
+        if not type_exists(conn, the_type):
+            sql =f"INSERT INTO types(name) VALUES(?);"
+            cur.execute(sql, (the_type,))
     conn.commit()
+
+
+def list_types(conn):
+    '''
+    list registered types in database
+    :param conn: connection object
+    :return: list of rows
+    '''
+    c = conn.cursor()
+    c.execute("SELECT * FROM types;")
+    rows = c.fetchall()
+    if len(rows) > 0:
+        print("\n[Space object types]")
+        for t in rows:
+            print(f"   {t[0]:<10}")
+
+
+def type_exists(conn, the_type):
+    '''
+    check if type exists in database
+    :param conn: connection object
+    :return Boolean: True / Flase
+    '''
+    c = conn.cursor()
+    c.execute("SELECT name FROM types WHERE name = ?;", (the_type,))
+    rows = c.fetchall()
+    if len(rows) > 0:
+        return True
+    else:
+        return False
 
 
 ###############################################################
@@ -414,8 +446,6 @@ def list_tables(conn):
             num = c.fetchall()[0][0]
             num_records = f"{num} record(s)"
             print(f"   {table_name[0]:<10} : {num_records:<10}")
-        c.close()
-    conn.close()
 
 
 ###############################################################
