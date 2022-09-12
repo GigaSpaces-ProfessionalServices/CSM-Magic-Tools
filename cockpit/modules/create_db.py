@@ -5,7 +5,7 @@ def main():
     import os
     import yaml
     from functions import create_database_home, create_connection, create_table
-    config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
+    config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
     # load config yaml
     with open(config_yaml, 'r') as yf:
         data = yaml.safe_load(yf)

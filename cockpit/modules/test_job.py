@@ -12,8 +12,8 @@ import subprocess
 from functions import handler, create_connection, list_jobs, validate_input
 
 # main
-config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
-jobs_home = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs"
+config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
+jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)
