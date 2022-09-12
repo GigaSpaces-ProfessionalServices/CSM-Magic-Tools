@@ -34,7 +34,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    subprocess.run("clear")
+    #subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -241,7 +241,7 @@ def check_settings(config):
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         print("cockpit.db configuration exists but database has not been created.")
         if get_user_permission("would you like to create the cockpit database now?"):
-            subprocess.call(['./modules/create_db.py'], shell=True)
+            subprocess.call([f"{os.path.dirname(os.path.realpath(__file__))}/create_db.py"], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
             pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
@@ -284,10 +284,40 @@ def check_settings(config):
                         break
     if db_set_required or env_set_required:
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
+        get_object_types2(data)
         input("Press ENTER to continue to the main menu.")
+    get_object_types2(data)
+    input("Press ENTER to continue to the main menu.")
 
 
-def discover_object_types():
+def get_object_types2(yaml_data):
+    import os
+    import subprocess
+    for env_name in yaml_data['params']:
+        if env_name != 'cockpit':
+            pivot = yaml_data['params'][env_name]['endpoints']['pivot']
+            exec_script = f"{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"
+            cmd = f"cat {exec_script} | ssh {pivot} python3 -"
+            response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+            print(response)
+    # pivot = f"PIVOT_{env_name}"
+    # jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
+    # job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
+    # job_file = f"{jobs_home}/{job_file_name}"
+    # pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
+    # cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
+    # sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()'
+    # lines = [
+    #     '#!/usr/bin/python3\n\n',
+    #     'import subprocess\n',
+    #     f'exec_script = "{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"',
+    #     f'cmd = f"{cmd}"',
+    #     f'response = {sp_exec}',
+    #     f'print(response)\n\n'
+    # ]
+    
+
+def get_object_types(yaml_data):
     """
     get object types from space
     :param [TBD]: 
@@ -301,7 +331,6 @@ def discover_object_types():
         5: ['msgPojo-5', 1005]
         }
     return types
-
 
 ###############################################################
 ##################         DATABASE          ##################
@@ -506,7 +535,7 @@ def generate_job_file(env_name, obj_type, yaml_data):
     import subprocess
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
-    jobs_home = f"{os.path.dirname(os.path.abspath(__file__))}/../jobs"
+    jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
     job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
     job_file = f"{jobs_home}/{job_file_name}"
     pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
@@ -515,7 +544,7 @@ def generate_job_file(env_name, obj_type, yaml_data):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.path.dirname(os.path.abspath(__file__))}/get_space_objects.py"',
+        f'exec_script = "{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
         f'print(response)\n\n'
