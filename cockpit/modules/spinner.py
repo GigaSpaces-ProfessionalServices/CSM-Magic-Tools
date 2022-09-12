@@ -1,15 +1,16 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
+
 import sys
-import time
 import threading
 import itertools
+import time
 
 class Spinner:
 
     def __init__(self, message, delay=0.1):
-        self.spinner = itertools.cycle(['\\', '|', '-', '/'])
+        self.spinner = itertools.cycle(['-', '/', '|', '\\'])
         self.delay = delay
         self.busy = False
         self.spinner_visible = False
@@ -24,12 +25,12 @@ class Spinner:
 
     def remove_spinner(self, cleanup=False):
         with self._screen_lock:
-            if not self.spinner_visible:
+            if self.spinner_visible:
                 sys.stdout.write('\b')
                 self.spinner_visible = False
                 if cleanup:
-                    sys.stdout.write(' ')   # overwrite spinner with blank
-                    sys.stdout.write('\r')  # move to next line
+                    sys.stdout.write(' ')       # overwrite spinner with blank
+                    sys.stdout.write('\r')      # move to next line
                 sys.stdout.flush()
 
     def spinner_task(self):
@@ -37,14 +38,14 @@ class Spinner:
             self.write_next()
             time.sleep(self.delay)
             self.remove_spinner()
-    
+
     def __enter__(self):
         if sys.stdout.isatty():
             self._screen_lock = threading.Lock()
             self.busy = True
             self.thread = threading.Thread(target=self.spinner_task)
             self.thread.start()
-    
+
     def __exit__(self, exception, value, tb):
         if sys.stdout.isatty():
             self.busy = False
