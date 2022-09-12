@@ -5,7 +5,7 @@ import os
 import yaml
 from signal import SIGINT, signal
 from functions import handler, create_connection, \
-    list_tables
+    list_tables, list_types
 
 # main #
 config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
@@ -25,6 +25,8 @@ print(f"[Cockpit DB location]\n   {cockpit_db}\n")
 conn = create_connection(cockpit_db)
 if conn is not None:
     list_tables(conn)
+    list_types(conn)
+    conn.close()
 else:
     print("ERROR: unable to establish database connection.")
 input("\nPress ENTER to return to main menu")
