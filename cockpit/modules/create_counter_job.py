@@ -56,10 +56,12 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-environments = {
-    1: ['DR',data['params']['dr']['variables']['pivot']], 
-    2: ['PRD', data['params']['prd']['variables']['pivot']]
-    }
+index = 1
+environments = {}
+for k, v in data['params'].items():
+    if k != 'cockpit':
+        environments[index] = [f'{k}'.upper(), data['params'][k]['variables']['pivot']]
+        index += 1
 space_types = get_object_types(data)
 # choice env
 choice = get_selection(environments, 'environments')
