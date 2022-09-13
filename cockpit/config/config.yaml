@@ -17,11 +17,21 @@ params:
       pivot: PIVOT_PRD
       rest: ENDPOINT_PRD
 types:
-  1: 'Validate'
-  2: 'Deploy MS'
-  3: 'Deploy Feeder'
-  4: 'Feeder Job'
-  5: 'IIDR Job'
-  6: 'Adabas Consumer Job'
-  7: 'MSSQL Job'
-  
+  1:
+    name: 'Validation'
+    description: 'Validate the number of entries across environments'
+  2:
+    name: 'Deploy Microservice'
+    description: 'Deploy a microservice on the space'
+  3:
+    name: 'Feeder'
+    description: 'Run feeder related operations'
+  4:
+    name: 'IIDR'
+    description: 'Run IIDR related operations'
+  5: 
+    name: 'Adabas Consumer'
+    description: 'Run Adabas consumer related operations'
+  6:
+    name: 'MSSQL'
+    description: 'Run MSSQL related operations'
