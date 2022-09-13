@@ -34,7 +34,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    #subprocess.run("clear")
+    subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -69,6 +69,25 @@ def print_locations(selections, dictionary):
         location += " :: " + str(eval(f"dictionary{index}['id']")).upper()
     print_header()
     pretty_print(f'{location}\n', 'green', 'bright')
+
+
+def check_connection(server, port):
+    '''
+    check connection to server on given port
+    :param selections: the selections list
+    :param dictionary: dictionary of menu items
+    :return:
+    '''
+    import socket
+    conn_timeout = 2    # adjust value for connection test
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.settimeout(conn_timeout)
+    check_port = a_socket.connect_ex((server, port))
+    a_socket.settimeout(None)
+    if check_port == 0:
+        return True
+    else:
+        return False
 
 
 ###############################################################
@@ -290,16 +309,6 @@ def check_settings(config):
     with spinner('Loading cockpit data... ', delay=0.1):
         conn = create_connection(cockpit_db)
         register_types(conn, get_object_types(data))
-        
-        ### DEBUG ###
-        # object_types = {
-        #     1: ['com.j_spaces.examples.benchmark.messages.MessagePOJO', 100000],
-        #     2: ['com.j_spaces.examples.benchmark.messages.MessagePOJO1', 110000],
-        #     3: ['com.j_spaces.examples.benchmark.messages.MessagePOJO2', 120000],
-        #     4: ['com.j_spaces.examples.benchmark.messages.MessagePOJO3', 130000],
-        #     5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
-        #     }
-        # register_types(conn, object_types)
 
 
 def get_object_types(yaml_data):
@@ -312,22 +321,36 @@ def get_object_types(yaml_data):
     import subprocess
     import json
     types = []
+    connections_ok = []
     for env_name in yaml_data['params']:
         if env_name != 'cockpit':
             pivot = yaml_data['params'][env_name]['endpoints']['pivot']
             exec_script = f"{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"
-            cmd = f"cat {exec_script} | ssh {pivot} python3 -"
-            response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-            response = json.loads(response.replace("\'", "\""))
-            for k in response.keys():
-                if k != 'java.lang.Object':
-                    types.append(k)
-    k = 1
-    object_types = {}
-    for the_type in set(types):
-        v = [ the_type, response[the_type]['entries']]
-        object_types[k] = v
-        k += 1
+            if check_connection(pivot, 22):
+                connections_ok.append(True)
+                cmd = f"cat {exec_script} | ssh {pivot} python3 -"
+                response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+                response = json.loads(response.replace("\'", "\""))
+                for k in response.keys():
+                    if k != 'java.lang.Object':
+                        types.append(k)
+    if True in connections_ok:
+        k = 1
+        object_types = {}
+        for the_type in set(types):
+            v = [ the_type, response[the_type]['entries']]
+            object_types[k] = v
+            k += 1
+    else:
+        ### IF NO PIVOT ARE ACCESSIBLE WE GENERATE THIS OBJECT FOR DEBUGGING ###
+        object_types = {
+            1: ['com.j_spaces.examples.benchmark.messages.MessagePOJO', 100000],
+            2: ['com.j_spaces.examples.benchmark.messages.MessagePOJO1', 110000],
+            3: ['com.j_spaces.examples.benchmark.messages.MessagePOJO2', 120000],
+            4: ['com.j_spaces.examples.benchmark.messages.MessagePOJO3', 130000],
+            5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
+            }
+    
     return object_types
 
 
