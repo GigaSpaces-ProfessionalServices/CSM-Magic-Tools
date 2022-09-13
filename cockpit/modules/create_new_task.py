@@ -26,9 +26,9 @@ cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 # generate db data by columns
 t_uid = str(uuid.uuid4())
 # get task type from user
-result = get_type_selection(data['types'])
+result = get_type_selection(data['tasks'])
 if result != -1:
-    t_type = data['types'][result]
+    t_type = data['tasks'][result]
     t_type_sn = result
     t_metadata = "NULL"
     t_content = "NULL"
