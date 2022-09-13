@@ -34,7 +34,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    subprocess.run("clear")
+    #subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -79,7 +79,7 @@ def check_connection(server, port):
     :return:
     '''
     import socket
-    conn_timeout = 2    # adjust value for connection test
+    conn_timeout = 1    # adjust value for connection test
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_socket.settimeout(conn_timeout)
     check_port = a_socket.connect_ex((server, port))
@@ -133,7 +133,7 @@ def get_type_selection(the_dict):
     print(q + "\n" + '=' * len(q))
     for k, v in the_dict.items():
         index = f"[{k}]"
-        print(f'{index:<4} - {v:<24}')
+        print(f'{index:<4} - {v["name"]:<24} {v["description"]:<34}')
     print(f'{"[99]":<4} - {"ESC":<24}')
     return int(validate_input(the_dict))
 
