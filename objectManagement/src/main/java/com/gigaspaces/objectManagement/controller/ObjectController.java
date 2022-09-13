@@ -10,6 +10,7 @@ import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.TableOutcome;
 import com.gigaspaces.objectManagement.service.DdlParser;
 import com.gigaspaces.objectManagement.service.ObjectService;
+import com.gigaspaces.objectManagement.utils.CommonUtil;
 import com.gigaspaces.objectManagement.utils.ReportWriter;
 import com.gigaspaces.query.IdQuery;
 import com.google.gson.JsonArray;
@@ -98,7 +99,7 @@ public class ObjectController {
             return "success";
         } catch (Exception e){
             e.printStackTrace();
-            logger.error("Error in registerTypeBatch -> "+e.getLocalizedMessage());
+            logger.error("Error in registerTypeBatch -> "+e.getLocalizedMessage(),e);
             return "error";
         }
 
@@ -125,9 +126,9 @@ public class ObjectController {
         logger.info("Entering into -> registerTypeSingle");
         logger.info("params received : tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath + ",spaceName=" + spaceName);
         try{
-            objectService.registerObject(tableName);
-            logger.info("Exiting from -> registerTypeSingle");
-            return "success";
+            String response = objectService.registerObject(tableName);
+            logger.info("Exiting from -> registerTypeSingle response"+response);
+            return response;
         } catch (Exception e){
             e.printStackTrace();
             logger.error("Error in registerTypeSingle -> "+e.getLocalizedMessage());
@@ -147,7 +148,7 @@ public class ObjectController {
             return "success";
         } catch (Exception e){
             e.printStackTrace();
-            logger.error("Error in -> registerTypeSandbox");
+            logger.error("Error in -> registerTypeSandbox",e);
             return "error";
         }
     }
@@ -156,7 +157,7 @@ public class ObjectController {
     private String validate(@RequestParam("ddlFileName") String ddlFileName, @RequestParam("reportFilePath") String reportFilePath) throws IOException {
 
         String ddlFilePath = ddlAndPropertiesBasePath+"/"+ddlFileName;
-        String ddl = readDDLFromfile(ddlFilePath);
+        String ddl = CommonUtil.readDDLFromfile(ddlFilePath);
         //Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
         //gigaSpace = admin.getSpaces().waitFor(spaceName).getGigaSpace();
 
@@ -497,8 +498,5 @@ public class ObjectController {
         }
     }
 
-    private static String readDDLFromfile(String ddlFileName) throws IOException {
-        String ddlText = new String(readAllBytes(Paths.get(ddlFileName)));
-        return ddlText;
-    }
+
 }

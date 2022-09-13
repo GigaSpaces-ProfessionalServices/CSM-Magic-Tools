@@ -13,7 +13,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.Properties;
+
+import static java.nio.file.Files.readAllBytes;
 
 @Component
 public class CommonUtil {
@@ -188,7 +191,41 @@ public class CommonUtil {
         return false;
     }
 
-    public static Admin getAdmin(String lookupLocator, String lookupGroup, String odsxProfile, String username, String password){
+    private static void setCredentials(String lookupLocator, String lookupGroup,AdminFactory adminFactory, String appId, String safeId, String objectId) throws IOException, InterruptedException {
+        String gsusername = "";
+        String gspassword = "";
+        String managerHost = lookupLocator.split(",")[0].split(":")[0];
+        logger.info("lookupGroup : "+lookupGroup);
+        logger.info("lookupLocator : "+lookupLocator);
+        logger.info("managerHost : "+managerHost);
+
+        Process p = Runtime.getRuntime().exec("ssh "+managerHost);
+        PrintStream out = new PrintStream(p.getOutputStream());
+        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+appId+" -p Query=\"Safe="+safeId+";Folder=;Object="+objectId+";\" -o PassProps.UserName";
+        String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+appId+" -p Query=\"Safe="+safeId+";Folder=;Object="+objectId+";\" -o Password";
+        logger.info("safeusernameCmd :: "+safeusernameCmd);
+        logger.info("safepassCmd :: "+safepassCmd);
+        out.println(safeusernameCmd);
+        while (in.ready()) {
+            gsusername = in.readLine();
+            logger.info(gsusername);
+            break;
+        }
+        out.println(safepassCmd);
+        while (in.ready()) {
+            gspassword = in.readLine();
+            logger.info(gspassword);
+            break;
+        }
+        adminFactory.credentials(gsusername, gspassword);
+        logger.info("GS_USERNAME -> "+gsusername);
+        logger.info("GS_PASSWORD -> "+gspassword);
+
+        out.println("exit");
+        p.waitFor();
+    }
+    public static Admin getAdmin(String lookupLocator, String lookupGroup, String odsxProfile, String username, String password,String appId, String safeId, String objectId){
         logger.info("Entering into -> getAdmin");
         AdminFactory adminFactory = new AdminFactory();
         adminFactory.addLocator(lookupLocator);
@@ -200,15 +237,28 @@ public class CommonUtil {
         if(lookupGroup!=null && lookupGroup!=""){
             adminFactory.addGroups(lookupGroup);
         }
+        if(lookupLocator!=null && lookupLocator!=""){
+            adminFactory.addLocators(lookupLocator);
+        }
         if (odsxProfile!=null && odsxProfile!="" && odsxProfile.equalsIgnoreCase("security")) {
             logger.info("setting credentials to grid manager admin");
-            logger.info("GS_USERNAME -> "+username);
-            logger.info("GS_PASSWORD -> "+password);
-            adminFactory.credentials(username, password);
+            try {
+                setCredentials(lookupLocator, lookupGroup,adminFactory, appId, safeId, objectId);
+            } catch (IOException e) {
+                logger.error(e.getLocalizedMessage(),e);
+            } catch (InterruptedException e) {
+                logger.error(e.getLocalizedMessage(),e);
+            }
+           //  adminFactory.credentials(username, password);
         }
         Admin admin =adminFactory.createAdmin();
 
         logger.info("Exiting from -> getAdmin()");
         return admin;
+    }
+
+    public static String readDDLFromfile(String ddlFileName) throws IOException {
+        String ddlText = new String(readAllBytes(Paths.get(ddlFileName)));
+        return ddlText;
     }
 }
