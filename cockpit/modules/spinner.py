@@ -10,7 +10,7 @@ import time
 class Spinner:
 
     def __init__(self, message, delay=0.1):
-        self.spinner = itertools.cycle(['-', '/', '|', '\\'])
+        self.spinner = itertools.cycle(['|', '/', '-', '\\'])
         self.delay = delay
         self.busy = False
         self.spinner_visible = False
