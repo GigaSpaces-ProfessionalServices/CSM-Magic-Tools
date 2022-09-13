@@ -10,8 +10,10 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import subprocess
 import yaml
 import os
-#from influxdb import InfluxDBClient
 import datetime
+from functions import check_connection
+#from influxdb import InfluxDBClient
+
 
 def get_auth(host):
     auth_params = {}
@@ -20,24 +22,21 @@ def get_auth(host):
     cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
           f'-p AppDescs.AppID=APPODSUSERSBLLPRD ' \
           f'-p Query="Safe=AIMODSUSERSBLLPRD;Folder=;Object=ACCHQudkodsl;" -o'
-    sh_cmd = f"ssh {host} '{cmd} {opt_user}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['user'] = the_response.strip("\\n'").strip("b'")
-    sh_cmd = f"ssh {host} '{cmd} {opt_pass}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['pass'] = the_response.strip("\\n'").strip("b'")
+    auth_params['user'] = subprocess.run([f"ssh {host} '{cmd} {opt_user}'"], \
+        shell=True, stdout=subprocess.PIPE).stdout.decode().strip('\n')
+    auth_params['pass'] = subprocess.run([f"ssh {host} '{cmd} {opt_pass}'"], \
+        shell=True, stdout=subprocess.PIPE).stdout.decode().strip('\n')
     return auth_params
 
 
 def is_env_secured(the_manager):
-    # setenv_file = "/dbagiga/gigaspaces-smart-ods/bin/setenv-overrides.sh"
-    # catch_str = 'Dcom.gs.security.enabled=true'
-    # sh_cmd = f"ssh {the_manager} 'cat {setenv_file} | grep {catch_str} > /dev/null 2>&1' ; echo $?"
-    # the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout).strip("b' \\n")
-    # if int(the_response) == 0:
-    #     return True
-    # else:
-    #     return False
+    setenv_file = "/dbagiga/gigaspaces-smart-ods/bin/setenv-overrides.sh"
+    catch_str = 'Dcom.gs.security.enabled=true'
+    if check_connection(the_manager, 22):
+        sh_cmd = f"ssh {the_manager} 'cat {setenv_file} | grep {catch_str} > /dev/null 2>&1' ; echo $?"
+        the_response = int(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode().strip('\n'))
+        if the_response == 0:
+            return True
     return False
 
 
