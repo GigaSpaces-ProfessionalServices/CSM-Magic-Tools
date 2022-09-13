@@ -16,7 +16,7 @@ params:
     variables:
       pivot: PIVOT_PRD
       rest: ENDPOINT_PRD
-types:
+tasks:
   1:
     name: 'Validation'
     description: 'Validate the number of entries across environments'
@@ -35,3 +35,10 @@ types:
   6:
     name: 'MSSQL'
     description: 'Run MSSQL related operations'
+feeders:
+  1:
+    name: 'MSSQL'
+    description: 'add description here'
+  2:
+    name: 'DB2'
+    description: 'add description here'
