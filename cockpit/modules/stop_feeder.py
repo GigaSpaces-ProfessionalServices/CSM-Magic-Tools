@@ -21,6 +21,6 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 
-print("### [ TBD ] ### SHOW JOB ###")
+print("### [ TBD ] ### STOP FEEDER ###")
 
 input("\nPress ENTER to go back to the main menu")
