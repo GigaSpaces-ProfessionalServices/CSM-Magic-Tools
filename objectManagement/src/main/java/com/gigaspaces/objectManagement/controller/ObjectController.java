@@ -84,7 +84,7 @@ public class ObjectController {
             return jsonArray;
         } catch (Exception e){
             e.printStackTrace();
-            logger.error("Error in getObjectList -> "+e.getLocalizedMessage());
+            logger.error("Error in getObjectList -> "+e.getLocalizedMessage(),e);
             return null;
         }
 
@@ -115,7 +115,7 @@ public class ObjectController {
             return "success";
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("Error in unregisterType -> "+e.getLocalizedMessage());
+            logger.error("Error in unregisterType -> "+e.getLocalizedMessage(),e);
             return "error";
         }
     }
@@ -131,7 +131,7 @@ public class ObjectController {
             return response;
         } catch (Exception e){
             e.printStackTrace();
-            logger.error("Error in registerTypeSingle -> "+e.getLocalizedMessage());
+            logger.error("Error in registerTypeSingle -> "+e.getLocalizedMessage(),e);
             return "error";
         }
     }

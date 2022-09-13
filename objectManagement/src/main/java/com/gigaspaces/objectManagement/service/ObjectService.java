@@ -182,7 +182,7 @@ public class ObjectService {
             logger.info("####################");
             SpaceTypeDescriptor spaceTypeDescriptor = gigaSpaceTypeManager.getTypeDescriptor(objectType);
             String[] objPropsArr = spaceTypeDescriptor.getPropertiesNames();
-            String spaceIdProp = spaceTypeDescriptor.getIdPropertyName();
+            List<String> spaceIdProp = spaceTypeDescriptor.getIdPropertiesNames();
             logger.info("spaceIdProp =>"+spaceIdProp);
             List<String> idPropsList = spaceTypeDescriptor.getIdPropertiesNames();
             for (int i = 0; i < objPropsArr.length; i++) {

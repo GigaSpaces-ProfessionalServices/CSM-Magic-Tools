@@ -4,6 +4,10 @@ import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableCon
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
 import com.gigaspaces.metadata.index.SpaceIndexType;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
 import org.openspaces.core.GigaSpace;
@@ -12,7 +16,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.Properties;
 
@@ -51,7 +60,7 @@ public class CommonUtil {
         } catch (IOException e) {
             e.printStackTrace();
             String message = "Failed to load properties from file [" + propertiesFileName + "]";
-            logger.error(message+"->"+e.getMessage());
+            logger.error(message + "->" + e.getMessage(), e);
             throw new RuntimeException(message);
         }
 
@@ -94,9 +103,10 @@ public class CommonUtil {
     public static void dynamicPropertiesSupport(boolean synamicPropertiesSupported, SpaceTypeDescriptorBuilder builder) {
         builder.supportsDynamicProperties(synamicPropertiesSupported);
     }
-    public static String getTierCriteriaConfig(String typeName,String strTierCriteriaFile){
+
+    public static String getTierCriteriaConfig(String typeName, String strTierCriteriaFile) {
         logger.info("Entering into -> getTierCriteriaConfig");
-        logger.info("strTierCriteriaFile -> "+strTierCriteriaFile);
+        logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
             if (strTierCriteriaFile != null && strTierCriteriaFile.trim() != "") {
                 File tierCriteriaFile = new File(strTierCriteriaFile);
@@ -105,14 +115,14 @@ public class CommonUtil {
                     BufferedReader bufferedReader = new BufferedReader(new FileReader(tierCriteriaFile));
                     String line;
                     while ((line = bufferedReader.readLine()) != null) {
-                        if(line!=null && line.indexOf(typeName)<0) continue;
-                        logger.info("Tier criteria file line -> "+line);
+                        if (line != null && line.indexOf(typeName) < 0) continue;
+                        logger.info("Tier criteria file line -> " + line);
                         String[] lineContents = line.split("\t");
-                        if(lineContents!=null && lineContents.length > 2) {
+                        if (lineContents != null && lineContents.length > 2) {
                             String criteriaClass = lineContents[1];
-                            logger.info("criteriaClass -> "+criteriaClass);
+                            logger.info("criteriaClass -> " + criteriaClass);
                             String criteria = lineContents[2];
-                            logger.info("criteria -> "+criteria);
+                            logger.info("criteria -> " + criteria);
 
                             if (criteriaClass != null && criteriaClass.trim().equalsIgnoreCase(typeName)) {
                                 if (criteria != null && criteria.trim() != "") {
@@ -121,8 +131,8 @@ public class CommonUtil {
                             } else {
                                 logger.info("Tier configuration for '" + criteriaClass + "' is not found");
                             }
-                        } else{
-                            logger.info("Tier criteria for '"+typeName+"' is not defined");
+                        } else {
+                            logger.info("Tier criteria for '" + typeName + "' is not defined");
                         }
                     }
                 } else {
@@ -132,27 +142,28 @@ public class CommonUtil {
                 logger.info("Tier Criteria file path is not configured");
             }
             logger.info("Exiting from -> getTierCriteriaConfig");
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-            logger.error("Error in getTierCriteriaConfig -> "+e.toString());
+            logger.error("Error in getTierCriteriaConfig -> " + e.toString(), e);
         }
         return null;
     }
-    public static SpaceTypeDescriptorBuilder setTierCriteria(String typeName, SpaceTypeDescriptorBuilder builder, String strTierCriteriaFile){
+
+    public static SpaceTypeDescriptorBuilder setTierCriteria(String typeName, SpaceTypeDescriptorBuilder builder, String strTierCriteriaFile) {
         logger.info("Entering into -> setTierCriteria");
-        logger.info("strTierCriteriaFile -> "+strTierCriteriaFile);
+        logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
-            String criteria = getTierCriteriaConfig(typeName,strTierCriteriaFile);
-            if(criteria!=null && criteria.trim()!=""){
+            String criteria = getTierCriteriaConfig(typeName, strTierCriteriaFile);
+            if (criteria != null && criteria.trim() != "") {
                 builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                         .setName(typeName)
                         .setCriteria(criteria));
             }
 
             logger.info("Exiting from -> setTierCriteria");
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-            logger.error("Error in setTierCriteria -> "+e.toString());
+            logger.error("Error in setTierCriteria -> " + e.toString(), e);
         }
         return builder;
     }
@@ -191,21 +202,21 @@ public class CommonUtil {
         return false;
     }
 
-    private static void setCredentials(String lookupLocator, String lookupGroup,AdminFactory adminFactory, String appId, String safeId, String objectId) throws IOException, InterruptedException {
+    private static void setCredentials(String lookupLocator, String lookupGroup, AdminFactory adminFactory, String appId, String safeId, String objectId) throws IOException, InterruptedException {
         String gsusername = "";
         String gspassword = "";
         String managerHost = lookupLocator.split(",")[0].split(":")[0];
-        logger.info("lookupGroup : "+lookupGroup);
-        logger.info("lookupLocator : "+lookupLocator);
-        logger.info("managerHost : "+managerHost);
+        logger.info("lookupGroup : " + lookupGroup);
+        logger.info("lookupLocator : " + lookupLocator);
+        logger.info("managerHost : " + managerHost);
 
-        Process p = Runtime.getRuntime().exec("ssh "+managerHost);
+        /*Process p = Runtime.getRuntime().exec("ssh " + managerHost);
         PrintStream out = new PrintStream(p.getOutputStream());
         BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+appId+" -p Query=\"Safe="+safeId+";Folder=;Object="+objectId+";\" -o PassProps.UserName";
-        String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+appId+" -p Query=\"Safe="+safeId+";Folder=;Object="+objectId+";\" -o Password";
-        logger.info("safeusernameCmd :: "+safeusernameCmd);
-        logger.info("safepassCmd :: "+safepassCmd);
+        String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o PassProps.UserName";
+        String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o Password";
+        logger.info("safeusernameCmd :: " + safeusernameCmd);
+        logger.info("safepassCmd :: " + safepassCmd);
         out.println(safeusernameCmd);
         while (in.ready()) {
             gsusername = in.readLine();
@@ -218,40 +229,77 @@ public class CommonUtil {
             logger.info(gspassword);
             break;
         }
-        adminFactory.credentials(gsusername, gspassword);
-        logger.info("GS_USERNAME -> "+gsusername);
-        logger.info("GS_PASSWORD -> "+gspassword);
-
         out.println("exit");
-        p.waitFor();
+        p.waitFor();*/
+
+        JSch jsch = new JSch();
+
+        Session session = null;
+        try {
+            session = jsch.getSession("root", managerHost, 22);
+            Properties config = new Properties();
+            config.put("StrictHostKeyChecking", "no");
+            session.setConfig(config);
+            session.connect();
+            String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o PassProps.UserName";
+            String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o Password";
+            logger.info("safeusernameCmd :: " + safeusernameCmd);
+            logger.info("safepassCmd :: " + safepassCmd);
+
+            ChannelExec channel = (ChannelExec) session.openChannel("exec");
+            BufferedReader in = new BufferedReader(new InputStreamReader(channel.getInputStream()));
+//            channel.setCommand("pwd;ls");
+            channel.setCommand(safeusernameCmd + ";" + safepassCmd);
+            channel.connect();
+
+            String msg = null;
+            int counter = 0;
+            while ((msg = in.readLine()) != null) {
+                logger.info(msg);
+                counter++;
+                if (counter == 1) {
+                    gsusername = msg;
+                } else if (counter == 2) {
+                    gspassword = msg;
+                }
+            }
+            channel.disconnect();
+            session.disconnect();
+        } catch (JSchException e) {
+            logger.error(e.getLocalizedMessage(), e);
+        }
+        adminFactory.credentials(gsusername, gspassword);
+        logger.info("GS_USERNAME -> " + gsusername);
+        logger.info("GS_PASSWORD -> " + gspassword);
     }
-    public static Admin getAdmin(String lookupLocator, String lookupGroup, String odsxProfile, String username, String password,String appId, String safeId, String objectId){
+
+    public static Admin getAdmin(String lookupLocator, String lookupGroup, String odsxProfile, String username, String password, String appId, String safeId, String objectId) {
         logger.info("Entering into -> getAdmin");
         AdminFactory adminFactory = new AdminFactory();
         adminFactory.addLocator(lookupLocator);
-        logger.info("Entering into -> LOOKUP_LOCATOR->"+lookupLocator);
-        logger.info("Entering into -> LOOKUP_GROUP->"+lookupGroup);
+        logger.info("Entering into -> LOOKUP_LOCATOR->" + lookupLocator);
+        logger.info("Entering into -> LOOKUP_GROUP->" + lookupGroup);
 
-        logger.info("ODSX profile ->"+odsxProfile);
+        logger.info("ODSX profile ->" + odsxProfile);
 
-        if(lookupGroup!=null && lookupGroup!=""){
+        if (lookupGroup != null && lookupGroup != "") {
             adminFactory.addGroups(lookupGroup);
         }
-        if(lookupLocator!=null && lookupLocator!=""){
+        if (lookupLocator != null && lookupLocator != "") {
             adminFactory.addLocators(lookupLocator);
         }
-        if (odsxProfile!=null && odsxProfile!="" && odsxProfile.equalsIgnoreCase("security")) {
+        if (odsxProfile != null && odsxProfile != "" && odsxProfile.equalsIgnoreCase("security")) {
             logger.info("setting credentials to grid manager admin");
             try {
-                setCredentials(lookupLocator, lookupGroup,adminFactory, appId, safeId, objectId);
+                setCredentials(lookupLocator, lookupGroup, adminFactory, appId, safeId, objectId);
             } catch (IOException e) {
-                logger.error(e.getLocalizedMessage(),e);
+                logger.error(e.getLocalizedMessage(), e);
             } catch (InterruptedException e) {
-                logger.error(e.getLocalizedMessage(),e);
+                logger.error(e.getLocalizedMessage(), e);
             }
-           //  adminFactory.credentials(username, password);
+            //  adminFactory.credentials(username, password);
         }
-        Admin admin =adminFactory.createAdmin();
+        Admin admin = adminFactory.createAdmin();
 
         logger.info("Exiting from -> getAdmin()");
         return admin;
