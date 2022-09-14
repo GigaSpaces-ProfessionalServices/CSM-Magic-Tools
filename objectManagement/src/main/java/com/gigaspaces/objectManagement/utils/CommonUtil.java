@@ -231,16 +231,19 @@ public class CommonUtil {
         }
         out.println("exit");
         p.waitFor();*/
-
-        JSch jsch = new JSch();
-
-        Session session = null;
         try {
-            session = jsch.getSession("root", managerHost, 22);
+            JSch jsch = new JSch();
+            jsch.addIdentity("~/.ssh/id_rsa");
+
+            Session session = null;
+
+//            session = jsch.getSession("root", "172.31.46.143", 22);
+            session = jsch.getSession("172.31.46.143");
             Properties config = new Properties();
             config.put("StrictHostKeyChecking", "no");
             session.setConfig(config);
             session.connect();
+            logger.info("connected >>>>>>>>>>>>>>>");
             String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o PassProps.UserName";
             String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID=" + appId + " -p Query=\"Safe=" + safeId + ";Folder=;Object=" + objectId + ";\" -o Password";
             logger.info("safeusernameCmd :: " + safeusernameCmd);
@@ -267,6 +270,12 @@ public class CommonUtil {
             session.disconnect();
         } catch (JSchException e) {
             logger.error(e.getLocalizedMessage(), e);
+        }
+        if ("".equals(gsusername)) {
+            gsusername = "gs-admin";
+        }
+        if ("".equals(gspassword)) {
+            gspassword = "gs-admin";
         }
         adminFactory.credentials(gsusername, gspassword);
         logger.info("GS_USERNAME -> " + gsusername);

@@ -31,6 +31,12 @@ public class DdlParser {
         return parse(sql, "");
     }
 
+    public Collection<SpaceTypeDescriptorBuilder> parse(Path path,String suffix) throws IOException {
+        byte[] data = Files.readAllBytes(path);
+        String s = new String(data);
+        return parse(s,suffix);
+    }
+
     public Collection<SpaceTypeDescriptorBuilder> parse(String sql, String suffix) {
         Collection<SpaceTypeDescriptorBuilder> result = new ArrayList<>();
         String[] commands = sql.split(";");
