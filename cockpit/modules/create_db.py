@@ -40,8 +40,9 @@ def main():
 
     create_policies_table = """CREATE TABLE IF NOT EXISTS policies (
                                         id integer PRIMARY KEY,
-                                        schedule integer NOT NULL,
-                                        repeat integer NOT NULL,
+                                        schedule_sec integer NOT NULL,
+                                        num_retry_on_fail integer NOT NULL,
+                                        retry_wait_sec integer NOT NULL,
                                         task_uid text,
                                         metadata text,
                                         content text,
