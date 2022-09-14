@@ -222,6 +222,15 @@ def parse_multi_select(choice_list):
             else:
                 choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
 
+# get user acceptance to run
+def get_user_permission(question):
+    q = f"{question} [yes/no]: "
+    answer = input(q).lower()
+    while True:
+        if answer == 'yes': return True
+        elif answer == 'no': return False
+        else: answer = input("invlid input! type 'yes' or 'no': ")
+
 
 def check_settings(config):
     '''
@@ -237,15 +246,6 @@ def check_settings(config):
     # load cockpit configuration
     with open(config, 'r') as yf:
         data = yaml.safe_load(yf)
-
-    # get user acceptance to run
-    def get_user_permission(question):
-        q = f"{question} [yes/no]: "
-        answer = input(q).lower()
-        while True:
-            if answer == 'yes': return True
-            elif answer == 'no': return False
-            else: answer = input("invlid input! type 'yes' or 'no': ")
 
     # cockpit database settings
     cockpit_db_home = data['params']['cockpit']['db_home']
@@ -308,10 +308,10 @@ def check_settings(config):
     spinner = spinner.Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
         conn = create_connection(cockpit_db)
-        register_types(conn, get_object_types(data))
+        register_types(conn, get_object_types_from_space(data))
 
 
-def get_object_types(yaml_data):
+def get_object_types_from_space(yaml_data):
     """
     get object types from space
     :param yaml_data: the data from yaml file 
@@ -351,6 +351,24 @@ def get_object_types(yaml_data):
             5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
             }
     
+    return object_types
+
+
+def get_object_types_from_db(conn):
+    '''
+    get registered types from database
+    :param conn: connection object
+    :return: list of rows
+    '''
+    c = conn.cursor()
+    c.execute("SELECT name FROM types;")
+    rows = c.fetchall()
+    object_types = {}
+    if len(rows) > 0:
+        index = 1
+        for t in rows:
+            object_types[index] = [t[0]]
+            index += 1
     return object_types
 
 
@@ -720,8 +738,8 @@ def register_policy(conn, policy):
     :param policy: policy data
     :return: policy id
     """
-    sql = ''' INSERT INTO policies(schedule,repeat,task_uid,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?) '''
+    sql = ''' INSERT INTO policies(schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,state,created)
+              VALUES(?,?,?,?,?,?,?,?) '''
     cur = conn.cursor()
     cur.execute(sql, policy)
     conn.commit()
