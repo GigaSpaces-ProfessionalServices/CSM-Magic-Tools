@@ -380,7 +380,6 @@ def list_types(conn):
     c.execute("SELECT * FROM types;")
     rows = c.fetchall()
     if len(rows) > 0:
-        print("\n[Space object types]")
         for t in rows:
             print(f"   {t[0]:<10}")
 
@@ -463,7 +462,6 @@ def list_tables(conn):
     c.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = c.fetchall()
     if len(tables) > 0:
-        print("\n[Cockpit database tables]")
         for table_name in tables:
             c.execute(f"SELECT count(*) FROM {table_name[0]};")
             num = c.fetchall()[0][0]
