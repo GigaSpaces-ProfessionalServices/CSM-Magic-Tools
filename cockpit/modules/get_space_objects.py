@@ -3,6 +3,7 @@
 
 #
 # get objects data from space
+# this script is executed remotely on the pivot(s)
 #
 
 import requests
@@ -11,8 +12,26 @@ import subprocess
 import yaml
 import os
 import datetime
-from functions import check_connection
+import socket
 #from influxdb import InfluxDBClient
+
+
+def check_connection(server, port):
+    '''
+    check connection to server on given port
+    :param selections: the selections list
+    :param dictionary: dictionary of menu items
+    :return:
+    '''
+    conn_timeout = 1    # adjust value for connection test
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.settimeout(conn_timeout)
+    check_port = a_socket.connect_ex((server, port))
+    a_socket.settimeout(None)
+    if check_port == 0:
+        return True
+    else:
+        return False
 
 
 def get_auth(host):
