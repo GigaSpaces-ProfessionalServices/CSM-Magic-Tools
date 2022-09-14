@@ -285,9 +285,9 @@ description: ''
         exec: ''
         description: 'add description here'
 5:
-    id: 'Settings'
+    id: 'Settings/Status'
     type: 'menu'
-    description: 'Display Cockpit settings'
+    description: 'Display cockpit settings and status'
     1: 
         id: 'IP/Endpoint for PROD'   
         type: 'command'
