@@ -632,7 +632,8 @@ if __name__ == '__main__':
                         format=log_format,
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO)
-
+    logger = logging.getLogger()
+    logger.info('Sanity started.')
     # disable insecure request warning
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     arguments = argument_parser()
@@ -655,8 +656,9 @@ if __name__ == '__main__':
                 rest_ok_hosts.append(mgr)
         if len(rest_ok_hosts) == 0:
             print('REST status: DOWN')
-            logger = logging.getLogger()
             logger.error('REST status: DOWN')
+            logger.info('Sanity complete.')
+            logging.shutdown()
             exit(1)
         else:
             # we use 1st host from rest_ok_hosts
@@ -678,9 +680,10 @@ if __name__ == '__main__':
         osg = OdsServiceGrid()
         if not osg.Space.exist():
             print(f"space {space_name} does not exist!\n")
-            logger = logging.getLogger()
             logger.error(f"space {space_name} does not exist!")
-            exit(0)
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(1)
         if 'cycles' in arguments:
             cycles = True
             total_cycles = int(arguments['cycles'])
@@ -704,11 +707,15 @@ if __name__ == '__main__':
         # if both cycles and duration requested we abort
         if cycles and duration:
             print("ERROR: count and duration are mutually exclusive. choose one or the other.\n")
-            exit(0)
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(1)
         started = int(time.time())
         if info:
             show_grid_info()
             print('\n'*2)
+            logger.info('Sanity complete.')
+            logging.shutdown()
             exit(0)
         if polling:
             if duration:
@@ -716,12 +723,16 @@ if __name__ == '__main__':
                     show_service_polling(service_name)
                     print()
                     time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
             else:
                 while cycles_passed < total_cycles:
                     show_service_polling(service_name)
                     print()
                     cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
         else:
             ### add additional services here! ###
@@ -732,11 +743,15 @@ if __name__ == '__main__':
                 while time_passed < duration_sec:
                     show_pu_status()
                     time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
             else:
                 while cycles_passed < total_cycles:
                     show_pu_status()
                     cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
         if stats:
             if duration:
@@ -744,12 +759,16 @@ if __name__ == '__main__':
                     time.sleep(0.2)
                     show_total_objects()
                     time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
             else:
                 while cycles_passed < total_cycles:
                     time.sleep(0.2)
                     show_total_objects()
                     cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
         if stress:
             if duration:
@@ -757,30 +776,40 @@ if __name__ == '__main__':
                     time.sleep(0.2)
                     run_stress_test()
                     time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
             else:
                 while cycles_passed < total_cycles:
                     time.sleep(0.2)
                     run_stress_test()
                     cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
                 exit(0)
         if duration:
             while time_passed < duration_sec:
                 run_sanity_routine()
                 time_passed = int(time.time() - started)
+            logger.info('Sanity complete.')
+            logging.shutdown()
             exit(0)
         if cycles:
             while cycles_passed < total_cycles:
                 run_sanity_routine()
                 cycles_passed += 1
+            logger.info('Sanity complete.')
+            logging.shutdown()
             exit(0)
         else:
             interactive_mode = True
             run_sanity_routine()
+            logger.info('Sanity complete.')
+            logging.shutdown()
             exit(0)
     else:
         print('\nmissing option(s). use [mega_loader.py -h] for help.\n')
-        logger = logging.getLogger()
         logger.error("missing option(s). use [mega_loader.py -h] for help.\n")
+        logger.info('Sanity complete.')
+        logging.shutdown()
         exit(1)
-        
