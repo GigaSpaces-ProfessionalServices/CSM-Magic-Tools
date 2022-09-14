@@ -7,7 +7,7 @@ import yaml
 from influxdb import InfluxDBClient
 import datetime
 from signal import SIGINT, signal
-from functions import handler, get_object_types, \
+from functions import handler, get_object_types_from_db, \
     create_connection, jobs_exist, \
         generate_job_file, register_job
 
@@ -56,13 +56,14 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+conn = create_connection(cockpit_db)
 index = 1
 environments = {}
 for k, v in data['params'].items():
     if k != 'cockpit':
         environments[index] = [f'{k}'.upper(), data['params'][k]['variables']['pivot']]
         index += 1
-space_types = get_object_types(data)
+space_types = get_object_types_from_db(conn)
 # choice env
 choice = get_selection(environments, 'environments')
 envs = {}
@@ -81,7 +82,6 @@ for e in envs.values():
     the_env = e[0]
     for t in types.values():
         the_type = t[0]
-        conn = create_connection(cockpit_db)
         job_name = f"validation_{the_env}_{the_type}"
         job_metadata = ""
         job_content = ""
