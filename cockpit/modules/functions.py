@@ -662,6 +662,7 @@ def list_tasks_grouped(conn, *columns):
     rows = cur.fetchall()
     return rows
 
+
 def register_task(conn, task):
     """
     register a new task
