@@ -34,7 +34,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    #subprocess.run("clear")
+    subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
