@@ -1,0 +1,44 @@
+params:
+  cockpit:
+    db_home: 
+    db_name: 
+  dr:
+    endpoints:
+      pivot: 
+      rest: 
+    variables:
+      pivot: PIVOT_DR
+      rest: ENDPOINT_DR
+  prd:
+    endpoints:
+      pivot: 
+      rest: 
+    variables:
+      pivot: PIVOT_PRD
+      rest: ENDPOINT_PRD
+tasks:
+  1:
+    name: 'Validation'
+    description: 'Validate the number of entries across environments'
+  2:
+    name: 'Deploy Microservice'
+    description: 'Deploy a microservice on the space'
+  3:
+    name: 'Feeder'
+    description: 'Run feeder related operations'
+  4:
+    name: 'IIDR'
+    description: 'Run IIDR related operations'
+  5: 
+    name: 'Adabas Consumer'
+    description: 'Run Adabas consumer related operations'
+  6:
+    name: 'MSSQL'
+    description: 'Run MSSQL related operations'
+feeders:
+  1:
+    name: 'MSSQL'
+    description: 'add description here'
+  2:
+    name: 'DB2'
+    description: 'add description here'

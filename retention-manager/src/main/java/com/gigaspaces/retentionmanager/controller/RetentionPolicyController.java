@@ -19,6 +19,7 @@ public class RetentionPolicyController {
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
+
     @GetMapping("/retention/policies")
     public  Map<String, String> getAllRetentionPolicies() {
         Map<String,String> responseMap = new HashMap<>();
@@ -54,8 +55,8 @@ public class RetentionPolicyController {
         for(ObjectRetentionPolicy objectRetentionPolicy:list) {
             objectRetentionPolicyService.updateRetentionPolicy(objectRetentionPolicy);
         }
-        responseMap.put("response","Success: Retention Policy for "+objectType+" is updated successfully.");
-        return responseMap;
+            responseMap.put("response","Success: Retention Policy for "+objectType+" is updated successfully.");
+            return responseMap;
     }
 
     @PutMapping(path = "/retention/policies", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

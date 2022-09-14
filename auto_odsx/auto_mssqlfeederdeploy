@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py dataengine mssql-feeder install-deploy
+expect "Are you sure want to proceed"
+send -- "y\r"
+
+expect eof

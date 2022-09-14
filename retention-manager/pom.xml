@@ -14,8 +14,8 @@
 	<name>retention-manager</name>
 	<description>Data Retention Manager for space objects</description>
 	<properties>
-		<java.version>1.8</java.version>
-		<gs.version>16.1.1</gs.version>
+		<java.version>8</java.version>
+		<gs.version>16.2.0-m26-thu-30</gs.version>
 	</properties>
 
 	<repositories>
@@ -76,7 +76,7 @@
 		<dependency>
 			<groupId>com.gigaspaces</groupId>
 			<artifactId>xap-jdbc</artifactId>
-			<version>16.1.1</version>
+			<version>${gs.version}</version>
 			<scope>compile</scope>
 		</dependency>
 

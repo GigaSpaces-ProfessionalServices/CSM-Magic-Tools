@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /dbagiga/josh/auto_odsx
+./auto_managerstop
+./auto_managerremove
+read -sn1 -p "Press to install manager"
+./auto_managerinstall
+./auto_managerstart

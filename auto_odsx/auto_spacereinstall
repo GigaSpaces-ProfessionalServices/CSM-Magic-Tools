@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /dbagiga/josh/auto_odsx
+./auto_spacestop
+./auto_spaceremove
+read -sn1 -p "Press to install space"
+./auto_spaceinstall
+./auto_spacestart

@@ -26,55 +26,51 @@ public class CommonUtils {
      * @param unit -- Values (D=days,Y=year,H=hours,M=minute,S=seconds)
      * @return
      */
-    public long findDateDifference(Date start_date, Date end_date, String unit){
+    public long findDateDifference(Date start_date, Date end_date, String unit) throws Exception{
 
         SimpleDateFormat sdf  = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
         long dateDifference = 0;
-        try {
 
-            long difference_In_Time = end_date.getTime() - start_date.getTime();
 
-            long difference_In_Seconds= (difference_In_Time  / 1000)  % 60;
+        long difference_In_Time = end_date.getTime() - start_date.getTime();
 
-            long difference_In_Minutes  = (difference_In_Time  / (1000 * 60)) % 60;
+        long difference_In_Seconds= (difference_In_Time  / 1000)  % 60;
 
-            long difference_In_Hours  = (difference_In_Time / (1000 * 60 * 60)) % 24;
+        long difference_In_Minutes  = (difference_In_Time  / (1000 * 60)) % 60;
 
-            long difference_In_Years = (difference_In_Time / (1000l * 60 * 60 * 24 * 365));
+        long difference_In_Hours  = (difference_In_Time / (1000 * 60 * 60)) % 24;
 
-            long difference_In_Days = (difference_In_Time / (1000 * 60 * 60 * 24)) % 365;
+        long difference_In_Years = (difference_In_Time / (1000l * 60 * 60 * 24 * 365));
 
-            switch (unit){
-                case "D":
-                    dateDifference =  (difference_In_Time / (1000 * 60 * 60 * 24)) % 365;
-                    break;
+        long difference_In_Days = (difference_In_Time / (1000 * 60 * 60 * 24)) % 365;
 
-                case "Y":
-                    dateDifference =  (difference_In_Time / (1000l * 60 * 60 * 24 * 365));
-                    break;
+        switch (unit){
+            case "D":
+                dateDifference =  (difference_In_Time / (1000 * 60 * 60 * 24)) % 365;
+                break;
 
-                case "H":
-                    dateDifference =  (difference_In_Time / (1000 * 60 * 60)) % 24;
-                    break;
+            case "Y":
+                dateDifference =  (difference_In_Time / (1000l * 60 * 60 * 24 * 365));
+                break;
 
-                case "M":
-                    dateDifference =  (difference_In_Time  / (1000 * 60)) % 60;
-                    break;
+            case "H":
+                dateDifference =  (difference_In_Time / (1000 * 60 * 60)) % 24;
+                break;
 
-                case "S":
-                    dateDifference =  (difference_In_Time  / 1000)  % 60;
-                    break;
+            case "M":
+                dateDifference =  (difference_In_Time  / (1000 * 60)) % 60;
+                break;
 
-                default:
-                    dateDifference = difference_In_Time;
+            case "S":
+                dateDifference =  (difference_In_Time  / 1000)  % 60;
+                break;
 
-            }
+            default:
+                dateDifference = difference_In_Time;
+
         }
 
-        catch (Exception e) {
-            e.printStackTrace();
-        }
 
         return dateDifference;
     }

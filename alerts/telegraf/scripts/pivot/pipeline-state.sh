@@ -11,3 +11,4 @@ echo "pipelineState,pipeline=db2 last=$(date -d "$D" '+%s')000000000"
 # Query MSSQL pipeline reference table for last update time, time should be UTC, convert it to POSIX EPOCH time.
 echo "pipelineState,pipeline=mssql last=$(date '+%s')000000000"
 
+

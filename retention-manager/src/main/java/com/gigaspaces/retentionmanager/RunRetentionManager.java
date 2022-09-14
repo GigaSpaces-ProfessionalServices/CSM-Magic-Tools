@@ -5,7 +5,6 @@ import java.util.Date;
 
 import com.gigaspaces.retentionmanager.service.InfluxDBService;
 import com.gigaspaces.retentionmanager.service.RetentionManagerService;
-import jdk.nashorn.internal.ir.IdentNode;
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Pong;
 import org.slf4j.Logger;

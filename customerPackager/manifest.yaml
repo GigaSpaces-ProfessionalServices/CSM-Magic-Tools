@@ -16,9 +16,13 @@ clients:
   Bank Leumi:
     id: 3
     packages:
-      - 'path/to/package1'
-      - 'path/to/package2'
-      - 'path/to/package3'
+      - 'lib/platform/kubernetes'
+      - 'tools/apache'
+      - 'tools/jdbc'
+      - 'tools/kubernetes'
+      - 'lib/optional/spatial'
+      - 'lib/optional/full-text-search'
+      - 'lib/optional/rest'
   klarna:
     id: 4
     packages:

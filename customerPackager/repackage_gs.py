@@ -11,6 +11,19 @@ import shutil
 import time
 import readline
 import glob
+from signal import signal, SIGINT
+
+
+def handler(signal_recieved, frame):
+    '''
+    catch CTRL+C keybaord press
+    :param signal_recieved: caught by signal class
+    :param frame:
+    :return:
+    '''
+    print('\n\nOperation aborted by user!')
+    exit(0)
+
 
 def arg_parser():
 	parser = argparse.ArgumentParser(
@@ -31,15 +44,18 @@ def arg_parser():
 		args['list'] = True
 	return args
 
+
 def check_file_exist(the_file):
 	if os.path.exists(the_file):
 		return True
 	else:
 		return False
 
+
 def get_yaml_data(yaml_file):
 	with open(yaml_file, 'r') as yf:
 		return yaml.safe_load(yf)
+
 
 def gs_archive_exist(gs_archive):
 	if not os.path.exists(gs_archive):
@@ -47,9 +63,11 @@ def gs_archive_exist(gs_archive):
 	else:
 		return True
 
+
 def list_clients_from_yaml(the_yaml_data):
 	for client in the_yaml_data['clients']:
 		print(f"{the_yaml_data['clients'][client]['id']} - {client}")
+
 
 def get_client_from_user(the_yaml_data):
 	print('available clients:')
@@ -65,11 +83,13 @@ def get_client_from_user(the_yaml_data):
 						choice = name
 						return choice
 
+
 def check_client_name(the_yaml_data, the_client):
 	for client in the_yaml_data['clients']:
 		if client.lower() == the_client.lower():
 			return client
 	return ''
+
 
 def get_file_path():
 	readline.set_completer_delims('\t')
@@ -82,6 +102,7 @@ def get_file_path():
 		else:
 			print(f"file not found. try again...")
 	return f
+
 
 def exec_repackager(the_package, the_client):
 	if the_client == '':
@@ -127,6 +148,7 @@ def exec_repackager(the_package, the_client):
 	if os.path.exists(f"{package_base_dir}/{new_dir_name}"):
 		shutil.rmtree(f"{package_base_dir}/{new_dir_name}")
 
+
 def path_completer(text, state):
     """ tabbed path autocomplete """
     line = readline.get_line_buffer().split()
@@ -134,6 +156,7 @@ def path_completer(text, state):
         text = os.path.expanduser('~')
     return [x for x in glob.glob(text+'*')][state]
 	
+
 def get_patch_id(type):
 	while True:
 		try:
@@ -160,6 +183,7 @@ def get_patch_id(type):
 manifest = 'manifest.yaml'
 
 if __name__ == '__main__':
+	signal(SIGINT, handler)
 	arguments = arg_parser()
 	# get yaml data
 	manifest_full_path = f"{ntpath.split(sys.argv[0])[0]}/{manifest}"
