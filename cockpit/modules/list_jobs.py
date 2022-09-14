@@ -22,12 +22,15 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 jobs = list_jobs(conn, 'id', 'name')
+j_len = []
+for ji, jn in jobs:
+    j_len.append(len(jn))
 if len(jobs) > 0:
-    w = 41
-    print("-"*w + f'\n| {"Id":^4} | {"Name":^30} |\n' + "-"*w)
+    print(f'{"Id":<4} | Name')
+    print("-" * 4 + ' ' * 3 + "-" * max(j_len))
     for job_id, job_name in jobs:
-        print(f'| {job_id:<4} | {job_name:<30} |')
-    print("-"*w)
+        print(f'{job_id:<4} | {job_name}')
+    print("-" * max(j_len))
 else:
     print("No jobs found")
 
