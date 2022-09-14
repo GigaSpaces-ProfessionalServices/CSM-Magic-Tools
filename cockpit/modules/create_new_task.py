@@ -28,7 +28,7 @@ t_uid = str(uuid.uuid4())
 # get task type from user
 result = get_type_selection(data['tasks'])
 if result != -1:
-    t_type = data['tasks'][result]
+    t_type = data['tasks'][result]['name']
     t_type_sn = result
     t_metadata = "NULL"
     t_content = "NULL"
@@ -45,7 +45,7 @@ if result != -1:
             index = f"[{j[0]}]"
             print(f'{index:<4} - {j[1]:<24}')
         print(f'{"[99]":<4} - {"Skip (can be selected later from the Edit Tasks menu)":<24}')
-        selected_jobs = parse_jobs_selections(jobs) ##### SHOULD CHANGE TO GENERIC PARSE_MULTI_SELECT INSTEAD
+        selected_jobs = parse_jobs_selections(jobs) ##### THIS SHOULD CHANGE TO GENERIC PARSE_MULTI_SELECT INSTEAD
         if selected_jobs[0] == -1:
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
