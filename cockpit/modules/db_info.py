@@ -22,16 +22,18 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 
 title = "[ Cockpit DB Location ]"
-print(f"{title}" + '-'*len(title))
-print(f"{cockpit_db}")
+print(f"{title}\n" + '-'*len(title))
+print(f"   {cockpit_db}\n\n")
 conn = create_connection(cockpit_db)
 if conn is not None:
     title = "[ Cockpit Database Tables ]"
-    print(f"{title}" + '-'*len(title))
+    print(f"{title}\n" + '-'*len(title))
     list_tables(conn)
+    print("\n")
     title = "[ Space Object Types ]"
-    print(f"{title}" + '-'*len(title))
+    print(f"{title}\n" + '-'*len(title))
     list_types(conn)
+    print("\n")
     conn.close()
 else:
     print("ERROR: unable to establish database connection.")
