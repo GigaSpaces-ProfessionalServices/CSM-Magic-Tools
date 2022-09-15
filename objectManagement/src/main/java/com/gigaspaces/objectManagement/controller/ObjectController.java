@@ -14,6 +14,7 @@ import com.gigaspaces.objectManagement.utils.CommonUtil;
 import com.gigaspaces.objectManagement.utils.ReportWriter;
 import com.gigaspaces.query.IdQuery;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.j_spaces.core.client.SQLQuery;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
@@ -91,16 +92,16 @@ public class ObjectController {
     }
 
     @PostMapping("/registertype/batch")
-    public String registerTypeBatch() {
+    public JsonObject registerTypeBatch() {
         logger.info("start -- registertype  batch");
 
         try{
-            objectService.registerObjectBatch();
-            return "success";
+            JsonObject jsonObject= objectService.registerObjectBatch();
+            return jsonObject;
         } catch (Exception e){
             e.printStackTrace();
             logger.error("Error in registerTypeBatch -> "+e.getLocalizedMessage(),e);
-            return "error";
+            return new JsonObject();
         }
 
 

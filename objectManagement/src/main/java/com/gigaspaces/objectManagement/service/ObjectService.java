@@ -233,7 +233,7 @@ public class ObjectService {
         return jsonArray;
     }
 
-    public void registerObjectBatch() throws FileNotFoundException, Exception {
+    public JsonObject registerObjectBatch() throws FileNotFoundException, Exception {
         //Admin admin = commonUtil.getAdmin();
         /*Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
         admin.getSpaces().waitFor("", 1, TimeUnit.SECONDS);
@@ -243,6 +243,7 @@ public class ObjectService {
                 break;
             }
         }*/
+        JsonObject jsonObject = new JsonObject();
         logger.info("gigaSpace: " + gigaSpace);
         String tablesList = null;
         try (BufferedReader br = new BufferedReader(new FileReader(new File(tableListFilePath)))) {
@@ -283,6 +284,11 @@ public class ObjectService {
                 e.printStackTrace();
             }
             if (result != null) {
+                if (gigaSpace.getTypeManager().getTypeDescriptor(table) != null) {
+                    jsonObject.addProperty(table, "Already exist so not registered");
+                   continue;
+                }
+
                 logger.info("Number of DDLs: " + result.size());
 
                 for (SpaceTypeDescriptorBuilder builder : result) {
@@ -294,11 +300,13 @@ public class ObjectService {
                     builder = CommonUtil.setTierCriteria(table, builder, strTierCriteriaFile);
                     SpaceTypeDescriptor typeDescriptor = builder.create();
                     CommonUtil.registerType(typeDescriptor, gigaSpace);
+                    jsonObject.addProperty(table, "Registered");
                 }
             } else {
                 logger.info("Number of DDLs: null");
             }
         }
+        return jsonObject;
     }
 
     public void unregisterObject(String object) throws Exception {
