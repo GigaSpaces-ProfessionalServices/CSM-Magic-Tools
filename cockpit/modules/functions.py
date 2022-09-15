@@ -6,46 +6,46 @@
 ###############################################################
 
 def handler(signal_recieved, frame):
-    '''
+    """
     catch CTRL+C keybaord press
     :param signal_recieved: caught by signal class
     :param frame:
     :return:
-    '''
+    """
     print('\n\nOperation aborted by user!')
     exit(0)
 
 
 def sort_tuples_list(the_list):
-    '''
+    """
     sort a list of tuples by first key of tuple
     :param the_list: the list of tuples
     :return: the list of tuples
-    '''
+    """
     the_list.sort(key = lambda x: x[0])
     return the_list
 
 
 def print_header():
-    '''
+    """
     print menu header
-    '''
+    """
     import pyfiglet
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    subprocess.run("clear")
+    #subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
 
 def pretty_print(string, color, style=None):
-    '''
+    """
     pretty print
     :param string: the string to pretify
     :param color: the color to print 
     :param style: the style to apply
-    '''
+    """
     from colorama import Fore, Style
     color = eval('Fore.' + f'{color}'.upper())
     if style is None:
@@ -56,12 +56,12 @@ def pretty_print(string, color, style=None):
 
 
 def print_locations(selections, dictionary):
-    '''
+    """
     print locations line accordding to menu positions
     :param selections: the selections list
     :param dictionary: dictionary of menu items
     :return:
-    '''
+    """
     index = ""
     location = f"@:: MAIN".upper()
     for i in selections:
@@ -72,12 +72,12 @@ def print_locations(selections, dictionary):
 
 
 def check_connection(server, port):
-    '''
+    """
     check connection to server on given port
     :param selections: the selections list
     :param dictionary: dictionary of menu items
     :return:
-    '''
+    """
     import socket
     conn_timeout = 1    # adjust value for connection test
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,10 +95,10 @@ def check_connection(server, port):
 ###############################################################
 
 def print_menu(the_dict):
-    '''
+    """
     print the main menu
     :param dictionary: dictionary of menu items
-    '''
+    """
     for k in the_dict.keys():
         if str(k).isdigit():
             index = f"[{k}]"
@@ -112,11 +112,11 @@ def print_menu(the_dict):
 
 
 def update_selections(the_choice, choices_list):
-    '''
+    """
     update user selections list
     :param the_choice: the user choice
     :param choices_list: the choices options
-    '''
+    """
     if the_choice == '99':
         choices_list.pop()
     else:
@@ -139,11 +139,11 @@ def get_type_selection(the_dict):
 
 
 def validate_main_menu_input(the_dict, the_selections):
-    '''
+    """
     ensure user choice is valid
     :param the_dict: a dictionary of choices
     :param the_selections: the list of choices
-    '''
+    """
     the_choice = input("\nEnter your choice: ")
     while True:
         if the_choice == '99':
@@ -234,11 +234,11 @@ def get_user_permission(question):
 
 
 def check_settings(config):
-    '''
+    """
     check required settings of db and network in yaml file
     :param config: the yaml file
     :return:
-    '''
+    """
     import os
     import yaml
     import subprocess
@@ -356,11 +356,11 @@ def get_object_types_from_space(yaml_data):
 
 
 def get_object_types_from_db(conn):
-    '''
+    """
     get registered types from database
     :param conn: connection object
     :return: list of rows
-    '''
+    """
     c = conn.cursor()
     c.execute("SELECT name FROM types;")
     rows = c.fetchall()
@@ -390,11 +390,11 @@ def register_types(conn, types):
 
 
 def list_types(conn):
-    '''
+    """
     list registered types in database
     :param conn: connection object
     :return: list of rows
-    '''
+    """
     c = conn.cursor()
     c.execute("SELECT * FROM types;")
     rows = c.fetchall()
@@ -404,11 +404,11 @@ def list_types(conn):
 
 
 def type_exists(conn, the_type):
-    '''
+    """
     check if type exists in database
     :param conn: connection object
     :return Boolean: True / Flase
-    '''
+    """
     c = conn.cursor()
     c.execute("SELECT name FROM types WHERE name = ?;", (the_type,))
     rows = c.fetchall()
@@ -419,15 +419,15 @@ def type_exists(conn, the_type):
 
 
 ###############################################################
-##################         DATABASE          ##################
+#################         DATABASES          ##################
 ###############################################################
 
 def create_database_home(db_folder):
-    '''
+    """
     create sqlite3 home directory if doesn't exists
     :param db_folder: sqlite3 home path
     :return:
-    '''
+    """
     import os
     if not os.path.exists(db_folder):
         try:
@@ -441,11 +441,11 @@ def create_database_home(db_folder):
 
 
 def create_connection(db_file):
-    '''
+    """
     establish a database connection (or create a new db file)
     :param db_file: path to db file
     :return: connection object
-    '''
+    """
     import sqlite3
     from sqlite3 import Error
     conn = None
@@ -457,12 +457,12 @@ def create_connection(db_file):
 
 
 def create_table(conn, create_table_sql):
-    '''
+    """
     create a table from sql create_table_sql
     :param conn: connection object
     :param create_table_sql: sqlite create table statement
     :return:
-    '''
+    """
     from sqlite3 import Error
     try:
         c = conn.cursor()
@@ -488,6 +488,39 @@ def list_tables(conn):
             print(f"   {table_name[0]:<10} : {num_records:<10}")
 
 
+def write_to_influx(dbname, data):
+    """
+    write data to influx database
+    :param dbname: the name of the target database
+    :param data: dictionary of the data payload
+    e.g: data = {env: 'prod/dr', type: 'the_object', count: num_of_entries}
+    :return:
+    """
+    import datetime
+    from influxdb import InfluxDBClient
+
+    client = InfluxDBClient(host='localhost', port=8086)
+    if dbname not in str(client.get_list_database()):
+        client.create_database(dbname)
+    else:
+        client.switch_database(dbname)
+    timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
+    json_body = [
+        {
+            "measurement": "type_validation",
+            "tags": {
+                "env": data['env'],
+                "obj_type": data['type']
+            },
+            "time": timestamp,
+            "fields": {
+                "count": data['count']
+            }
+        }
+    ]
+    client.write_points(json_body)
+
+
 ###############################################################
 ##################           JOBS            ##################
 ###############################################################
@@ -510,17 +543,17 @@ def list_jobs(conn, *columns):
 
 
 def list_jobs_by_task_uid(conn, task_uid):
-    '''
+    """
     list jobs associated with a task uid
     :param conn: connection object
     :param task_uid: the task uid
     :return: list of rows
-    '''
+    """
     cur = conn.cursor()
-    sql = ''' SELECT j.name, j.id 
+    sql = """ SELECT j.name, j.id, j.destination, j.metadata, j.content 
               FROM tasks t INNER JOIN jobs j 
               ON j.id = t.job_id 
-              WHERE t.uid = ?; '''
+              WHERE t.uid = ?; """
     cur.execute(sql, task_uid)
     rows = cur.fetchall()
     return rows
@@ -598,8 +631,8 @@ def register_job(conn, job):
     :param job: job data
     :return: job id
     """
-    sql = ''' INSERT INTO jobs(name,metadata,content,command,destination,created)
-              VALUES(?,?,?,?,?,?) '''
+    sql = """ INSERT INTO jobs(name,metadata,content,command,destination,created)
+              VALUES(?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, job)
     conn.commit()
@@ -649,12 +682,12 @@ def generate_job_file(env_name, obj_type, yaml_data):
 ###############################################################
 
 def list_tasks(conn, *columns):
-    '''
+    """
     list registered tasks in database
     :param conn: connection object
     :param columns: collection of table columns
     :return: list of rows
-    '''
+    """
     cur = conn.cursor()
     args = ','.join(columns)
     if len(columns) == 0:
@@ -666,12 +699,12 @@ def list_tasks(conn, *columns):
 
 
 def list_tasks_grouped(conn, *columns):
-    '''
+    """
     list registered tasks in database
     :param conn: connection object
     :param columns: collection of table columns
     :return: list of rows
-    '''
+    """
     cur = conn.cursor()
     args = ','.join(columns)
     if len(columns) == 0:
@@ -689,8 +722,8 @@ def register_task(conn, task):
     :param task: task data
     :return: task id
     """
-    sql = ''' INSERT INTO tasks(uid,type,sn_type,job_id,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?,?) '''
+    sql = """ INSERT INTO tasks(uid,type,sn_type,job_id,metadata,content,state,created)
+              VALUES(?,?,?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, task)
     conn.commit()
@@ -698,15 +731,15 @@ def register_task(conn, task):
 
 
 def list_tasks_by_policy_schedule(conn, policy_schedule):
-    '''
+    """
     list tasks associated with a policy id
     :param conn: connection object
     :param policy_id: the policy id
     :return: list of rows
-    '''
+    """
     cur = conn.cursor()
-    sql = "SELECT task_uid FROM policies WHERE policies.schedule = ?;"
-    cur.execute(sql, policy_schedule)
+    sql = "SELECT task_uid FROM policies WHERE policies.schedule_sec = ?;"
+    cur.execute(sql, (policy_schedule,))
     rows = cur.fetchall()
     return rows
 
@@ -716,12 +749,12 @@ def list_tasks_by_policy_schedule(conn, policy_schedule):
 ###############################################################
 
 def list_policies(conn, *columns):
-    '''
+    """
     list registered policies in database
     :param conn: connection object
     :param columns: collection of table columns
     :return: list of rows
-    '''
+    """
     cur = conn.cursor()
     args = ','.join(columns)
     if len(columns) == 0:
@@ -739,8 +772,8 @@ def register_policy(conn, policy):
     :param policy: policy data
     :return: policy id
     """
-    sql = ''' INSERT INTO policies(schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?,?) '''
+    sql = """ INSERT INTO policies(schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,state,created)
+              VALUES(?,?,?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, policy)
     conn.commit()
@@ -756,7 +789,7 @@ def policy_schedule_exists(conn, policy_schedule):
     """
     job_exists = False
     c = conn.cursor()
-    c.execute("SELECT schedule FROM policies;")
+    c.execute("SELECT schedule_sec FROM policies;")
     policies = c.fetchall()
     for schedules in policies:
         if policy_schedule in schedules:
