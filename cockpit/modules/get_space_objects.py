@@ -11,9 +11,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import subprocess
 import yaml
 import os
-import datetime
 import socket
-#from influxdb import InfluxDBClient
 
 
 def check_connection(server, port):
@@ -93,38 +91,11 @@ def get_object_count():
     return response_data.json()
 
 
-def inject_to_influx(data):
-    # data = {env: 'prod/dr', type: 'the_object', count: num_of_entries}
-    client = InfluxDBClient(host='localhost', port=8086)
-    dbname = 'mydb'
-    if dbname not in str(client.get_list_database()):
-        client.create_database('mydb')
-    else:
-        client.switch_database('mydb')
-    timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
-    json_body = [
-        {
-            "measurement": "type_validation",
-            "tags": {
-                "env": data['env'],
-                "obj_type": data['type']
-            },
-            "time": timestamp,
-            "fields": {
-                "count": data['count']
-            }
-        }
-    ]
-    client.write_points(json_body)
-
-
-# main
+### [ main ] ###
 
 endpoint = ""
 defualt_port = 8090
 host_file = f"{os.environ['ODSXARTIFACTS']}/odsx/host.yaml"
-
-test = {'env': 'prod', 'type': 'POJO', 'count': 1000}
 
 # disable insecure request warning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -134,10 +105,8 @@ managers = get_managers(host_file)
 
 # configure authentication
 auth = {}
-if is_env_secured(managers['host1']):
-    auth = get_auth(managers['host1'])
-else:
-    auth['user'], auth['pass'] = '', ''
+if is_env_secured(managers['host1']): auth = get_auth(managers['host1'])
+else: auth['user'], auth['pass'] = '', ''
 
 # configure manager
 manager = ""
@@ -149,9 +118,8 @@ for m in managers.values():
 if manager == "":
     print('REST status: DOWN')
     exit(1)
-
-if endpoint == "":
-    endpoint = manager
+# configure endpoint
+if endpoint == "": endpoint = manager
 
 ### execute operations ###
 s = get_space()
@@ -160,7 +128,5 @@ if len(s) == 0:
 else:
     the_space = s[0]
 total_entries = get_object_count()
-
-#inject_to_influx(test)
 
 print(total_entries)
