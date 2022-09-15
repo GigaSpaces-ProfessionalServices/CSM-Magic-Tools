@@ -1,20 +1,14 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import os
 import yaml
 import json
-# import sqlite3
-# from sqlite3 import Error
 from signal import SIGINT, signal
-import datetime
 import subprocess
-from influxdb import InfluxDBClient
 from functions import handler, create_connection, \
     list_tasks_by_policy_schedule, policy_schedule_exists, \
-        list_jobs_by_task_uid
-
+        list_jobs_by_task_uid, write_to_influx
 
 ### summary ###
 #
@@ -30,7 +24,7 @@ jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
 
 
 # SAMPLE FOR POLICY EXEC 
-sched = 1
+sched = 60
 
 
 # catch user CTRL+C key press
@@ -51,16 +45,18 @@ if policy_schedule_exists(conn, sched):
         print(f"\n[ Task {task_uid[0]} ]")
         for job in list_jobs_by_task_uid(conn, task_uid):
             job_file = f"{job[0]}.py".lower()
+            job_dest_env= job[2]
+            job_type = job[3]
             script = f'{jobs_home}/{job_file}'
-            response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
-            # converting string to dictionary
-            response = json.loads(response.replace("\'", "\""))
-            print(f"   executing job {job[0]}")
-            for k,v in response.items():
-               if k != 'java.lang.Object':
-                   print(f"   {'Object type:':<14} {k}")
-                   print(f"   {'# of entries:':<14} {v['entries']}")            
+            if job_type == 'counter':
+                job_obj_type = job[4]
+                response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
+                # converting string to dictionary
+                response = json.loads(response.replace("\'", "\""))
+                for k,v in response.items():
+                    if k == job_obj_type:
+                        influx_data = {'env': job_dest_env, 'type': job_obj_type, 'count': v['entries']}
+            write_to_influx('mydb', influx_data)
 else:
     print(f"ERROR: policy schedule {sched} does not exist!")
-
 input("\nPress ENTER to continue to the main menu.")
