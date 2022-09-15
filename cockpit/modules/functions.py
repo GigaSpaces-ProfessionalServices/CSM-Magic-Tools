@@ -148,6 +148,7 @@ def validate_main_menu_input(the_dict, the_selections):
     while True:
         if the_choice == '99':
             if the_dict['id'] == 'Main':
+                print("Quitting...")
                 exit(0)
             else:
                 update_selections(the_choice, the_selections)
