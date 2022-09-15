@@ -34,7 +34,7 @@ def print_header():
     import subprocess
     v_pref = ' ' * 2
     version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
-    #subprocess.run("clear")
+    subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
 
@@ -639,7 +639,7 @@ def register_job(conn, job):
     return cur.lastrowid
 
 
-def generate_job_file(env_name, obj_type, yaml_data):
+def generate_job_file(job_type, env_name, obj_type, yaml_data):
     """
     create a file for a job
     :param env_name: name of environment
@@ -652,7 +652,7 @@ def generate_job_file(env_name, obj_type, yaml_data):
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
     jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
-    job_file_name = f"validation_{env_name}_{obj_type}.py".lower()
+    job_file_name = f"{job_type}_{env_name}_{obj_type}.py".lower()
     job_file = f"{jobs_home}/{job_file_name}"
     pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
     cmd = "cat {exec_script} | ssh " + pivot + " python3 -"

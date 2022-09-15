@@ -81,18 +81,18 @@ else:
 for e in envs.values():
     the_env = e[0]
     for t in types.values():
-        the_type = t[0]
+        obj_type = t[0]
         j_metadata = "counter"
-        j_name = f"{j_metadata}_{the_env}_{the_type}"
-        j_content = the_type
-        j_command = f"{j_metadata}_{the_env}_{the_type}.py".lower()
+        j_name = f"{j_metadata}_{the_env}_{obj_type}"
+        j_content = obj_type
+        j_command = f"{j_metadata}_{the_env}_{obj_type}.py".lower()
         j_dest = the_env.lower()
         j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
         if jobs_exist(conn, j_name):
             print(f"Job: {j_name} already exists.")
         else:
-            generate_job_file(the_env, the_type, data)
+            generate_job_file(j_metadata, the_env, obj_type, data)
             r = register_job(conn, job)
             print(f"Job: {j_name} with Id: {r} created successfully")
 input("\nPress ENTER to continue to the main menu.")
