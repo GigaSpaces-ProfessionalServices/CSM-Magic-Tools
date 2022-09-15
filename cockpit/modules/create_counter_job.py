@@ -77,22 +77,22 @@ types = {}
 if choice == 'ALL':
     types = space_types
 else:
-    types = {1: [space_types[int(choice)][0], space_types[int(choice)][1]]}
+    types = {1: [space_types[int(choice)][0]]}
 for e in envs.values():
     the_env = e[0]
     for t in types.values():
         the_type = t[0]
-        job_name = f"validation_{the_env}_{the_type}"
-        job_metadata = ""
-        job_content = ""
-        job_command = f"validation_{the_env}_{the_type}.py".lower()
-        job_dest = the_env
-        job_creation_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        job = (job_name, job_metadata, job_content, job_command, job_dest, job_creation_timestamp)
-        if jobs_exist(conn, job_name):
-            print(f"Job: {job_name} already exists.")
+        j_metadata = "counter"
+        j_name = f"{j_metadata}_{the_env}_{the_type}"
+        j_content = the_type
+        j_command = f"{j_metadata}_{the_env}_{the_type}.py".lower()
+        j_dest = the_env.lower()
+        j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
+        if jobs_exist(conn, j_name):
+            print(f"Job: {j_name} already exists.")
         else:
             generate_job_file(the_env, the_type, data)
             r = register_job(conn, job)
-            print(f"Job: {job_name} with Id: {r} created successfully")
+            print(f"Job: {j_name} with Id: {r} created successfully")
 input("\nPress ENTER to continue to the main menu.")
