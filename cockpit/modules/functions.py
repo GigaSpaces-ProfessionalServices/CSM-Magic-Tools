@@ -502,12 +502,11 @@ def write_to_influx(dbname, data):
     client = InfluxDBClient(host='localhost', port=8086)
     if dbname not in str(client.get_list_database()):
         client.create_database(dbname)
-    else:
-        client.switch_database(dbname)
+    client.switch_database(dbname)
     timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
     json_body = [
         {
-            "measurement": "type_validation",
+            "measurement": "validation",
             "tags": {
                 "env": data['env'],
                 "obj_type": data['type']
