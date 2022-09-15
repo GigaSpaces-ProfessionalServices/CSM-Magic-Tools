@@ -55,6 +55,5 @@ def main():
         validate_main_menu_input(dict, user_selections)
 
 
-
 if __name__ == '__main__':
     main()
