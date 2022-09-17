@@ -772,8 +772,8 @@ def register_policy(conn, policy):
     :param policy: policy data
     :return: policy id
     """
-    sql = """ INSERT INTO policies(schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?,?) """
+    sql = """ INSERT INTO policies(name,schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,active_state,created)
+              VALUES(?,?,?,?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, policy)
     conn.commit()
