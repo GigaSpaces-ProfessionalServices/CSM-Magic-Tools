@@ -305,6 +305,7 @@ def check_settings(config):
     if db_set_required or env_set_required:
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
         input("Press ENTER to continue to the main menu.")
+        print_header()
     from . import spinner
     spinner = spinner.Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
