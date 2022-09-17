@@ -7,24 +7,25 @@ import yaml
 from influxdb import InfluxDBClient
 import datetime
 from signal import SIGINT, signal
+from colorama import Fore, Style
 from functions import handler, get_object_types_from_db, \
-    create_connection, jobs_exist, \
-        generate_job_file, register_job
+    create_connection, jobs_exist, generate_job_file, \
+        register_job, pretty_print, validate_input
 
 
-def validate_input(items_dict):
-    from colorama import Fore
-    choice = input("\nEnter your choice: ")
-    while True:
-        if choice == '99':
-            return -1
-        if len(items_dict) > 1:
-            if choice == str(len(items_dict) + 1): # if 'ALL' is selected
-                return "ALL"
-        if not choice.isdigit() or int(choice) not in items_dict.keys():
-            choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
-        else:
-            return int(choice)
+# def validate_input(items_dict):
+#     from colorama import Fore
+#     choice = input("\nEnter your choice: ")
+#     while True:
+#         if choice == '99':
+#             return -1
+#         if len(items_dict) > 1:
+#             if choice == str(len(items_dict) + 1): # if 'ALL' is selected
+#                 return "ALL"
+#         if not choice.isdigit() or int(choice) not in items_dict.keys():
+#             choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
+#         else:
+#             return int(choice)
 
 
 def get_selection(the_dict, description):
@@ -78,6 +79,7 @@ if choice == 'ALL':
     types = space_types
 else:
     types = {1: [space_types[int(choice)][0]]}
+print()
 for e in envs.values():
     the_env = e[0]
     for t in types.values():
@@ -90,9 +92,10 @@ for e in envs.values():
         j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
         if jobs_exist(conn, j_name):
-            print(f"Job: {j_name} already exists.")
+            jreg_status = f"[Job] {j_name} | [Status] {Fore.RED}aborted. job exists!{Style.RESET_ALL}"
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
-            r = register_job(conn, job)
-            print(f"Job: {j_name} with Id: {r} created successfully")
+            register_job(conn, job)
+            jreg_status = f"[Job] {j_name} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
+        print(jreg_status)
 input("\nPress ENTER to continue to the main menu.")
