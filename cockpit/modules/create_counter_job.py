@@ -95,7 +95,7 @@ for e in envs.values():
             jreg_status = f"[Job] {j_name} | [Status] {Fore.RED}aborted. job exists!{Style.RESET_ALL}"
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
-            register_job(conn, job)
+            r = register_job(conn, job)
             jreg_status = f"[Job] {j_name} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
         print(jreg_status)
 input("\nPress ENTER to continue to the main menu.")
