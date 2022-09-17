@@ -23,7 +23,7 @@ config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.y
 jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
 
 
-# SAMPLE FOR POLICY EXEC 
+# SAMPLE FOR POLICY  - TIMER EMULATOR 
 sched = 60
 
 
@@ -51,8 +51,7 @@ if policy_schedule_exists(conn, sched):
             if job_type == 'counter':
                 job_obj_type = job[4]
                 response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
-                # converting string to dictionary
-                response = json.loads(response.replace("\'", "\""))
+                response = json.loads(response.replace("\'", "\""))   # converting string to dictionary
                 for k,v in response.items():
                     if k == job_obj_type:
                         influx_data = {'env': job_dest_env, 'type': job_obj_type, 'count': v['entries']}
