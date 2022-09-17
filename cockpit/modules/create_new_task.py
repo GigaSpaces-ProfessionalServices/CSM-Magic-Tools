@@ -6,6 +6,7 @@ import yaml
 import uuid
 import datetime
 from signal import SIGINT, signal
+from colorama import Fore, Style
 from functions import handler, create_connection, \
     parse_jobs_selections, get_type_selection, \
         list_jobs, register_task
@@ -35,8 +36,8 @@ if result != -1:
     t_state = "NULL"
     t_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     # list jobs from db
-    print("\nChoose jobs to associate with this task.")
-    note = "(!) Collections are supported (i.e: 1,3,2-5)"
+    print("\nChoose jobs to be executed by this task.")
+    note = "(!) collections are supported (i.e: 1,3,2-5)"
     print(f"{note}\n" + '='*len(note))
     conn = create_connection(cockpit_db)
     jobs = list_jobs(conn)
@@ -44,20 +45,31 @@ if result != -1:
         for j in jobs:
             index = f"[{j[0]}]"
             print(f'{index:<4} - {j[1]:<24}')
-        print(f'{"[99]":<4} - {"Skip (can be selected later from the Edit Tasks menu)":<24}')
+        print(f"{'[99]':<4} - Skip (can be set later from the 'Edit Tasks' menu)")
         selected_jobs = parse_jobs_selections(jobs) ##### THIS SHOULD CHANGE TO GENERIC PARSE_MULTI_SELECT INSTEAD
-        if selected_jobs[0] == -1:
+        print()
+        if selected_jobs[0] == -1:  # if no jobs selected we register a task without jobs
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
-            print(f"Task id {r} (type: {t_type} ; job_id: None) registered successfully.")
+            treg_status = f"[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
+            print(treg_status)
         else:
             for job_id in selected_jobs:
                 task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
                 r = register_task(conn, task_data)
-                print(f"Task id {r} (type: {t_type} ; job_id: {job_id}) registered successfully.")
+            treg_status = f"[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
+            print(treg_status)
+            print("[Associated Jobs]")
+            for job_id in selected_jobs:
+                cur = conn.cursor()
+                sql = f"SELECT name FROM jobs WHERE id = {job_id}"
+                cur.execute(sql)
+                rows = cur.fetchall()
+                print(f"   {rows[0][0]}")
     else:
-        print("There are no jobs registered yet\n* can be selected later from the Edit Tasks menu")
+        print("There are no jobs registered yet\n* can be set later from the 'Edit Tasks' menu")
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
-        print(f"Task id {r} (type: {t_type} ; job_id: None) registered successfully.")
+        treg_status = f"\n[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
+        print(treg_status)
     input("\nPress ENTER to go back to the menu")
