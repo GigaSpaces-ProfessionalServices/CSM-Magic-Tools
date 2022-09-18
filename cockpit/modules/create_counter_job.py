@@ -13,21 +13,6 @@ from functions import handler, get_object_types_from_db, \
         register_job, pretty_print, validate_input
 
 
-# def validate_input(items_dict):
-#     from colorama import Fore
-#     choice = input("\nEnter your choice: ")
-#     while True:
-#         if choice == '99':
-#             return -1
-#         if len(items_dict) > 1:
-#             if choice == str(len(items_dict) + 1): # if 'ALL' is selected
-#                 return "ALL"
-#         if not choice.isdigit() or int(choice) not in items_dict.keys():
-#             choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
-#         else:
-#             return int(choice)
-
-
 def get_selection(the_dict, description):
     # print menu
     q = f"Which {description} would you like to validate?"
@@ -92,10 +77,9 @@ for e in envs.values():
         j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
         if jobs_exist(conn, j_name):
-            jreg_status = f"Job {j_name} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}"
+            print(f"Job {j_name} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
             r = register_job(conn, job)
-            jreg_status = f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}"
-        print(jreg_status)
+            print(f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
 input("\nPress ENTER to continue to the main menu.")
