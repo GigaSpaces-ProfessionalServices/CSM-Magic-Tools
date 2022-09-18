@@ -92,10 +92,10 @@ for e in envs.values():
         j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
         if jobs_exist(conn, j_name):
-            jreg_status = f"[Job] {j_name} | [Status] {Fore.RED}aborted. job exists!{Style.RESET_ALL}"
+            jreg_status = f"Job {j_name} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}"
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
             r = register_job(conn, job)
-            jreg_status = f"[Job] {j_name} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
+            jreg_status = f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}"
         print(jreg_status)
 input("\nPress ENTER to continue to the main menu.")

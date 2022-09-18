@@ -51,25 +51,23 @@ if result != -1:
         if selected_jobs[0] == -1:  # if no jobs selected we register a task without jobs
             task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
             r = register_task(conn, task_data)
-            treg_status = f"[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
-            print(treg_status)
+            print(f"Task {t_uid} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+            
         else:
             for job_id in selected_jobs:
                 task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
                 r = register_task(conn, task_data)
-            treg_status = f"[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
-            print(treg_status)
-            print("[Associated Jobs]")
+            print(f"Task {t_uid} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+            print(f"Associated Jobs:")
             for job_id in selected_jobs:
                 cur = conn.cursor()
                 sql = f"SELECT name FROM jobs WHERE id = {job_id}"
                 cur.execute(sql)
                 rows = cur.fetchall()
-                print(f"   {rows[0][0]}")
+                print(f"{' ':<3}{rows[0][0]}")
     else:
         print("There are no jobs registered yet\n* can be set later from the 'Edit Tasks' menu")
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
-        treg_status = f"\n[Task] {t_uid} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
-        print(treg_status)
+        print(f"Task {t_uid} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
     input("\nPress ENTER to go back to the menu")

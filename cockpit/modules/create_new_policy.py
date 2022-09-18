@@ -28,7 +28,7 @@ note = f"Choose a name for this policy (up to {p_name_len} characters)"
 print(f"\n{note}")
 name_ok = False
 while not name_ok:
-    p_name = input("Enter policy name [or press ENTER to auto generate]: ")
+    p_name = input("Enter policy name [leave empty to autogenerate name]: ")
     if len(p_name) <= 30:
         name_ok = True
         if len(p_name) == 0:
@@ -65,10 +65,11 @@ if selected_tasks[0] == -1:
         user_abort = True
 if not user_abort:
     # get the schedule for this task
-    note = "Choose the schedule (seconds) and retry for this policy"
+    note = "Choose schedule (in seconds) and retry values for this policy"
     print(f"\n{note}")
-    print('  schedule = 210 means "run every 3m:30s"')
-    print("  retry    = number of times to retry on failure")
+    print('   * schedule = 210 means "run every 3m:30s"')
+    print("   * retry    = number of times to retry on failure")
+    print("   * wait     = will be calculated automatically")
     print('-' * len(note))
     schedule_ok = False
     while not schedule_ok:
@@ -90,10 +91,10 @@ if not user_abort:
                 break
         # calculate wait time between retries
         wait_repeat = int(schedule / (repeat + 1))
-        print("\nPolicy will be created with the following parameters:")
-        print(f" {'run every: ':<22}{schedule} seconds")
-        print(f" {'times to retry : ':<22}{repeat} times")
-        print(f" {'wait between retries: ':<22}{wait_repeat} seconds")
+        print("\nA policy will be created with the following parameters:")
+        print(f"   {'run every: ':<22}{schedule} seconds")
+        print(f"   {'times to retry : ':<22}{repeat} times")
+        print(f"   {'wait between retries: ':<22}{wait_repeat} seconds")
         if get_user_permission("\nContinue with policy registration?"):
             break
         else:
@@ -112,18 +113,17 @@ if not user_abort:
             task_type = tasks[task][2]
     policy_data = (p_name,schedule,repeat, wait_repeat,task_uid,p_metadata,p_content,p_state,p_created)
     r = register_policy(conn, policy_data)
-    preg_status = f"\n[Policy] {p_name} | [Status] {Fore.GREEN}created successfully!{Style.RESET_ALL}"
-    print(preg_status)
-    print(f"[Parameters]")
+    print(f"\nPolicy {p_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    print(f"Parameters:")
     print(f"   {'schedule:':<12}{schedule}s\n   {'repeat':<12}{repeat} times\n   {'every:':<12}{wait_repeat}s")
     if selected_tasks[0] == -1:
         pretty_print(f"\n(!) policy has been registered as deactivated since no task(s) are associated with it.", 'yellow', 'bright')
     else:
-        print("[Associated Tasks]")
+        print("Associated Tasks:")
         for t in selected_tasks:
             task_uid = tasks[t][1]
             task_type = tasks[t][2]
             print(f"   uid: {task_uid:<38}, type: {task_type}")
 else:
-    print("\nPolicy creation aborted!")
+    print(f"\nPolicy {Fore.RED}creation aborted!{Style.RESET_ALL}")
 input("\nPress ENTER to go back to the menu")
