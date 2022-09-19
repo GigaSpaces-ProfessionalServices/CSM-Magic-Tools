@@ -42,8 +42,6 @@ def main():
                                         id integer PRIMARY KEY,
                                         name text,
                                         schedule_sec integer NOT NULL,
-                                        num_retry_on_fail integer NOT NULL,
-                                        retry_wait_sec integer NOT NULL,
                                         task_uid text,
                                         metadata text,
                                         content text,
