@@ -135,7 +135,7 @@ if not user_abort:
             os.makedirs(policies_home)
         except OSError as e:
             print(e)
-    policy_desc = f"Run every {schedule} secs"
+    policy_desc = f"Cockpit-{policy_name}"
     policy_script = f"{policy_name}.py"
     systemd_home = "/etc/systemd/system"
     policy_service = f"{systemd_home}/{policy_name}.service"
@@ -171,7 +171,8 @@ if not user_abort:
     # create policy script
     lines = [
         '#!/usr/bin/python3\n\n',
-        'echo $(date +"%s) >> /tmp/{policy_name}.test\n',
+        'import subprocess\n\n',
+        'subprocess.run([f"echo $(date) >> /tmp/{policy_name}.test"], shell=True)\n',
         ]
     create_file(lines, f"{policies_home}/{policy_script}")
     
