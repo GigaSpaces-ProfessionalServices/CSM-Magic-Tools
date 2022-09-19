@@ -135,17 +135,18 @@ if not user_abort:
             os.makedirs(policies_home)
         except OSError as e:
             print(e)
-    policy_desc = f"Cockpit-{policy_name}"
-    policy_script = f"{policy_name}.py"
+    suffix = 'cockpit'
     systemd_home = "/etc/systemd/system"
-    policy_service = f"{systemd_home}/{policy_name}.service"
-    policy_timer = f"{systemd_home}/{policy_name}.timer"
+    policy_desc = f"{suffix}-{policy_name}"
+    policy_script = f"{suffix}_{policy_name}.py"
+    policy_service = f"{systemd_home}/{suffix}_{policy_name}.service"
+    policy_timer = f"{systemd_home}/{suffix}_{policy_name}.timer"
     
     # create systemd policy.service
     lines = [
         '[Unit]',
         f'Description={policy_desc}',
-        f'Wants={policy_name}.timer\n',
+        f'Wants={suffix}_{policy_name}.timer\n',
         '[Service]',
         'Type=oneshot',
         f'ExecStart={os.path.realpath(policies_home)}/{policy_script}\n',
@@ -159,9 +160,9 @@ if not user_abort:
     lines = [
         '[Unit]',
         f'Description={policy_desc}',
-        f'Requires={policy_name}.service\n',
+        f'Requires={suffix}_{policy_name}.service\n',
         '[Timer]',
-        f'Unit={policy_name}',
+        f'Unit={suffix}_{policy_name}',
         f'OnCalendar={policy_schedule}\n',
         '[Install]',
         'WantedBy=timers.target\n'
@@ -171,8 +172,8 @@ if not user_abort:
     # create policy script
     lines = [
         '#!/usr/bin/python3\n\n',
-        'import subprocess\n\n',
-        'subprocess.run([f"echo $(date) >> /tmp/{policy_name}.test"], shell=True)\n',
+        'import subprocess\n',
+        f'subprocess.run(["echo $(date) >> /tmp/{suffix}_{policy_name}.test"], shell=True)\n',
         ]
     create_file(lines, f"{policies_home}/{policy_script}")
     
@@ -189,6 +190,13 @@ if not user_abort:
     rows = cur.fetchall()
     if rows[0][0] == 'yes':
         subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True)
+    
+    # TO REMOVE
+    # systemctl stop policy_60.timer 
+    # systemctl disable policy_60.timer 
+    # rm -f /etc/systemd/system/policy_60.*
+    # systemctl daemon-reload
+
 else:
     print(f"\nPolicy {Fore.RED}creation aborted!{Style.RESET_ALL}")
 input("\nPress ENTER to go back to the menu")
