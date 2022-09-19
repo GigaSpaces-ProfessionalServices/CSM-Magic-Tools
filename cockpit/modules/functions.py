@@ -280,8 +280,7 @@ def check_settings(config):
     elif not os.path.exists(cockpit_db):
         db_set_required = True
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-        print("cockpit.db configuration exists but database has not been created.")
-        if get_user_permission("would you like to create the cockpit database now?"):
+        if get_user_permission("would you like to create the cockpit database?"):
             subprocess.call([f"{os.path.dirname(os.path.realpath(__file__))}/create_db.py"], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
