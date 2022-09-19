@@ -89,15 +89,12 @@ if not user_abort:
     
     # parse time from schedule
     sched_sec = schedule % 60
-    if sched_sec < 10:
-        sched_sec = f'0{sched_sec}'
-    sched_min = str(int(schedule / 60))
-    
+    sched_min = int(schedule / 60)
     note = "The following policy will be created:"
     print(f"\n{note}")
     if auto_gen_name: print(f"   {'Name:':<12}{policy_name} (auto generated)")
     else: print(f"   {'Name:':<12}{policy_name}")
-    print(f"   {'Run every:':<12}{sched_min}m:{sched_sec}s")
+    print(f"   {'Run every:':<12}{str(sched_min)}m:{str(sched_sec)}s")
     if not get_user_permission("\nContinue with policy registration?"):
         exit()
     else:
@@ -116,7 +113,7 @@ if not user_abort:
     policy_data = (policy_name,schedule,task_uid,p_metadata,p_content,p_state,p_created)
     r = register_policy(conn, policy_data)
     print(f"\nPolicy {policy_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
-    print(f"{'Schedule:':<12}\n   run every {sched_min}m:{sched_sec}s")
+    print(f"{'Schedule:':<12}\n   run every {str(sched_min)}m:{str(sched_sec)}s")
     if selected_tasks[0] == -1:
         warnning = "(!) policy has been registered as deactivated until task(s) are associated with it."
         pretty_print(f"\n{warnning}", 'yellow', 'bright')
@@ -155,15 +152,15 @@ if not user_abort:
         ]
     create_file(lines, policy_service)
     
-    # create systemd policy.timer
-    policy_schedule = f"*:0/{sched_min}:{sched_sec}"
+    # create systemd policy.timer    
     lines = [
         '[Unit]',
         f'Description={policy_desc}',
         f'Requires={suffix}_{policy_name}.service\n',
         '[Timer]',
         f'Unit={suffix}_{policy_name}',
-        f'OnCalendar={policy_schedule}\n',
+        'AccuracySec=1us',
+        f'OnUnitActiveSec={schedule}\n',
         '[Install]',
         'WantedBy=timers.target\n'
         ]
@@ -190,13 +187,6 @@ if not user_abort:
     rows = cur.fetchall()
     if rows[0][0] == 'yes':
         subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True)
-    
-    # TO REMOVE
-    # systemctl stop policy_60.timer 
-    # systemctl disable policy_60.timer 
-    # rm -f /etc/systemd/system/policy_60.*
-    # systemctl daemon-reload
-
 else:
     print(f"\nPolicy {Fore.RED}creation aborted!{Style.RESET_ALL}")
 input("\nPress ENTER to go back to the menu")
