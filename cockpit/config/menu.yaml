@@ -248,9 +248,9 @@ description: ''
     4:
         id: 'Delete Policy'
         type: 'command'
-        exec-type: ''
-        exec: ''
-        description: 'add description here'
+        exec-type: 'script'
+        exec: 'delete_policy.py'
+        description: 'Delete a policy'
 4:
     id : 'Reporting'
     type: 'menu'
