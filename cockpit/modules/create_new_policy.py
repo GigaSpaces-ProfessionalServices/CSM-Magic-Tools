@@ -7,9 +7,10 @@ import datetime
 import subprocess
 from signal import SIGINT, signal
 from colorama import Fore, Style
-from functions import handler, create_connection, list_tasks_by_policy_schedule, \
-    list_tasks_grouped, parse_multi_select, policy_schedule_exists, pretty_print, \
-        register_policy, sort_tuples_list, get_user_permission
+from functions import handler, create_connection, \
+    list_tasks_grouped, parse_multi_select, policy_schedule_exists, \
+        pretty_print, register_policy, sort_tuples_list, \
+            get_user_permission, create_file
 
 # main
 config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
@@ -66,45 +67,41 @@ if selected_tasks[0] == -1:
         user_abort = True
 if not user_abort:
     # get the schedule for this task
-    note = "Choose schedule (in seconds) and retry values for this policy"
-    print(f"\n{note}")
-    print('   * schedule = 210 means "run every 3m:30s"')
-    print("   * retry    = number of times to retry on failure")
-    print("   * wait     = will be calculated automatically")
-    print('-' * len(note))
-    schedule_ok = False
-    while not schedule_ok:
+    note = "Choose a schedule (in seconds) value for this policy"
+    print(f"\n{note}\n" + '* Example: 80 means "run every 1m:20s"\n' + '-' * len(note))
+    while True:
         schedule = input("Enter schedule: ")
-        while True:
-            if policy_schedule_exists(conn, schedule):
-                pretty_print(f"(!) a policy with this schedule already exists. use " )
-            if not schedule.isdigit():
-                schedule = input(f"{Fore.RED}ERROR: Input must be a number!{Fore.RESET}\nEnter schedule: ")
-            else:
-                schedule = int(schedule)
-                break
-        repeat = input("Enter retry: ")
-        while True:
-            if not repeat.isdigit():
-                repeat = input(f"{Fore.RED}ERROR: Input must be a number!{Fore.RESET}\nEnter retry: ")
-            else:
-                repeat = int(repeat)
-                break
-        # calculate wait time between retries
-        wait_repeat = int(schedule / (repeat + 1))
-        print("\nA policy will be created with the following parameters:")
-        print(f"   {'run every: ':<22}{schedule} seconds")
-        print(f"   {'times to retry : ':<22}{repeat} times")
-        print(f"   {'wait between retries: ':<22}{wait_repeat} seconds")
-        if p_name == "":
-            print(f"   {'policy name: ':<22}policy{schedule}_{repeat} (auto-generated)")
+        if not schedule.isdigit():
+            print(f"{Fore.RED}ERROR: Input must be a number!{Fore.RESET}")
+            continue
+        if policy_schedule_exists(conn, schedule):
+            pretty_print(f"(!) a policy with this schedule already exists.", 'red')
+            continue
         else:
-            print(f"   {'policy name: ':<22}{p_name}")
-        if get_user_permission("\nContinue with policy registration?"):
+            schedule = int(schedule)
             break
-        else:
-            print("\n")
-    if p_name == "": p_name = f"policy{schedule}_{repeat}"
+    auto_gen_name = False
+    if p_name == "":
+        policy_name = f"policy_{schedule}"
+        auto_gen_name = True
+    else:
+        policy_name = p_name
+    
+    # parse time from schedule
+    sched_sec = schedule % 60
+    if sched_sec < 10:
+        sched_sec = f'0{sched_sec}'
+    sched_min = str(int(schedule / 60))
+    
+    note = "The following policy will be created:"
+    print(f"\n{note}")
+    if auto_gen_name: print(f"   {'Name:':<12}{policy_name} (auto generated)")
+    else: print(f"   {'Name:':<12}{policy_name}")
+    print(f"   {'Run every:':<12}{sched_min}m:{sched_sec}s")
+    if not get_user_permission("\nContinue with policy registration?"):
+        exit()
+    else:
+        print("\n")
     p_metadata = 'NULL'
     p_content = 'NULL'
     p_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -116,13 +113,13 @@ if not user_abort:
             p_state = 'yes'
             task_uid = tasks[task][1]
             task_type = tasks[task][2]
-    policy_data = (p_name,schedule,repeat, wait_repeat,task_uid,p_metadata,p_content,p_state,p_created)
+    policy_data = (policy_name,schedule,task_uid,p_metadata,p_content,p_state,p_created)
     r = register_policy(conn, policy_data)
-    print(f"\nPolicy {p_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
-    print(f"Parameters:")
-    print(f"   {'schedule:':<12}{schedule}s\n   {'repeat':<12}{repeat} times\n   {'every:':<12}{wait_repeat}s")
+    print(f"\nPolicy {policy_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    print(f"{'Schedule:':<12}\n   run every {sched_min}m:{sched_sec}s")
     if selected_tasks[0] == -1:
-        pretty_print(f"\n(!) policy has been registered as deactivated since no task(s) are associated with it.", 'yellow', 'bright')
+        warnning = "(!) policy has been registered as deactivated until task(s) are associated with it."
+        pretty_print(f"\n{warnning}", 'yellow', 'bright')
     else:
         print("Associated Tasks:")
         for t in selected_tasks:
@@ -130,21 +127,21 @@ if not user_abort:
             task_type = tasks[t][2]
             print(f"   uid: {task_uid:<38}, type: {task_type}")
     print()
-    # create systemd service, timer and policy scripts
+    
+    # create policy file system objects
     policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
     if not os.path.exists(policies_home):   # create policies home if not exist
         try:
             os.makedirs(policies_home)
         except OSError as e:
             print(e)
-    policy_desc = f"Repeat {repeat} times over a {schedule} sec period"
-    policy_name = f"policy{schedule}_{repeat}"
-    policy_script = f"policy{schedule}_{repeat}.py"
+    policy_desc = f"Run every {schedule} secs"
+    policy_script = f"{policy_name}.py"
     systemd_home = "/etc/systemd/system"
-    policy_service = f"{systemd_home}/policy{schedule}_{repeat}.service"
-    policy_timer = f"{systemd_home}/policy{schedule}_{repeat}.timer"
+    policy_service = f"{systemd_home}/{policy_name}.service"
+    policy_timer = f"{systemd_home}/{policy_name}.timer"
     
-    # create policy.service
+    # create systemd policy.service
     lines = [
         '[Unit]',
         f'Description={policy_desc}',
@@ -155,23 +152,10 @@ if not user_abort:
         '[Install]',
         'WantedBy=multi-user.target\n'
         ]
-    try:
-        with open(f"{policy_service}", 'w') as f:
-            f.writelines('\n'.join(lines))
-    except IOError as e:
-        print(f"Policy service {Fore.RED}creation failed!{Style.RESET_ALL}")    
-        print(e)
-    else:
-        print(f"Policy service {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    create_file(lines, policy_service)
     
-    # create policy.timer
-    sched_sec = schedule % 60
-    if sched_sec < 10:
-        sched_sec = f'0{sched_sec}'
-    sched_min = str(int(schedule / 60))
+    # create systemd policy.timer
     policy_schedule = f"*:0/{sched_min}:{sched_sec}"
-    # Every Minute	*-*-* *:*:00
-    # Every 2 minute	*-*-* *:*/2:00
     lines = [
         '[Unit]',
         f'Description={policy_desc}',
@@ -182,30 +166,28 @@ if not user_abort:
         '[Install]',
         'WantedBy=timers.target\n'
         ]
-    try:
-        with open(f"{policy_timer}", 'w') as f:
-            f.writelines('\n'.join(lines))
-    except IOError as e:
-        print(f"Policy timer {Fore.RED}creation failed!{Style.RESET_ALL}")    
-        print(e)
-    else:
-        print(f"Policy timer {Fore.GREEN}created successfully!{Style.RESET_ALL}")    
+    create_file(lines, policy_timer)
     
     # create policy script
     lines = [
         '#!/usr/bin/python3\n\n',
         'echo $(date +"%s) >> /tmp/{policy_name}.test\n',
         ]
-    try:
-        with open(f"{policies_home}/{policy_script}", 'w') as f:
-            f.writelines('\n'.join(lines))
-    except IOError as e:
-        print(f"Policy script {Fore.RED}creation failed!{Style.RESET_ALL}")    
-        print(e)
-    else:
-        print(f"Policy script {Fore.GREEN}created successfully!{Style.RESET_ALL}")    
-    # set execution bit for job file
-    subprocess.run([f"chmod +x {policies_home}/{policy_script}"], shell=True)    
+    create_file(lines, f"{policies_home}/{policy_script}")
+    
+    # set execution bit for policy script
+    subprocess.run([f"chmod +x {policies_home}/{policy_script}"], shell=True)
+    
+    # reload daemons
+    subprocess.run(["systemctl daemon-reload"], shell=True)
+    
+    # enable timer service if needed
+    cur = conn.cursor()
+    sql = f"SELECT active_state FROM policies where name = ? GROUP BY name;"
+    cur.execute(sql, (policy_name,))
+    rows = cur.fetchall()
+    if rows[0][0] == 'yes':
+        subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True)
 else:
     print(f"\nPolicy {Fore.RED}creation aborted!{Style.RESET_ALL}")
 input("\nPress ENTER to go back to the menu")
