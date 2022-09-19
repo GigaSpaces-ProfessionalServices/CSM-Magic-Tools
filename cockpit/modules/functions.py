@@ -90,6 +90,27 @@ def check_connection(server, port):
         return False
 
 
+def create_file(data, file):
+    """
+    create a file for data
+    :param data: the lines to inject into file
+    :param file: the file to create
+    :return:
+    """
+    from colorama import Fore, Style
+    import os
+    name = '.'.join(os.path.basename(file).split('.')[:-1])
+    extension = os.path.basename(file).split('.')[-1:][0]
+    try:
+        with open(file, 'w') as f:
+            f.writelines('\n'.join(data))
+    except IOError as e:
+        print(f"{name}.{extension} {Fore.RED}creation failed!{Style.RESET_ALL}")    
+        print(e)
+    else:
+        print(f"{name}.{extension} {Fore.GREEN}created successfully!{Style.RESET_ALL}")    
+
+
 ###############################################################
 ##################    MENU AND VALIDATION    ##################
 ###############################################################
@@ -772,8 +793,8 @@ def register_policy(conn, policy):
     :param policy: policy data
     :return: policy id
     """
-    sql = """ INSERT INTO policies(name,schedule_sec,num_retry_on_fail,retry_wait_sec,task_uid,metadata,content,active_state,created)
-              VALUES(?,?,?,?,?,?,?,?,?) """
+    sql = """ INSERT INTO policies(name,schedule_sec,task_uid,metadata,content,active_state,created)
+              VALUES(?,?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, policy)
     conn.commit()
@@ -782,16 +803,15 @@ def register_policy(conn, policy):
 
 def policy_schedule_exists(conn, policy_schedule):
     """
-    check if policy id exists
+    check if policy schedule exists
     :param conn: database connection object
-    :param policy_id: the id number of the policy to check
+    :param policy_schedule: the policy schedule to check
     :return Boolean: True/False
     """
-    job_exists = False
     c = conn.cursor()
-    c.execute("SELECT schedule_sec FROM policies;")
-    policies = c.fetchall()
-    for schedules in policies:
-        if policy_schedule in schedules:
+    c.execute("SELECT schedule_sec FROM policies GROUP BY schedule_sec;")
+    schedules = c.fetchall()
+    for s in schedules:
+        if s[0] == int(policy_schedule):
             return True
     return False
