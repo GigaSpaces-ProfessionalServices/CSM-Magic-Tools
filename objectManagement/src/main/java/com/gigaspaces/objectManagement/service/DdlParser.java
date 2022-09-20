@@ -110,11 +110,11 @@ public class DdlParser {
 
     private void parseColumn(String column, SpaceTypeDescriptorBuilder builder) {
 
-        logger.info("Entering into -> parseColumn");
-        logger.info("column -> "+column);
+        logger.debug("Entering into -> parseColumn");
+        logger.debug("column -> "+column);
         StringWrapper sw = new StringWrapper(column);
         String name = sw.readUntilWhiteSpace();
-        logger.info("name -> "+name);
+        logger.debug("name -> "+name);
         sw.trim();
         String sqlType = sw.readUntilWhiteSpace();
 

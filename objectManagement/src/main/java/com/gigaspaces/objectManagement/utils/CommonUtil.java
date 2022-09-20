@@ -238,7 +238,7 @@ public class CommonUtil {
             Session session = null;
 
 //            session = jsch.getSession("root", "172.31.46.143", 22);
-            session = jsch.getSession("172.31.46.143");
+            session = jsch.getSession(managerHost);
             Properties config = new Properties();
             config.put("StrictHostKeyChecking", "no");
             session.setConfig(config);

@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 public class ReportWriter {
     StringBuilder additionalInfoBuilder;
     Formatter additionalInfoFormatter;
-
+    private static final String TYPE_DISTINGUISHER_SUFFIX = "_C";
     public ReportWriter() {
         additionalInfoBuilder = new StringBuilder();
         additionalInfoFormatter = new Formatter(additionalInfoBuilder);
@@ -30,7 +30,7 @@ public class ReportWriter {
         Formatter reportFormatter = new Formatter(reportStringBuilder);
 
         for (SpaceTypeDescriptor typeDescriptor : baseTypeDescriptorMap.values()) {
-            TableOutcome tsResults = reportData.getTsResults(typeDescriptor.getTypeName());
+            TableOutcome tsResults = reportData.getTsResults(typeDescriptor.getTypeName()+ TYPE_DISTINGUISHER_SUFFIX);
             TableOutcome csResults = reportData.getCsResults(typeDescriptor.getTypeName());
 
             reportFormatter.format(" Table :  %40s\n", typeDescriptor.getTypeName());
