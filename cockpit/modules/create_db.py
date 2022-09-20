@@ -40,6 +40,7 @@ def main():
 
     create_policies_table = """CREATE TABLE IF NOT EXISTS policies (
                                         id integer PRIMARY KEY,
+                                        uid text NOT NULL,
                                         name text,
                                         schedule_sec integer NOT NULL,
                                         task_uid text,
