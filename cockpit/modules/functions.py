@@ -101,15 +101,18 @@ def create_file(data, file):
     import os
     name = '.'.join(os.path.basename(file).split('.')[:-1])
     extension = os.path.basename(file).split('.')[-1:][0]
-    try:
-        with open(file, 'w') as f:
-            f.writelines('\n'.join(data))
-    except IOError as e:
-        print(f"{name}.{extension} {Fore.RED}creation failed!{Style.RESET_ALL}")    
-        print(e)
+    if os.path.exists(file):
+        print(f"{name}.{extension} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
     else:
-        print(f"{name}.{extension} {Fore.GREEN}created successfully!{Style.RESET_ALL}")    
-
+        try:
+            with open(file, 'w') as f:
+                f.writelines('\n'.join(data))
+        except IOError as e:
+            print(f"{name}.{extension} {Fore.RED}creation failed!{Style.RESET_ALL}")
+            print(e)
+        else:
+            print(f"{name}.{extension} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+        
 
 ###############################################################
 ##################    MENU AND VALIDATION    ##################
@@ -768,18 +771,25 @@ def list_tasks_by_policy_schedule(conn, policy_schedule):
 ##################         POLICIES          ##################
 ###############################################################
 
-def list_policies(conn, *columns):
+def list_policies(conn, filter_by, *columns):
     """
     list registered policies in database
     :param conn: connection object
-    :param columns: collection of table columns
+    :param filter_by: a dictionary for sql WHERE clause
+    :param *columns: list of table columns
     :return: list of rows
     """
     cur = conn.cursor()
-    args = ','.join(columns)
+    # parse fields from columns
+    fields = ','.join(columns)
     if len(columns) == 0:
-        args = '*'
-    sql = f"SELECT {args} FROM policies"
+        fields = '*'
+    # build query
+    if filter_by == '':
+        sql = f"SELECT {fields} FROM policies"
+    else:
+        for field, value in filter_by.items(): pass
+        sql = f"SELECT {fields} FROM policies WHERE {field} = {value}"
     cur.execute(sql)
     rows = cur.fetchall()
     return rows
@@ -792,8 +802,8 @@ def register_policy(conn, policy):
     :param policy: policy data
     :return: policy id
     """
-    sql = """ INSERT INTO policies(name,schedule_sec,task_uid,metadata,content,active_state,created)
-              VALUES(?,?,?,?,?,?,?) """
+    sql = """ INSERT INTO policies(uid,name,schedule_sec,task_uid,metadata,content,active_state,created)
+              VALUES(?,?,?,?,?,?,?,?) """
     cur = conn.cursor()
     cur.execute(sql, policy)
     conn.commit()
