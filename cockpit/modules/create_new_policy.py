@@ -100,6 +100,7 @@ if not user_abort:
         print("\n")
     
     # register new policy
+    suffix = 'cockpit'
     pol_uid = str(uuid.uuid4())
     p_metadata = 'NULL'
     p_content = 'NULL'
@@ -114,7 +115,7 @@ if not user_abort:
             task_type = tasks[task][2]
     policy_data = (pol_uid,policy_name,schedule,task_uid,p_metadata,p_content,p_state,p_created)
     r = register_policy(conn, policy_data)
-    print(f"\nPolicy {policy_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    print(f"\nPolicy {suffix}_{policy_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
     print(f"{'Schedule:':<12}\n   run every {str(sched_min)}m:{str(sched_sec)}s")
     if selected_tasks[0] == -1:
         warnning = "(!) policy has been registered as deactivated until task(s) are associated with it."
@@ -128,7 +129,6 @@ if not user_abort:
     print()
     
     # create policy file system objects
-    suffix = 'cockpit'
     systemd_home = "/etc/systemd/system"
     policy_desc = f"{suffix}-{policy_name}"
     policy_init_script = f"{suffix}_{policy_name}.py"
