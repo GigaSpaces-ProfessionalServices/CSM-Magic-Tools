@@ -23,7 +23,7 @@ cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
-policies = list_policies(conn)
+policies = list_policies(conn,'')
 if len(policies) > 0:
     w = 93
     print("-" * w)
