@@ -5,15 +5,17 @@ import os
 import yaml
 import datetime
 import subprocess
+import uuid
 from signal import SIGINT, signal
 from colorama import Fore, Style
-from functions import handler, create_connection, \
-    list_tasks_grouped, parse_multi_select, policy_schedule_exists, \
-        pretty_print, register_policy, sort_tuples_list, \
-            get_user_permission, create_file
+from functions import handler, create_connection, list_tasks_grouped, \
+    parse_multi_select, pretty_print, register_policy, sort_tuples_list, \
+        get_user_permission, create_file
 
 # main
 config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
+templates_dir = f"{os.path.dirname(os.path.realpath(__file__))}/../templates"
+policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)
@@ -74,9 +76,6 @@ if not user_abort:
         if not schedule.isdigit():
             print(f"{Fore.RED}ERROR: Input must be a number!{Fore.RESET}")
             continue
-        if policy_schedule_exists(conn, schedule):
-            pretty_print(f"(!) a policy with this schedule already exists.", 'red')
-            continue
         else:
             schedule = int(schedule)
             break
@@ -99,6 +98,9 @@ if not user_abort:
         exit()
     else:
         print("\n")
+    
+    # register new policy
+    pol_uid = str(uuid.uuid4())
     p_metadata = 'NULL'
     p_content = 'NULL'
     p_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -110,7 +112,7 @@ if not user_abort:
             p_state = 'yes'
             task_uid = tasks[task][1]
             task_type = tasks[task][2]
-    policy_data = (policy_name,schedule,task_uid,p_metadata,p_content,p_state,p_created)
+    policy_data = (pol_uid,policy_name,schedule,task_uid,p_metadata,p_content,p_state,p_created)
     r = register_policy(conn, policy_data)
     print(f"\nPolicy {policy_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
     print(f"{'Schedule:':<12}\n   run every {str(sched_min)}m:{str(sched_sec)}s")
@@ -126,19 +128,55 @@ if not user_abort:
     print()
     
     # create policy file system objects
-    policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
-    if not os.path.exists(policies_home):   # create policies home if not exist
-        try:
-            os.makedirs(policies_home)
-        except OSError as e:
-            print(e)
     suffix = 'cockpit'
     systemd_home = "/etc/systemd/system"
     policy_desc = f"{suffix}-{policy_name}"
-    policy_script = f"{suffix}_{policy_name}.py"
+    policy_init_script = f"{suffix}_{policy_name}.py"
+    policy_exec_script = f"{pol_uid}.py"
     policy_service = f"{systemd_home}/{suffix}_{policy_name}.service"
     policy_timer = f"{systemd_home}/{suffix}_{policy_name}.timer"
+
+    if not os.path.exists(policies_home):   # create policies home if not exist
+        try:
+            # we create exec folder and its tree
+            os.makedirs(f"{policies_home}/exec")
+        except OSError as e:
+            print(e)
     
+    # generate policy init script from template
+    if not os.path.exists(f"{policies_home}/{policy_init_script}"):
+        template = f"{templates_dir}/policy_init_template.py"
+        copy_template = f"cp {template} {policies_home}/{policy_init_script}"
+        try:
+            subprocess.run([copy_template], shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(e.output)
+        else:
+            try:    # set execution bit for policy init script
+                subprocess.run([f"chmod +x {policies_home}/{policy_init_script}"], shell=True, check=True)
+            except subprocess.CalledProcessError as e:
+                print(e.output)
+            print(f"policy initialization script '{policy_init_script}'{Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    else:
+        print(f"policy initialization script already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
+    
+    # generate policy execution script from template
+    if not os.path.exists(f"{policies_home}/exec/{policy_exec_script}"):
+        template = f"{templates_dir}/policy_exec_template.py"
+        copy_template = f"cp {template} {policies_home}/exec/{policy_exec_script}"
+        try:
+            subprocess.run([copy_template], shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(e.output)
+        else:
+            try:    # set execution bit for policy exec script
+                subprocess.run([f"chmod +x {policies_home}/exec/{policy_exec_script}"], shell=True, check=True)
+            except subprocess.CalledProcessError as e:
+                print(e.output)
+            print(f"policy execution script '{policy_exec_script}'{Fore.GREEN}created successfully!{Style.RESET_ALL}")
+    else:
+        print(f"policy execution script already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
+
     # create systemd policy.service
     lines = [
         '[Unit]',
@@ -146,7 +184,7 @@ if not user_abort:
         f'Wants={suffix}_{policy_name}.timer\n',
         '[Service]',
         'Type=oneshot',
-        f'ExecStart={os.path.realpath(policies_home)}/{policy_script}\n',
+        f'ExecStart={os.path.realpath(policies_home)}/{policy_init_script}\n',
         '[Install]',
         'WantedBy=multi-user.target\n'
         ]
@@ -166,17 +204,6 @@ if not user_abort:
         ]
     create_file(lines, policy_timer)
     
-    # create policy script
-    lines = [
-        '#!/usr/bin/python3\n\n',
-        'import subprocess\n',
-        f'subprocess.run(["echo $(date) >> /tmp/{suffix}_{policy_name}.test"], shell=True)\n',
-        ]
-    create_file(lines, f"{policies_home}/{policy_script}")
-    
-    # set execution bit for policy script
-    subprocess.run([f"chmod +x {policies_home}/{policy_script}"], shell=True)
-    
     # reload daemons
     subprocess.run(["systemctl daemon-reload"], shell=True)
     
@@ -186,7 +213,10 @@ if not user_abort:
     cur.execute(sql, (policy_name,))
     rows = cur.fetchall()
     if rows[0][0] == 'yes':
-        subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True)
+        try:
+            subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(e.output)
 else:
     print(f"\nPolicy {Fore.RED}creation aborted!{Style.RESET_ALL}")
 input("\nPress ENTER to go back to the menu")
