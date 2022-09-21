@@ -99,10 +99,11 @@ def write_to_influx(dbname, data):
 
 
 # main
-config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
-policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
+os.environ['COCKPIT_HOME']
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
+policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
 policies_exec_home = f"{policies_home}/exec"
-jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
+jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
 
 # get policy schedule from file name
 policy_uid = '.'.join(os.path.basename(__file__).split('.')[:-1])

@@ -75,8 +75,8 @@ def list_policies(conn, filter_by, *columns):
 
 
 # main
-config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
-policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
+policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
 policies_exec_home = f"{policies_home}/exec"
 
 # get policy schedule from file name
