@@ -27,12 +27,12 @@ cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 jobs = dict(list_jobs(conn, 'id', 'name'))
 if len(jobs) > 0:
-    print("Which job would you like to test?")
-    w = 41
-    print("-"*w + f'\n| {"Id":^4} | {"Name":^30} |\n' + "-"*w)
+    title = "Which job would you like to test?"
+    print(f"{title}\n" + '-'*len(title))
     for job_id, job_name in jobs.items():
-        print(f'| {job_id:<4} | {job_name:<30} |')
-    print("-"*w + f'\n| {99:<4} | {"ESC":<30} |\n' + "-"*w)
+        index = f"[{job_id}]"
+        print(f'{index:<6} - {job_name:<30}')
+    print(f'{"[99]":<6} - {"ESC":<30}')
     choice = validate_input(jobs)
 else:
     print("No jobs found")
