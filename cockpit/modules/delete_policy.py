@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import os
 import yaml
 from signal import SIGINT, signal
 from functions import create_connection, handler
 
 # main
-config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/../config/config.yaml"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)
@@ -24,9 +23,9 @@ conn = create_connection(cockpit_db)
 print("### [ TBD ] ### DELETE POLICY ###")
 
     # TO REMOVE
-    # systemctl stop policy_60.timer 
-    # systemctl disable policy_60.timer 
-    # rm -f /etc/systemd/system/policy_60.*
+    # systemctl stop cockpit_policy_60.timer 
+    # systemctl disable cockpit_policy_60.timer 
+    # rm -f /etc/systemd/system/cockpit_policy_60.*
     # systemctl daemon-reload
 
 

@@ -8,7 +8,7 @@ from signal import SIGINT, signal
 from functions import create_connection, handler
 
 # main
-config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)

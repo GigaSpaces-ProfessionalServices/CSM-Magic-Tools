@@ -12,7 +12,7 @@ from functions import handler, create_connection, \
         list_jobs, register_task
 
 # main
-config_yaml = f"{os.path.dirname(os.path.abspath(__file__))}/../config/config.yaml"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)

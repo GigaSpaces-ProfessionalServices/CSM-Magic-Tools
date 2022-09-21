@@ -284,7 +284,7 @@ def check_settings(config):
         db_set_required = True
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         if get_user_permission("would you like to create the cockpit database?"):
-            subprocess.call([f"{os.path.dirname(os.path.realpath(__file__))}/create_db.py"], shell=True)
+            subprocess.call([f"{os.environ['COCKPIT_HOME']}/modules/create_db.py"], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
             pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
@@ -350,7 +350,7 @@ def get_object_types_from_space(yaml_data):
     for env_name in yaml_data['params']:
         if env_name != 'cockpit':
             pivot = yaml_data['params'][env_name]['endpoints']['pivot']
-            exec_script = f"{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"
+            exec_script = f"{os.environ['COCKPIT_HOME']}/modules/get_space_objects.py"
             if check_connection(pivot, 22):
                 connections_ok.append(True)
                 cmd = f"cat {exec_script} | ssh {pivot} python3 -"
@@ -674,7 +674,7 @@ def generate_job_file(job_type, env_name, obj_type, yaml_data):
     import subprocess
     env_name_low = env_name.lower()
     pivot = f"PIVOT_{env_name}"
-    jobs_home = f"{os.path.dirname(os.path.realpath(__file__))}/../jobs"
+    jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
     job_file_name = f"{job_type}_{env_name}_{obj_type}.py".lower()
     job_file = f"{jobs_home}/{job_file_name}"
     pivot = yaml_data['params'][env_name_low]['endpoints']['pivot']
@@ -683,7 +683,7 @@ def generate_job_file(job_type, env_name, obj_type, yaml_data):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.path.dirname(os.path.realpath(__file__))}/get_space_objects.py"',
+        f'exec_script = "{os.environ["COCKPIT_HOME"]}/get_space_objects.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
         f'print(response)\n\n'
