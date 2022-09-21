@@ -10,12 +10,12 @@ from signal import SIGINT, signal
 from colorama import Fore, Style
 from functions import handler, create_connection, list_tasks_grouped, \
     parse_multi_select, pretty_print, register_policy, sort_tuples_list, \
-        get_user_permission, create_file
+        get_user_permission, create_file, list_jobs_by_task_uid
 
 # main
-config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
-templates_dir = f"{os.path.dirname(os.path.realpath(__file__))}/../templates"
-policies_home = f"{os.path.dirname(os.path.realpath(__file__))}/../policies"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
+templates_dir = f"{os.environ['COCKPIT_HOME']}/templates"
+policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
 
 # catch user CTRL+C key press
 signal(SIGINT, handler)
@@ -27,6 +27,7 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+# get policy name
 p_name_len = 30
 note = f"Choose a name for this policy (up to {p_name_len} characters)"
 print(f"\n{note}")
@@ -50,8 +51,13 @@ if len(tasks) > 0:
     print('-' * len(note))
     index = 1
     for task in tasks:
+        task_uid = task[1]
+        task_type = task[2]
+        if task_type == data['tasks'][1]['name']:
+            # we extract the target object type from the task
+            task_obj = ''.join(set([job[4] for job in list_jobs_by_task_uid(conn, (task_uid,))]))
         i = f"{[index]}"
-        print(f'{i:<4} - {task[2]} (uid: {task[1]}) ***more info required - TBD')
+        print(f"{i:<4} - {task_type} of object type: '{task_obj}'")
         index += 1
     print(f'{"[99]":<4} - {"ESC":<24}')
     for i in parse_multi_select(tasks):
