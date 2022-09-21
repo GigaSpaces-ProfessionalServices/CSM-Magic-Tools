@@ -206,25 +206,20 @@ class OdsServiceGrid:
             for space in response_data.json():
                 if space['name'] == space_name:
                     return space['topology']['partitions']
-
-        def total_object_count(self):
-            response_data = requests.get(
-                self.url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
-            for space in response_data.json():
-                if space['name'] == space_name:
-                    space_instances = space['instancesIds']
-            total_objects = 0
-            for instance_id in space_instances:
-                if osg.Instance.mode(instance_id) == 'PRIMARY':
-                    total_objects += osg.Instance.count_objects(instance_id)
-            return total_objects
         
+        def total_object_count(self):
+            the_url = self.url + f"/{space_name}/statistics/operations"
+            response_data = requests.get(
+                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
+            total_ram_objects = f"{response_data.json()['objectCount']:,}"
+            return total_ram_objects
+
         def total_write_count(self):
             the_url = self.url + f"/{space_name}/statistics/operations"
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
-            total_write_objects = f"{response_data.json()['writeCount']:,}"
-            return total_write_objects
+            total_hdd_objects = f"{response_data.json()['writeCount']:,}"
+            return total_hdd_objects
 
     class ProcessingUnit:
 
@@ -406,7 +401,7 @@ def show_grid_info():
 def show_total_objects():
     print('#' * 80 + '\n' + '#' * 29 + ' [ ENTRIES IN SPACE ] ' + '#' * 29 + '\n' + '#' * 80)
     logger = logging.getLogger()
-    oc = f"{osg.Space.total_object_count():,}"
+    oc = osg.Space.total_object_count()
     print(f"[ {space_name} ] {'total number of objects in RAM:':<34} {oc:<12}")
     wc = osg.Space.total_write_count()
     print(f"[ {space_name} ] {'total number of objects in TS:':<34} {wc:<12}")
