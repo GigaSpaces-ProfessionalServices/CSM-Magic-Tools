@@ -30,7 +30,6 @@ if len(jobs) > 0:
     print("-" * 4 + ' ' * 3 + "-" * max(j_len))
     for job_id, job_name in jobs:
         print(f'{job_id:<4} | {job_name}')
-    print("-" * (max(j_len)+7))
 else:
     print("No jobs found")
 
