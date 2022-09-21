@@ -27,14 +27,14 @@ conn = create_connection(cockpit_db)
 tasks = list_tasks_grouped(conn, 'uid', 'type')
 if len(tasks) > 0:
     spc = '- -'
-    print(f'{"Type":<10} | {"UID":<40} | {"# Jobs":<6}')
-    print("-"*10 + spc + "-"*40 + spc + "-"*6)
+    print(f'{"Type":<12} | {"UID":<40} | {"# Jobs":<6}')
+    print("-"*12 + spc + "-"*40 + spc + "-"*6)
     for task_uid, task_type in tasks:
         # count number of jobs for each task uid
         cur = conn.cursor()
         cur.execute("SELECT * FROM tasks WHERE uid = ?;", (task_uid,))
         num_of_jobs = len(cur.fetchall())
-        print(f'| {task_type:<10} | {task_uid:<40} | {num_of_jobs:<6}')
+        print(f'{task_type:<12} | {task_uid:<40} | {num_of_jobs:<6}')
 else:
     print("No tasks found")
 
