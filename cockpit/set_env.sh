@@ -12,7 +12,7 @@ sed -i '/COCKPIT_HOME=/d' ~/.bashrc
 # insert new setting
 echo "export COCKPIT_HOME=${COCKPIT_HOME}" >> ~/.bashrc
 
+echo "set COCKPIT_HOME to: '${COCKPIT_HOME}'"
+
 # source it
 source ~/.bashrc && exec bash
-
-exit
