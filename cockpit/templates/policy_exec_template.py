@@ -87,7 +87,7 @@ def write_to_influx(dbname, data):
             "measurement": "validation",
             "tags": {
                 "env": data['env'],
-                "obj_type": data['type']
+                "obj_type": data['obj_type']
             },
             "time": timestamp,
             "fields": {
