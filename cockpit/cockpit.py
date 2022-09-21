@@ -14,8 +14,9 @@ def main():
     # catch user CTRL+C key press
     signal(SIGINT, handler)
 
-    menu_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/config/menu.yaml"
-    config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/config/config.yaml"
+    os.environ['COCKPIT_HOME'] = os.path.dirname(os.path.realpath(__file__))
+    menu_yaml = f"{os.environ['COCKPIT_HOME']}/config/menu.yaml"
+    config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
     user_selections = []
 
     print_header() 
@@ -47,7 +48,7 @@ def main():
             if dict['exec-type'] == 'module':
                 eval(f"{dict['exec']}()")
             if dict['exec-type'] == 'script':
-                script = f"{os.path.dirname(os.path.realpath(__file__))}/modules/{dict['exec']}"
+                script = f"{os.environ['COCKPIT_HOME']}/modules/{dict['exec']}"
                 subprocess.call([script], shell=True)
             user_selections.pop()
             continue
