@@ -683,7 +683,7 @@ def generate_job_file(job_type, env_name, obj_type, yaml_data):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.environ["COCKPIT_HOME"]}/get_space_objects.py"',
+        f'exec_script = "{os.environ["COCKPIT_HOME"]}/modules/get_space_objects.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
         f'print(response)\n\n'
