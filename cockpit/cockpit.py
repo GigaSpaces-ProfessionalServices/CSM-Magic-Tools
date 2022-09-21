@@ -14,12 +14,20 @@ def main():
     # catch user CTRL+C key press
     signal(SIGINT, handler)
 
-    os.environ['COCKPIT_HOME'] = os.path.dirname(os.path.realpath(__file__))
+    # check that COCKPIT_HOME is set and valid
+    this_home = os.path.realpath(os.path.dirname(__file__))
+    env_cockpit_home = os.environ.get('COCKPIT_HOME')
+    if os.environ.get('COCKPIT_HOME') != this_home:
+        print_header()
+        pretty_print("ERROR: COCKPIT_HOME environment variable is not set or invalid!", 'red', 'bright')
+        print(f"(!) set COCKPIT_HOME to: '{this_home}'\n    or run set_env.sh script located in cockpit directory.\n")
+        exit(1)
+
     menu_yaml = f"{os.environ['COCKPIT_HOME']}/config/menu.yaml"
     config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
     user_selections = []
 
-    print_header() 
+    print_header()
     check_settings(config_yaml)
    
     # load menu yaml
