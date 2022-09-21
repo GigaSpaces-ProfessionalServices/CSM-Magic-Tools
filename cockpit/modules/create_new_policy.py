@@ -189,6 +189,7 @@ if not user_abort:
         f'Description={policy_desc}',
         f'Wants={suffix}_{policy_name}.timer\n',
         '[Service]',
+        f'Environment="{os.environ["COCKPIT_HOME"]}"',
         'Type=oneshot',
         f'ExecStart={os.path.realpath(policies_home)}/{policy_init_script}\n',
         '[Install]',
