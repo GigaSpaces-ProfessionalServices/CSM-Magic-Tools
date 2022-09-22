@@ -147,6 +147,28 @@ def update_selections(the_choice, choices_list):
         choices_list.append(the_choice)
 
 
+def get_selection(the_dict, subject, title):
+    """
+    get user menu selection
+    :param the_dict: menu dictionary e.g: {1: ['str', 'str'], 2: ['str', 'str']}
+    :param subject: string for menu subject (added to ALL option)
+    :param title: the menu title printed at the start of menu
+    :return: int of user choice
+    """
+    print(title + "\n" + '-' * len(title))
+    for k, v in the_dict.items():
+        index = f"[{k}]"
+        print(f'{index:<4} - {v[0]:<24}')
+    if len(the_dict) > 1:
+        index = f"[{k+1}]"
+        item = f"All {subject}"
+        print(f'{index:<4} - {item:<24}')
+    print(f'{"[99]":<4} - {"ESC":<24}')
+    result = validate_input(the_dict)
+    if result != -1:
+        return result
+
+
 def get_type_selection(the_dict):
     """
     get object type selection from user
@@ -154,7 +176,7 @@ def get_type_selection(the_dict):
     :return: int of user choice
     """
     q = f"What type of task do you want to create?"
-    print(q + "\n" + '=' * len(q))
+    print(q + "\n" + '-' * len(q))
     for k, v in the_dict.items():
         index = f"[{k}]"
         print(f'{index:<4} - {v["name"]:<24} {v["description"]:<34}')
@@ -172,7 +194,7 @@ def validate_main_menu_input(the_dict, the_selections):
     while True:
         if the_choice == '99':
             if the_dict['id'] == 'Main':
-                print("Quitting...")
+                print("Quitting!")
                 exit(0)
             else:
                 update_selections(the_choice, the_selections)
