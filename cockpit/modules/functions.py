@@ -832,6 +832,20 @@ def register_policy(conn, policy):
     return cur.lastrowid
 
 
+def delete_policy(conn, policy_name):
+    """
+    delete a policy by id
+    :param conn: database connection object
+    :param policy_name: the name of the policy
+    :return:
+    """
+    sql = f"DELETE from policies where name = {policy_name}"
+    cur = conn.cursor()
+    cur.execute(sql)
+    conn.commit()
+    return cur.lastrowid
+
+
 def policy_schedule_exists(conn, policy_schedule):
     """
     check if policy schedule exists
