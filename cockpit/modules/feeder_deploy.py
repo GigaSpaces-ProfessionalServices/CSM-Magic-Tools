@@ -4,6 +4,7 @@
 ### DEPLOY MSSQL FEEDER ###
 
 import os
+from time import sleep
 import yaml
 from signal import SIGINT, signal
 import subprocess
@@ -11,7 +12,7 @@ import json
 from functions import create_connection, handler, \
     check_connection, validate_input, get_selection, \
         pretty_print
-
+from spinner import Spinner
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -65,7 +66,11 @@ for e in env_select.values():
     if check_connection(pivot, port):
         for f in feeder_select.values():
             feeder_name = f[0].lower()
-            print(f"\nDeploying '{feeder_name} feeder' on {env_name}")
+            
+            # FOR DEMO
+            spinner = Spinner
+            with spinner(f"\nDeploying '{feeder_name} feeder' on {env_name}", delay=0.1):
+                sleep(2)
             #cmd = f'ssh {pivot} "/dbagiga/josh/auto_odsx/auto_{feeder_name}feederdeploy"'
             #response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
             #response = json.loads(response.replace("\'", "\""))
