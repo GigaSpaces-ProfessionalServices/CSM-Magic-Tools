@@ -69,8 +69,12 @@ for e in env_select.values():
             
             # FOR DEMO
             spinner = Spinner
-            with spinner(f"\nDeploying '{feeder_name} feeder' on {env_name}", delay=0.1):
+            title = f"Deploying '{feeder_name} feeder' on {env_name}... "
+            with spinner(title, delay=0.1):
                 sleep(2)
+                import sys
+                sys.stdout.write('\b')
+                print('done')
             #cmd = f'ssh {pivot} "/dbagiga/josh/auto_odsx/auto_{feeder_name}feederdeploy"'
             #response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
             #response = json.loads(response.replace("\'", "\""))
