@@ -10,24 +10,7 @@ from signal import SIGINT, signal
 from colorama import Fore, Style
 from functions import handler, get_object_types_from_db, \
     create_connection, jobs_exist, generate_job_file, \
-        register_job, pretty_print, validate_input
-
-
-def get_selection(the_dict, description):
-    # print menu
-    q = f"Which {description} would you like to validate?"
-    print(q + "\n" + '=' * len(q))
-    for k, v in the_dict.items():
-        index = f"[{k}]"
-        print(f'{index:<4} - {v[0]:<24}')
-    if len(the_dict) > 1:
-        index = f"[{k+1}]"
-        item = "All " + description.capitalize()
-        print(f'{index:<4} - {item:<24}')
-    print(f'{"[99]":<4} - {"ESC":<24}')
-    result = validate_input(the_dict)
-    if result != -1:
-        return result
+        register_job, validate_input, get_selection
 
 
 # main
@@ -52,14 +35,16 @@ for k, v in data['params'].items():
         index += 1
 space_types = get_object_types_from_db(conn)
 # choice env
-choice = get_selection(environments, 'environments')
+q = f"Which environments would you like to validate?"
+choice = get_selection(environments, 'Environments', q)
 envs = {}
 if choice == 'ALL':
     envs = environments
 else:
     envs = {1: [environments[int(choice)][0], environments[int(choice)][1]]}
 # choice type
-choice = get_selection(space_types, 'types')
+q = f"Which type(s) would you like to validate?"
+choice = get_selection(space_types, 'Types', q)
 types = {}
 if choice == 'ALL':
     types = space_types
