@@ -351,8 +351,8 @@ def check_settings(config):
         pretty_print("\nCockpit setup and verification completed successfully.", 'green')
         input("Press ENTER to continue to the main menu.")
         print_header()
-    from . import spinner
-    spinner = spinner.Spinner
+    from .spinner import Spinner
+    spinner = Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
         conn = create_connection(cockpit_db)
         register_types(conn, get_object_types_from_space(data))
