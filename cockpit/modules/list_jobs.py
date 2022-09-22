@@ -26,8 +26,9 @@ j_len = []
 for ji, jn in jobs:
     j_len.append(len(jn))
 if len(jobs) > 0:
+    spc = '- -'
     print(f'{"Id":<4} | Name')
-    print("-" * 4 + ' ' * 3 + "-" * max(j_len))
+    print("-"*4 + spc + "-"*max(j_len))
     for job_id, job_name in jobs:
         print(f'{job_id:<4} | {job_name}')
 else:
