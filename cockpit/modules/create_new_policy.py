@@ -7,10 +7,9 @@ import datetime
 import subprocess
 import uuid
 from colorama import Fore, Style
-from functions import create_connection, list_tasks_grouped, \
-    parse_multi_select, pretty_print, register_policy, sort_tuples_list, \
-        get_user_ok, create_file, list_jobs_by_task_uid, \
-            policy_schedule_exists
+from functions import create_connection, list_tasks_grouped, get_user_ok, \
+    validate_option_select, pretty_print, register_policy, sort_tuples_list, \
+        create_file, list_jobs_by_task_uid, policy_schedule_exists, get_keypress
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -93,33 +92,28 @@ else:
 
 # get task(s) selection
 selected_tasks = []
-note = "Choose tasks to be associated with this policy"
-print(f"\n{note}")
-print("(!) collections are supported (i.e: 1,3,2-5)")
-print('-' * len(note))
 index = 1
+tasks_dict = {}
 for task in tasks:
     task_uid = task[1]
     task_type = task[2]
     if task_type == data['tasks'][1]['name']:
         # we extract the target object type from the task
         task_obj = ''.join(set([job[4] for job in list_jobs_by_task_uid(conn, (task_uid,))]))
-    i = f"{[index]}"
-    print(f"{i:<4} - {task_type} of object type: '{task_obj}'")
-    index += 1
-print(f'{"[99]":<4} - {"ESC":<24}')
-for i in parse_multi_select(tasks):
+    # conform tasks dictionary to validation func
+    tasks_dict[task[0]] = [f"{task_type} of object type '{task_obj}'", task_uid]
+title = "Choose tasks to be associated with this policy"
+for i in validate_option_select(tasks_dict, title):
     if i != -1:
         selected_tasks.append(i-1)
     else:
         pretty_print("\n(!) no tasks have been selected. cannot continue!", 'red')
         input("\nPress ENTER to go back to the menu")
         exit()
-    
+
 # confirm policy parameters
-note = "Please confirm the following policy creation:"
-print(f"\n{note}")
-if auto_gen_name: print(f"   {'Name:':<12}{policy_name} (auto generated)")
+pretty_print("\n\n(!) Please confirm the following policy creation:", 'yellow')
+if auto_gen_name: print(f"   {'Name:':<12}{policy_name} (name auto generated)")
 else: print(f"   {'Name:':<18}{policy_name}")
 print(f"   {'Run every:':<18}{str(sched_min)}m:{str(sched_sec)}s")
 print(f"   {'Associated Tasks:':<18}")
@@ -128,7 +122,7 @@ for t in selected_tasks:
     task_type = tasks[t][2]
     print(f"   uid: {task_uid:<38}, type: {task_type}")
 
-if get_user_permission("\nContinue with policy registration?"):
+if get_user_ok("\nContinue with policy registration?"):
     suffix = 'cockpit'
     systemd_home = "/etc/systemd/system"
     policy_desc = f"{suffix}-{policy_name}"
