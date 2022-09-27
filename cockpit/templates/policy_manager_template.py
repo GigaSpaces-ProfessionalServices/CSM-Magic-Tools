@@ -3,20 +3,7 @@
 
 import os
 import yaml
-from signal import SIGINT, signal
 import subprocess
-
-
-def handler(signal_recieved, frame):
-    """
-    catch CTRL+C keybaord press
-    :param signal_recieved: caught by signal class
-    :param frame:
-    :return:
-    """
-    print('\n\nOperation aborted by user!')
-    exit(0)
-
 
 def create_connection(db_file):
     """
@@ -82,9 +69,6 @@ policies_exec_home = f"{policies_home}/exec"
 # get policy schedule from file name
 policy_schedule = '.'.join(os.path.basename(__file__).split('.')[:-1]).split('_').pop()
 
-# catch user CTRL+C key press
-signal(SIGINT, handler)
-
 # load config yaml
 with open(config_yaml, 'r') as yf:
     data = yaml.safe_load(yf)
@@ -94,14 +78,16 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 
-# execute all policies associated with this schedule
+# initialize policy workers
 if policy_schedule_exists(conn, policy_schedule):
-    policies_to_run = list_policies(conn, {'schedule_sec': policy_schedule}, 'uid')
-    for policy_uid in policies_to_run:
-        p_uid = policy_uid[0]
-        try:
-            subprocess.run([f"{policies_exec_home}/{p_uid}.py"], shell=True, check=True)
-        except subprocess.CalledProcessError as e:
-            print(e.output)
+    policies_to_run = list_policies(conn, {'schedule_sec': policy_schedule}, 'uid', 'active_state')
+    for p in policies_to_run:
+        p_uid = p[0]
+        p_active = p[1]
+        if p_active == 'yes':   # run only workers that have active_state='yes'
+            try:
+                subprocess.run([f"{policies_exec_home}/{p_uid}.py"], shell=True, check=True)
+            except subprocess.CalledProcessError as e:
+                print(e.output)
 else:
     print(f"ERROR: policy schedule {policy_schedule} does not exist!")

@@ -4,20 +4,7 @@
 import os
 import yaml
 import json
-from signal import SIGINT, signal
 import subprocess
-
-
-def handler(signal_recieved, frame):
-    """
-    catch CTRL+C keybaord press
-    :param signal_recieved: caught by signal class
-    :param frame:
-    :return:
-    """
-    print('\n\nOperation aborted by user!')
-    exit(0)
-
 
 def create_connection(db_file):
     """
@@ -107,9 +94,6 @@ jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
 
 # get policy schedule from file name
 policy_uid = '.'.join(os.path.basename(__file__).split('.')[:-1])
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load config yaml
 with open(config_yaml, 'r') as yf:
