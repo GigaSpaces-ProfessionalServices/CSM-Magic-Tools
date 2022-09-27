@@ -5,15 +5,39 @@
 ##################          GENERAL          ##################
 ###############################################################
 
-def handler(signal_recieved, frame):
-    """
-    catch CTRL+C keybaord press
-    :param signal_recieved: caught by signal class
-    :param frame:
-    :return:
-    """
-    print('\n\nOperation aborted by user!')
-    exit(0)
+
+def get_keypress():
+    import sys,tty,os,termios
+    old_settings = termios.tcgetattr(sys.stdin)
+    tty.setcbreak(sys.stdin.fileno())
+    key_mapping = {
+        10: 'return', 
+        27: 'esc', 
+        127: 'backspace'
+        }
+    user_input = []
+    while True:
+        b = os.read(sys.stdin.fileno(), 3).decode()
+        if len(b) == 3:
+            k = ord(b[2])
+        else:
+            k = ord(b)
+        this_key = key_mapping.get(k, chr(k))
+        if this_key == 'return':
+            break
+        elif this_key == 'esc':
+            user_input.clear()
+            user_input.append('esc')
+            break
+        if this_key == 'backspace':
+            sys.stdout.write("\033[K")
+            if len(user_input) > 0:
+                user_input.pop()
+        else:
+            user_input.append(this_key)
+        print(''.join(user_input), end='\r')
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+    return ''.join(user_input)
 
 
 def sort_tuples_list(the_list):
@@ -28,12 +52,12 @@ def sort_tuples_list(the_list):
 
 def print_header():
     """
-    print menu header
+    print menu header - figlet and version
     """
     import pyfiglet
     import subprocess
     v_pref = ' ' * 2
-    version = "ODS Cockpit 2022, v1.0 | Copyright Gigaspaces Ltd"
+    version = "ODS Cockpit 2022, v1.1 | Copyright Gigaspaces Ltd"
     subprocess.run("clear")
     print(pyfiglet.figlet_format("ODS Cockpit", font='slant'))
     print(f"{v_pref}{version}\n\n")
@@ -118,133 +142,86 @@ def create_file(data, file):
 ##################    MENU AND VALIDATION    ##################
 ###############################################################
 
-def print_menu(the_dict):
+def validate_navigation_select(items_dict, the_selections):
     """
-    print the main menu
-    :param dictionary: dictionary of menu items
+    ensure user choice is valid and update selections list
+    :param the_dict: a dictionary of available choices
+    :param the_selections: list of current user selections
+    :return:
     """
-    for k in the_dict.keys():
+    import os
+    # print menu
+    is_main_menu = False
+    for k, v in items_dict.items():
+        if v == 'Main':
+            is_main_menu = True
         if str(k).isdigit():
             index = f"[{k}]"
-            item = f"{the_dict[k]['id']}"
-            if the_dict[k]['description'] != '':
-                desc = f"- {the_dict[k]['description']}"
+            item = f"{v['id']}"
+            if v['description'] != '':
+                description = f"- {v['description']}"
             else:
                 desc = ""
-            print(f'{index:<4} - {item:<24}{desc:<20}')
-    print(f"{'[99]':<4} - {'ESC':<24}{'- Go Back / Exit ':<20}")
-
-
-def update_selections(the_choice, choices_list):
-    """
-    update user selections list
-    :param the_choice: the user choice
-    :param choices_list: the choices options
-    """
-    if the_choice == '99':
-        choices_list.pop()
+            print(f'{index:<4} - {item:<24}{description:<20}')
+    print('-' * 32)
+    if is_main_menu:
+        print(f'{"Esc":<4} - to Exit')
     else:
-        choices_list.append(the_choice)
-
-
-def get_selection(the_dict, subject, title):
-    """
-    get user menu selection
-    :param the_dict: menu dictionary e.g: {1: ['str', 'str'], 2: ['str', 'str']}
-    :param subject: string for menu subject (added to ALL option)
-    :param title: the menu title printed at the start of menu
-    :return: int of user choice
-    """
-    print(title + "\n" + '-' * len(title))
-    for k, v in the_dict.items():
-        index = f"[{k}]"
-        print(f'{index:<4} - {v[0]:<24}')
-    if len(the_dict) > 1:
-        index = f"[{k+1}]"
-        item = f"All {subject}"
-        print(f'{index:<4} - {item:<24}')
-    print(f'{"[99]":<4} - {"ESC":<24}')
-    result = validate_input(the_dict)
-    if result != -1:
-        return result
-
-
-def get_type_selection(the_dict):
-    """
-    get object type selection from user
-    :param the_dict: menu dictionary object
-    :return: int of user choice
-    """
-    q = f"What type of task do you want to create?"
-    print(q + "\n" + '-' * len(q))
-    for k, v in the_dict.items():
-        index = f"[{k}]"
-        print(f'{index:<4} - {v["name"]:<24} {v["description"]:<34}')
-    print(f'{"[99]":<4} - {"ESC":<24}')
-    return int(validate_input(the_dict))
-
-
-def validate_main_menu_input(the_dict, the_selections):
-    """
-    ensure user choice is valid
-    :param the_dict: a dictionary of choices
-    :param the_selections: the list of choices
-    """
-    the_choice = input("\nEnter your choice: ")
+        print(f'{"Esc":<4} - to Go Back')
+    print('\n')
+    k = ''
     while True:
-        if the_choice == '99':
-            if the_dict['id'] == 'Main':
-                print("Quitting!")
-                exit(0)
+        k = get_keypress()
+        if k == 'esc':
+            if items_dict['id'] == 'Main':
+                quit()
             else:
-                update_selections(the_choice, the_selections)
+                update_selections(k, the_selections)
                 break
-        if not the_choice.isdigit() or int(the_choice) not in the_dict.keys():
+        if not k.isdigit() or int(k) not in items_dict.keys():
             pretty_print('ERROR: Input must be a menu index!', 'red')
-            the_choice = input("Enter you choice: ")
+            continue
         else:
-            update_selections(the_choice, the_selections)
+            update_selections(k, the_selections)
             break
 
 
-def validate_input(items_dict):
-    from colorama import Fore
-    choice = input("\nEnter your choice: ")
-    while True:
-        if choice == '99':
-            return -1
-        if len(items_dict) > 1:
-            if choice == str(len(items_dict) + 1): # if 'ALL' is selected
-                return "ALL"
-        if not choice.isdigit() or int(choice) not in items_dict.keys():
-            choice = input(f"{Fore.RED}ERROR: Input must be a menu index!{Fore.RESET}\nEnter you choice: ")
-        else:
-            return int(choice)
-
-
-def parse_multi_select(choice_list):
+def validate_option_select(items_dict, title):
     """
-    parse user selected choices
-    :param choice_list: list of choices
-    :return: list of selections
+    validate user choices from menu
+    :param items_dict: dictionary of menu items
+    :param title: the menu title printed at the start of menu
+    :return: list of user choices
     """
-    from colorama import Fore
-    choice = input("\nEnter your choice: ")
+    import os
     
     # check if choice in range
     def choice_ok(value, limit):
         if not value.isdigit() or int(value) < 1 or int(value) > limit:
             return False
         return True
-        
+    
+    # print submenu
+    note = "(!) collections are supported (i.e: 1,3,2-5)"
+    print(f"{title}\n{note}")
+    print('-' * len(note))
+    for k, v in items_dict.items():
+        index = f"[{k}]"
+        print(f'{index:<4} - {v[0]:<24}')
+    print('-' * 32)
+    print(f'{"Esc":<4} - to Go Back')
+    print('\n')
+
+    # parse selections
     while True:
         valid_selections = []
-        if choice == '99':
+        k = get_keypress()
+        if k == 'esc':
             valid_selections.append(-1)
             return valid_selections
         else:
             selected_ok = False
-            selected = choice.split(',')
+            selected = k.split(',')
             for c in selected:
                 if '-' in c:
                     range_select = c.split('-')
@@ -252,13 +229,13 @@ def parse_multi_select(choice_list):
                         selected_ok = False
                         break
                     for i in range(int(range_select[0]), int(range_select[1])+1):
-                        if choice_ok(str(i), len(choice_list)):
+                        if choice_ok(str(i), len(items_dict)):
                             selected_ok = True
                             valid_selections.append(i)
                         else:
                             selected_ok = False
                             break
-                elif choice_ok(c, len(choice_list)):
+                elif choice_ok(c, len(items_dict)):
                     selected_ok = True
                     valid_selections.append(int(c))
                 else:
@@ -267,10 +244,54 @@ def parse_multi_select(choice_list):
             if selected_ok:
                 return list(set(valid_selections))
             else:
-                choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
+                pretty_print('ERROR: Input must be a menu index!', 'red')
+
+
+def validate_type_select(items_dict):
+    """
+    get object type selection from user
+    :param the_dict: menu dictionary object
+    :return: int of user choice
+    """
+    import os
+    # print submenu
+    q = f"What type of task do you want to create?"
+    print(q + "\n" + '-' * len(q))
+    for k, v in items_dict.items():
+        index = f"[{k}]"
+        print(f'{index:<4} - {v["name"]:<24} {v["description"]:<34}')
+    print(f'\n{"Esc":<4} - to Go Back')
+    print('-' * 32)
+    while True:
+        k = get_keypress()
+        if k == 'esc':
+            return -1
+        if not k.isdigit() or int(k) not in items_dict.keys():
+            pretty_print('ERROR: Input must be a menu index!', 'red')
+        else:
+            return int(k)
+
+
+def update_selections(the_choice, choices_list):
+    """
+    update user selections list
+    :param the_choice: the user choice
+    :param choices_list: the choices options
+    :return:
+    """
+    if the_choice == 'esc':
+        choices_list.pop()
+    else:
+        choices_list.append(the_choice)
+
 
 # get user acceptance to run
-def get_user_permission(question):
+def get_user_ok(question):
+    """
+    ask for user permission to proceed
+    :param question: the question in subject
+    :return boolean: True / False
+    """
     q = f"{question} [yes/no]: "
     answer = input(q).lower()
     while True:
@@ -305,7 +326,7 @@ def check_settings(config):
     elif not os.path.exists(cockpit_db):
         db_set_required = True
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-        if get_user_permission("would you like to create the cockpit database?"):
+        if get_user_ok("would you like to create the cockpit database?"):
             subprocess.call([f"{os.environ['COCKPIT_HOME']}/modules/create_db.py"], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
@@ -329,7 +350,7 @@ def check_settings(config):
                         pretty_print(errstr, 'red')
                         exit(1)
             pretty_print("ERROR: required parameters are not in configuration file!", 'red')
-            if get_user_permission("would you like cockpit to setup parameters automatically?"):
+            if get_user_ok("would you like cockpit to setup parameters automatically?"):
                 for env_name in data['params']:
                     if env_name != 'cockpit':
                         script = f"./modules/get_{env_name}_params.py"
@@ -360,9 +381,9 @@ def check_settings(config):
 
 def get_object_types_from_space(yaml_data):
     """
-    get object types from space
+    get object types from ods space
     :param yaml_data: the data from yaml file 
-    :return: formatted dictionary as {key : [object_type, num_entries]}
+    :return: formatted dictionary as {key : [object_type, num_entries],}
     """
     import os
     import subprocess
@@ -488,7 +509,7 @@ def create_database_home(db_folder):
 
 def create_connection(db_file):
     """
-    establish a database connection (or create a new db file)
+    establish a database connection (or create a new db if not exist)
     :param db_file: path to db file
     :return: connection object
     """
@@ -570,7 +591,31 @@ def write_to_influx(dbname, data):
 ##################           JOBS            ##################
 ###############################################################
 
-def list_jobs(conn, *columns):
+def list_jobs(conn, filter_by, *columns):
+    """
+    list registered jobs in database
+    :param conn: connection object
+    :param filter_by: a dictionary for sql WHERE clause
+    :param *columns: list of table columns
+    :return: list of rows
+    """
+    cur = conn.cursor()
+    # parse fields from columns
+    fields = ','.join(columns)
+    if len(columns) == 0:
+        fields = '*'
+    # build query
+    if filter_by == '':
+        sql = f"SELECT {fields} FROM jobs"
+    else:
+        for field, value in filter_by.items(): pass     # dictionary unpacking
+        sql = f"SELECT {fields} FROM jobs WHERE {field} = {value}"
+    cur.execute(sql)
+    rows = cur.fetchall()
+    return rows
+
+
+def list_jobs_old(conn, *columns):
     """
     list registered jobs in database
     :param conn: database connection object
@@ -726,11 +771,36 @@ def generate_job_file(job_type, env_name, obj_type, yaml_data):
 ##################           TASKS           ##################
 ###############################################################
 
-def list_tasks(conn, *columns):
+def list_tasks(conn, filter_by, *columns):
     """
     list registered tasks in database
     :param conn: connection object
-    :param columns: collection of table columns
+    :param filter_by: a dictionary for sql WHERE clause
+    :param *columns: list of table columns
+    :return: list of rows
+    """
+    cur = conn.cursor()
+    # parse fields from columns
+    fields = ','.join(columns)
+    if len(columns) == 0:
+        fields = '*'
+    # build query
+    if filter_by == '':
+        sql = f"SELECT {fields} FROM tasks"
+    else:
+        for field, value in filter_by.items(): pass     # dictionary unpacking
+        sql = f"SELECT {fields} FROM tasks WHERE {field} = '{value}'"
+    cur.execute(sql)
+    rows = cur.fetchall()
+    return rows
+
+
+
+def list_tasks_old(conn, *columns):
+    """
+    list registered tasks in database
+    :param conn: connection object
+    :param *columns: collection of table columns
     :return: list of rows
     """
     cur = conn.cursor()
@@ -747,7 +817,7 @@ def list_tasks_grouped(conn, *columns):
     """
     list registered tasks in database
     :param conn: connection object
-    :param columns: collection of table columns
+    :param *columns: collection of table columns
     :return: list of rows
     """
     cur = conn.cursor()
@@ -779,7 +849,7 @@ def list_tasks_by_policy_schedule(conn, policy_schedule):
     """
     list tasks associated with a policy id
     :param conn: connection object
-    :param policy_id: the policy id
+    :param policy_schedule: the policy_schedule
     :return: list of rows
     """
     cur = conn.cursor()
@@ -810,7 +880,7 @@ def list_policies(conn, filter_by, *columns):
     if filter_by == '':
         sql = f"SELECT {fields} FROM policies"
     else:
-        for field, value in filter_by.items(): pass
+        for field, value in filter_by.items(): pass     # dictionary unpacking
         sql = f"SELECT {fields} FROM policies WHERE {field} = {value}"
     cur.execute(sql)
     rows = cur.fetchall()
@@ -821,7 +891,7 @@ def register_policy(conn, policy):
     """
     register a new policy
     :param conn: database connection object
-    :param policy: policy data
+    :param policy: the policy data
     :return: policy id
     """
     sql = """ INSERT INTO policies(uid,name,schedule_sec,task_uid,metadata,content,active_state,created)
