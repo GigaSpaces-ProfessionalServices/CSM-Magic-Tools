@@ -6,15 +6,11 @@ import os
 import yaml
 import sqlite3
 from sqlite3 import Error
-from signal import SIGINT, signal
-from functions import handler, create_connection, list_policies
+from functions import create_connection, list_policies
 
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load config yaml
 with open(config_yaml, 'r') as yf:

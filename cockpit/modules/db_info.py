@@ -3,8 +3,7 @@
 
 import os
 import yaml
-from functions import create_connection, \
-    list_tables, list_types
+from functions import create_connection, list_tables, list_types
 
 # main #
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"

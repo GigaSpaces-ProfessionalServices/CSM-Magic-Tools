@@ -4,15 +4,10 @@
 from operator import index
 import os
 import yaml
-from signal import SIGINT, signal
-from functions import create_connection, get_selection, \
-    handler, list_policies
+from functions import create_connection, validate_option_select, list_policies
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load config yaml
 with open(config_yaml, 'r') as yf:
@@ -25,13 +20,16 @@ conn = create_connection(cockpit_db)
 # list policies
 policies = {}
 index = 1
-for pol in list_policies(conn, ''):
-    policies.update({index:[f'{pol[2]}']})
-    index += 1
+p = list_policies(conn, '', 'name')
+# for pol in list_policies(conn, '', 'name'):
+#     policies.update({index:[f'{pol[2]}']})
+#     index += 1
+print(p)
+exit()
 if len(policies) > 0:
     # choice policy
     q = f"Which policy would you like to delete?"
-    choice = get_selection(policies, 'Policies', q)
+    choice = validate_option_select(policies, 'Policies', q)
     if choice == 'ALL':
         pol_selected = policies
     else:
