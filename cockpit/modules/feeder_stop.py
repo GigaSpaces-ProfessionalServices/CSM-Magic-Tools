@@ -4,14 +4,10 @@
 
 import os
 import yaml
-from signal import SIGINT, signal
-from functions import create_connection, handler
+from functions import create_connection
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load config yaml
 with open(config_yaml, 'r') as yf:

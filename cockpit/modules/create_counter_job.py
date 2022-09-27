@@ -6,19 +6,14 @@ import os
 import yaml
 from influxdb import InfluxDBClient
 import datetime
-from signal import SIGINT, signal
 from colorama import Fore, Style
-from functions import handler, get_object_types_from_db, \
+from functions import get_object_types_from_db, \
     create_connection, jobs_exist, generate_job_file, \
-        register_job, validate_input, get_selection
+        register_job, validate_option_select
 
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-#config_yaml = f"{os.path.dirname(os.path.realpath(__file__))}/../config/config.yaml"
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load config yaml
 with open(config_yaml, 'r') as yf:
@@ -34,23 +29,23 @@ for k, v in data['params'].items():
         environments[index] = [f'{k}'.upper(), data['params'][k]['variables']['pivot']]
         index += 1
 space_types = get_object_types_from_db(conn)
+
 # choice env
-q = f"Which environments would you like to validate?"
-choice = get_selection(environments, 'Environments', q)
+title = f"Which environments would you like to validate?"
+choices = validate_option_select(environments, title)
 envs = {}
-if choice == 'ALL':
-    envs = environments
-else:
-    envs = {1: [environments[int(choice)][0], environments[int(choice)][1]]}
+for choice in choices:
+    envs[int(choice)] = [environments[int(choice)][0], environments[int(choice)][1]]
+
 # choice type
-q = f"Which type(s) would you like to validate?"
-choice = get_selection(space_types, 'Types', q)
+print('\n\n')
+title = f"Which type(s) would you like to validate?"
+choices = validate_option_select(space_types, title)
 types = {}
-if choice == 'ALL':
-    types = space_types
-else:
-    types = {1: [space_types[int(choice)][0]]}
-print()
+for choice in choices:
+    types[int(choice)] = [space_types[int(choice)][0]]
+print('\n\n')
+
 for e in envs.values():
     the_env = e[0]
     for t in types.values():
