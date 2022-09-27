@@ -7,7 +7,7 @@ import yaml
 from functions import create_connection
 
 # main
-config_yaml = f"{os.environ['COCKPIT_HOME']}/../config/config.yaml"
+config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 
 # load config yaml
 with open(config_yaml, 'r') as yf:
