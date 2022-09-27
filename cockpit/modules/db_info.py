@@ -3,15 +3,11 @@
 
 import os
 import yaml
-from signal import SIGINT, signal
-from functions import handler, create_connection, \
+from functions import create_connection, \
     list_tables, list_types
 
 # main #
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-
-# catch user CTRL+C key press
-signal(SIGINT, handler)
 
 # load yaml
 with open(config_yaml, 'r') as o:
