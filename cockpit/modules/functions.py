@@ -5,51 +5,6 @@
 ##################          GENERAL          ##################
 ###############################################################
 
-
-def get_keypress():
-    import sys,tty,os,termios
-    old_settings = termios.tcgetattr(sys.stdin)
-    tty.setcbreak(sys.stdin.fileno())
-    key_mapping = {
-        10: 'return', 
-        27: 'esc', 
-        127: 'backspace'
-        }
-    user_input = []
-    while True:
-        b = os.read(sys.stdin.fileno(), 3).decode()
-        if len(b) == 3:
-            k = ord(b[2])
-        else:
-            k = ord(b)
-        this_key = key_mapping.get(k, chr(k))
-        if this_key == 'return':
-            break
-        elif this_key == 'esc':
-            user_input.clear()
-            user_input.append('esc')
-            break
-        if this_key == 'backspace':
-            sys.stdout.write("\033[K")
-            if len(user_input) > 0:
-                user_input.pop()
-        else:
-            user_input.append(this_key)
-        print(''.join(user_input), end='\r')
-    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-    return ''.join(user_input)
-
-
-def sort_tuples_list(the_list):
-    """
-    sort a list of tuples by first key of tuple
-    :param the_list: the list of tuples
-    :return: the list of tuples
-    """
-    the_list.sort(key = lambda x: x[0])
-    return the_list
-
-
 def print_header():
     """
     print menu header - figlet and version
@@ -137,6 +92,50 @@ def create_file(data, file):
         else:
             print(f"{name}.{extension} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
         
+
+def get_keypress():
+    import sys,tty,os,termios
+    old_settings = termios.tcgetattr(sys.stdin)
+    tty.setcbreak(sys.stdin.fileno())
+    key_mapping = {
+        10: 'return', 
+        27: 'esc', 
+        127: 'backspace'
+        }
+    user_input = []
+    while True:
+        b = os.read(sys.stdin.fileno(), 3).decode()
+        if len(b) == 3:
+            k = ord(b[2])
+        else:
+            k = ord(b)
+        this_key = key_mapping.get(k, chr(k))
+        if this_key == 'return':
+            break
+        elif this_key == 'esc':
+            user_input.clear()
+            user_input.append('esc')
+            break
+        if this_key == 'backspace':
+            sys.stdout.write("\033[K")
+            if len(user_input) > 0:
+                user_input.pop()
+        else:
+            user_input.append(this_key)
+        print(''.join(user_input), end='\r')
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+    return ''.join(user_input)
+
+
+def sort_tuples_list(the_list):
+    """
+    sort a list of tuples by first key of tuple
+    :param the_list: the list of tuples
+    :return: the list of tuples
+    """
+    the_list.sort(key = lambda x: x[0])
+    return the_list
+
 
 ###############################################################
 ##################    MENU AND VALIDATION    ##################
