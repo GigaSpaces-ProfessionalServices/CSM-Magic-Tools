@@ -7,9 +7,8 @@ import yaml
 from influxdb import InfluxDBClient
 import datetime
 from colorama import Fore, Style
-from functions import get_object_types_from_db, \
-    create_connection, jobs_exist, generate_job_file, \
-        register_job, validate_option_select
+from functions import get_object_types_from_db, create_connection, \
+    jobs_exist, generate_job_file, register_job, validate_option_select
 
 
 # main
