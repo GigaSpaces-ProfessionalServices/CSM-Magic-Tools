@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import os
 import yaml
-import sqlite3
-from sqlite3 import Error
-from functions import create_connection, list_policies
-
+from functions import (
+    create_connection, 
+    list_policies,
+    press_any_key
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -35,4 +35,4 @@ if len(policies) > 0:
 else:
     print("No policies found")
 
-input("\nPress ENTER to go back to the main menu")
+press_any_key()

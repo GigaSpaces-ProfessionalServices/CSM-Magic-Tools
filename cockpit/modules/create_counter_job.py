@@ -7,9 +7,15 @@ import yaml
 from influxdb import InfluxDBClient
 import datetime
 from colorama import Fore, Style
-from functions import get_object_types_from_db, create_connection, \
-    jobs_exist, generate_job_file, register_job, validate_option_select
-
+from functions import (
+    get_object_types_from_db, 
+    create_connection, 
+    jobs_exist, 
+    generate_job_file,
+    press_any_key, 
+    register_job, 
+    validate_option_select
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -62,4 +68,4 @@ for e in envs.values():
             generate_job_file(j_metadata, the_env, obj_type, data)
             r = register_job(conn, job)
             print(f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
-input("\nPress ENTER to continue to the main menu.")
+press_any_key()

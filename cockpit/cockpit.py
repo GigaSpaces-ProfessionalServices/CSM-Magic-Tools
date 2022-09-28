@@ -4,8 +4,14 @@
 import os
 import yaml
 import subprocess
-from modules.functions import pretty_print, print_header, \
-    check_settings, print_locations, validate_navigation_select
+from modules.functions import (
+    press_any_key,
+    pretty_print, 
+    print_header, 
+    check_settings, 
+    print_locations, 
+    validate_navigation_select
+    )
 
 
 def main():
@@ -40,13 +46,13 @@ def main():
                 # checking that exec-type key is set
                 if dict['exec-type'] == '':
                     pretty_print(f"YAML ERROR: missing 'exec-type' value in command '{dict['id']}'", 'red')
-                    input("press ENTER to go back to menu")
+                    press_any_key()
                     user_selections.pop()
                     continue
                 # checking that exec key is set
                 if dict['exec'] == '':
                     pretty_print(f"YAML ERROR: missing 'exec' value in command '{dict['id']}'", 'red')
-                    input("press ENTER to go back to menu")
+                    press_any_key()
                     user_selections.pop()
                     continue
                 if dict['exec-type'] == 'module':

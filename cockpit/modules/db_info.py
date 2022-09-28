@@ -3,7 +3,12 @@
 
 import os
 import yaml
-from functions import create_connection, list_tables, list_types
+from functions import (
+    create_connection, 
+    list_tables, 
+    list_types,
+    press_any_key
+    )
 
 # main #
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -32,4 +37,4 @@ if conn is not None:
     conn.close()
 else:
     print("ERROR: unable to establish database connection.")
-input("\nPress ENTER to return to main menu")
+press_any_key()

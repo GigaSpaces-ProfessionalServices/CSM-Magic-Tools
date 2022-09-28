@@ -6,8 +6,14 @@ import yaml
 import uuid
 import datetime
 from colorama import Fore, Style
-from functions import create_connection, validate_option_select, \
-    validate_type_select, list_jobs, register_task
+from functions import (
+    create_connection,
+    press_any_key, 
+    validate_option_select, 
+    validate_type_select, 
+    list_jobs, 
+    register_task
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -64,4 +70,4 @@ if choice != -1:
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
         print(f"Task {t_uid} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
-    input("\nPress ENTER to go back to the menu")
+    press_any_key()

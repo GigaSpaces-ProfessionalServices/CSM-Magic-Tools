@@ -5,7 +5,11 @@ import os
 import yaml
 import sqlite3
 from sqlite3 import Error
-from functions import create_connection, list_jobs
+from functions import (
+    create_connection, 
+    list_jobs, 
+    press_any_key
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -29,5 +33,4 @@ if len(jobs) > 0:
         print(f'{job_id:<4} | {job_name}')
 else:
     print("No jobs found")
-
-input("\nPress ENTER to go back to the main menu")
+press_any_key()

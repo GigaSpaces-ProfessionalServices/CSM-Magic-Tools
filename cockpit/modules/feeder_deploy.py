@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-### DEPLOY MSSQL FEEDER ###
-
 import os
 from time import sleep
 import yaml
 import subprocess
 import json
-from functions import create_connection, check_connection, \
-    validate_option_select, pretty_print
+from functions import (
+    create_connection, 
+    check_connection,
+    press_any_key, 
+    validate_option_select, 
+    pretty_print
+    )
 from spinner import Spinner
 
 # main
@@ -63,9 +66,13 @@ for e in envs.values():
                 import sys
                 sys.stdout.write('\b')
                 print('done')
-            #cmd = f'ssh {pivot} "/dbagiga/josh/auto_odsx/auto_{feeder_name}feederdeploy"'
-            #response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-            #response = json.loads(response.replace("\'", "\""))
+            
+            """
+            cmd = f'ssh {pivot} "/dbagiga/josh/auto_odsx/auto_{feeder_name}feederdeploy"'
+            response = subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+            response = json.loads(response.replace("\'", "\""))
+            """
+            
             #
             #
             ### NEED TO ADD A ROUTINE TO CHECK THAT FEEDER DEPLOYMENT IS SUCCESSFUL ###
@@ -73,4 +80,4 @@ for e in envs.values():
             #
     else:
         pretty_print(f"ERROR: connection to {e[0]} pivot ({pivot}:{port}) could not be established", 'red')
-input("\nPress ENTER to go back to the main menu")
+press_any_key()

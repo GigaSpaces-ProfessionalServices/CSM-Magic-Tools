@@ -3,7 +3,11 @@
 
 import os
 import yaml
-from functions import create_connection, list_tasks
+from functions import (
+    create_connection, 
+    list_tasks,
+    press_any_key
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -36,4 +40,4 @@ if len(task_uids) > 0:
         print(f'{task_type:<12} | {task_uid:<40} | {num_of_jobs:<6}')
 else:
     print("No tasks found")
-input("\n\nPress ENTER to go back to the main menu")
+press_any_key()

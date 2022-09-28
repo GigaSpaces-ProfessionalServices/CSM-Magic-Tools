@@ -3,6 +3,7 @@
 
 import os
 import yaml
+from functions import press_any_key
 
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 label = 'dr'
@@ -38,4 +39,4 @@ if update_yaml:
 else:
     print(f"  pivot address: {pivot_value}")
     print(f"  REST endpoint: {rest_value}")
-    input("\nPress ENTER to continue")
+    press_any_key()

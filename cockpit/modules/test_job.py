@@ -1,15 +1,18 @@
 #!/usr/bin/python3
 # *-* coding: utf-8 *-*
 
-
 import os
 import yaml
 import json
-import sqlite3
-from sqlite3 import Error
 import subprocess
-from functions import create_connection, list_jobs, validate_option_select, \
-    check_connection, pretty_print
+from functions import (
+    create_connection, 
+    list_jobs,
+    press_any_key, 
+    validate_option_select, 
+    check_connection, 
+    pretty_print
+    )
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -51,4 +54,4 @@ if len(jobs) > 0:
                 pretty_print(f"ERROR: connection to {env_name} pivot ({pivot}:{port}) could not be established", 'red')
 else:
     print("No jobs found")
-input("\nPress ENTER to go back to the main menu")
+press_any_key()
