@@ -10,7 +10,8 @@ from colorama import Fore, Style
 from functions import (
     get_object_types_from_db, 
     create_connection, 
-    jobs_exist, 
+    jobs_exist,
+    pretty_print,
     generate_job_file,
     press_any_key, 
     register_job, 
@@ -35,16 +36,24 @@ for k, v in data['params'].items():
         index += 1
 space_types = get_object_types_from_db(conn)
 
+# introduction
+intro = [
+    "The job defines an execution of a single specific function.",
+    "One or more jobs may be created in order to acheive a wider goal.",
+    "Jobs are executed only via association with tasks."
+    ]
+for line in intro: pretty_print(line, 'LIGHTBLUE_EX')
+
+
 # choice env
-title = f"Which environments would you like to validate?"
+title = f"\nWhich environments would you like to validate?"
 choices = validate_option_select(environments, title)
 envs = {}
 for choice in choices:
     envs[int(choice)] = [environments[int(choice)][0], environments[int(choice)][1]]
 
 # choice type
-print('\n\n')
-title = f"Which type(s) would you like to validate?"
+title = f"\n\nWhich type(s) would you like to validate?"
 choices = validate_option_select(space_types, title)
 types = {}
 for choice in choices:
