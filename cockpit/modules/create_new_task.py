@@ -8,7 +8,8 @@ import datetime
 from colorama import Fore, Style
 from functions import (
     create_connection,
-    press_any_key, 
+    press_any_key,
+    pretty_print,
     validate_option_select, 
     validate_type_select, 
     list_jobs, 
@@ -25,9 +26,18 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+
 # generate db data by columns
 t_uid = str(uuid.uuid4())
+
+# introduction
+intro = [
+    "The task defines the desired goal by acting as a container for the jobs associated with it."
+    ]
+for line in intro: pretty_print(line, 'LIGHTBLUE_EX')
+
 # get task type from user
+print()
 choice = validate_type_select(data['tasks'])
 if choice != -1:
     t_type = data['tasks'][choice]['name']
@@ -66,7 +76,7 @@ if choice != -1:
                 rows = cur.fetchall()
                 print(f"{' ':<3}{rows[0][0]}")
     else:
-        print("There are no jobs registered yet\n* can be set later from the 'Edit Tasks' menu")
+        print("There are no jobs registered yet\n(!) can be set later from the 'Edit Tasks' menu")
         task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
         r = register_task(conn, task_data)
         print(f"Task {t_uid} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
