@@ -4,7 +4,11 @@
 def main():
     import os
     import yaml
-    from functions import create_database_home, create_connection, create_table
+    from functions import (
+        create_database_home, 
+        create_connection, 
+        create_table
+        )
     
     config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
     
