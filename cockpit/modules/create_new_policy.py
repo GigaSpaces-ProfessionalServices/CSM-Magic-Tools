@@ -36,9 +36,9 @@ def deploy_systemd_components():
                 subprocess.run([f"chmod +x {policies_home}/{policy_manager_script}"], shell=True, check=True)
             except subprocess.CalledProcessError as e:
                 print(e.output)
-            print(f"policy manager script '{policy_manager_script}'{Fore.GREEN}created successfully!{Style.RESET_ALL}")
+            print(f"policy manager '{policy_manager_script}' created successfully")
     else:
-        print(f"policy manager script already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
+        print(f"policy manager already exists. skipping")
     
     # create systemd policy.service
     lines = [
@@ -70,20 +70,7 @@ def deploy_systemd_components():
     
     # reload daemons
     subprocess.run(["systemctl daemon-reload"], shell=True)
-    
-    # enable timer service if needed
-    cur = conn.cursor()
-    sql = f"SELECT active_state FROM policies where name = ? GROUP BY name;"
-    cur.execute(sql, (policy_name,))
-    rows = cur.fetchall()
-    if rows[0][0] == 'yes':
-        try:
-            subprocess.run([f"systemctl enable --now {policy_timer}"], shell=True, check=True)
-        except subprocess.CalledProcessError as e:
-            print(e.output)
-    
-    print("CREATE POLICY MANAGER SUCCESSFULLY!")
-    print(f"{'Schedule:':<12}\n   run every {str(sched_min)}m:{str(sched_sec)}s")
+
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -272,10 +259,26 @@ if get_user_ok("\nContinue with policy registration?"):
                 except subprocess.CalledProcessError as e:
                     print(e.output)
                 finally:    # print summary
-                    print(f"\nPolicy worker '{pol_uid}' {Fore.GREEN}created successfully!{Style.RESET_ALL}")
-                    print("Associated Tasks:")
-                    print(f"   uid: {task_uid:<38}, type: {task_type}")
+                    print(f"policy worker '{pol_uid}' created successfully")
         else:
-            print(f"policy worker script already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
-    
-    press_any_key()
+            print(f"policy worker script already exists. creation aborted")
+        
+        # enable timer for active services
+        sql = f"SELECT active_state FROM policies where name = '{policy_name}' GROUP BY name;"
+        rows = db_select(conn, sql)
+        if rows[0][0] == 'yes':
+            try:
+                r = subprocess.run(
+                    ['systemctl', 'enable', '--now', f"{policy_timer}"], 
+                    check=True, 
+                    stdout=subprocess.DEVNULL, 
+                    stderr=subprocess.DEVNULL
+                    )
+                if r.returncode == 0:
+                    print(f"policy '{policy_name}' {Fore.GREEN}enabled!{Style.RESET_ALL}")
+                else:
+                    print(f"policy '{policy_name}' {Fore.RED}could not be enabled{Style.RESET_ALL}")
+            except subprocess.CalledProcessError as e:
+                print(e.output)
+
+press_any_key()
