@@ -5,6 +5,12 @@
 ##################          GENERAL          ##################
 ###############################################################
 
+def handler(signal_recieved, frame):
+    ### catch CTRL+C keybaord press ###
+    print('\n')
+    exit(0)
+
+
 def print_header():
     """
     print menu header - figlet and version
@@ -137,6 +143,15 @@ def sort_tuples_list(the_list):
     return the_list
 
 
+def press_any_key():
+    import os
+    title = "Press any key to continue..."
+    cmd = f"/bin/bash -c 'read -s -n 1 -p \"{title}\"'"
+    print('\n')
+    os.system(cmd)
+    print('\n')
+
+
 ###############################################################
 ##################    MENU AND VALIDATION    ##################
 ###############################################################
@@ -185,7 +200,7 @@ def validate_navigation_select(items_dict, the_selections):
             break
 
 
-def validate_option_select(items_dict, title):
+def validate_option_select(items_dict, title, esc_to='Go Back'):
     """
     validate user choices from menu
     :param items_dict: dictionary of menu items
@@ -200,50 +215,60 @@ def validate_option_select(items_dict, title):
             return False
         return True
     
+    # build a reference dictionary for menu
+    i, menu_indices = 1, {}
+    for k in items_dict.keys():
+        menu_indices[i] = k
+        i += 1
+
     # print submenu
     note = "(!) collections are supported (i.e: 1,3,2-5)"
     print(f"{title}\n{note}")
     print('-' * len(note))
-    for k, v in items_dict.items():
+    for k, v in menu_indices.items():
         index = f"[{k}]"
-        print(f'{index:<4} - {v[0]:<24}')
+        print(f'{index:<4} - {items_dict[v][0]:<24}')
     print('-' * 32)
-    print(f'{"Esc":<4} - to Go Back')
+    print(f'{"Esc":<4} - to {esc_to}')
     print('\n')
 
     # parse selections
-    while True:
-        valid_selections = []
-        k = get_keypress()
-        if k == 'esc':
-            valid_selections.append(-1)
-            return valid_selections
-        else:
-            selected_ok = False
-            selected = k.split(',')
-            for c in selected:
-                if '-' in c:
-                    range_select = c.split('-')
-                    if len(range_select) != 2:
-                        selected_ok = False
-                        break
-                    for i in range(int(range_select[0]), int(range_select[1])+1):
-                        if choice_ok(str(i), len(items_dict)):
-                            selected_ok = True
-                            valid_selections.append(i)
-                        else:
+    try:
+        while True:
+            valid_selections = []
+            k = get_keypress()
+            if k == 'esc':
+                valid_selections.append(-1)
+                return valid_selections
+            else:
+                selected_ok = False
+                selected = k.split(',')
+                for c in selected:
+                    if '-' in c:
+                        range_select = c.split('-')
+                        while('' in range_select): range_select.remove('')
+                        if len(range_select) != 2:
                             selected_ok = False
                             break
-                elif choice_ok(c, len(items_dict)):
-                    selected_ok = True
-                    valid_selections.append(int(c))
+                        for i in range(int(range_select[0]), int(range_select[1])+1):
+                            if choice_ok(str(i), len(items_dict)):
+                                selected_ok = True
+                                valid_selections.append(menu_indices[i])
+                            else:
+                                selected_ok = False
+                                break
+                    elif choice_ok(c, len(items_dict)):
+                        selected_ok = True
+                        valid_selections.append(menu_indices[int(c)])
+                    else:
+                        selected_ok = False
+                        break
+                if selected_ok:
+                    return list(set(valid_selections))
                 else:
-                    selected_ok = False
-                    break
-            if selected_ok:
-                return list(set(valid_selections))
-            else:
-                pretty_print('ERROR: Input must be a menu index!', 'red')
+                    pretty_print('ERROR: Input must be a menu index!', 'red')
+    except (KeyboardInterrupt, SystemExit):
+        os.system('stty sane')
 
 
 def validate_type_select(items_dict):
@@ -261,15 +286,18 @@ def validate_type_select(items_dict):
         print(f'{index:<4} - {v["name"]:<24} {v["description"]:<34}')
     print(f'\n{"Esc":<4} - to Go Back')
     print('-' * 32)
-    while True:
-        k = get_keypress()
-        if k == 'esc':
-            return -1
-        if not k.isdigit() or int(k) not in items_dict.keys():
-            pretty_print('ERROR: Input must be a menu index!', 'red')
-        else:
-            return int(k)
-
+    try:
+        while True:
+            k = get_keypress()
+            if k == 'esc':
+                return -1
+            if not k.isdigit() or int(k) not in items_dict.keys():
+                pretty_print('ERROR: Input must be a menu index!', 'red')
+            else:
+                return int(k)
+    except (KeyboardInterrupt, SystemExit):
+        os.system('stty sane')
+            
 
 def update_selections(the_choice, choices_list):
     """
@@ -289,14 +317,18 @@ def get_user_ok(question):
     """
     ask for user permission to proceed
     :param question: the question in subject
-    :return boolean: True / False
+    :return: True / False
     """
-    q = f"{question} [yes/no]: "
-    answer = input(q).lower()
-    while True:
-        if answer == 'yes': return True
-        elif answer == 'no': return False
-        else: answer = input("invlid input! type 'yes' or 'no': ")
+    import os
+    try:
+        q = f"{question} [yes/no]: "
+        answer = input(q).lower()
+        while True:
+            if answer == 'yes': return True
+            elif answer == 'no': return False
+            else: answer = input("invlid input! type 'yes' or 'no': ")
+    except (KeyboardInterrupt, SystemExit):
+        os.system('stty sane')
 
 
 def check_settings(config):
@@ -308,8 +340,10 @@ def check_settings(config):
     import os
     import yaml
     import subprocess
+    from .spinner import Spinner
     db_set_required = False
     env_set_required = False
+    
     # load cockpit configuration
     with open(config, 'r') as yf:
         data = yaml.safe_load(yf)
@@ -320,16 +354,17 @@ def check_settings(config):
     cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
     if cockpit_db_home == '' or cockpit_db_home is None or cockpit_db_name == '' or cockpit_db_name is None:
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-        pretty_print('ERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
+        pretty_print('\nERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
         exit(1)
     elif not os.path.exists(cockpit_db):
         db_set_required = True
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-        if get_user_ok("would you like to create the cockpit database?"):
+        pretty_print('\nCockpit database was not found!', 'red')
+        if get_user_ok("Would you like to create the cockpit database?"):
             subprocess.call([f"{os.environ['COCKPIT_HOME']}/modules/create_db.py"], shell=True)
             if not os.path.exists(cockpit_db): exit(1)
         else:
-            pretty_print('ERROR: a cockpit database is required in order to run. Aborting!', 'red')
+            pretty_print('\nERROR: a cockpit database is required in order to run. Aborting!', 'red')
             exit(1)
     # cockpit enviroment settings
     for env_name in data['params']:
@@ -345,11 +380,11 @@ def check_settings(config):
             for env_name in data['params']:
                 if env_name != 'cockpit':
                     if os.environ.get(data['params'][env_name]['variables']['pivot']) == None:
-                        errstr = "ERROR: environment variable for " + f"{env_name}".upper() + " pivot is not set. aborting!"
+                        errstr = "\nERROR: environment variable for " + f"{env_name}".upper() + " pivot is not set. aborting!"
                         pretty_print(errstr, 'red')
                         exit(1)
             pretty_print("ERROR: required parameters are not in configuration file!", 'red')
-            if get_user_ok("would you like cockpit to setup parameters automatically?"):
+            if get_user_ok("\nWould you like cockpit to setup parameters automatically?"):
                 for env_name in data['params']:
                     if env_name != 'cockpit':
                         script = f"./modules/get_{env_name}_params.py"
@@ -368,14 +403,19 @@ def check_settings(config):
                         config_ok = False
                         break
     if db_set_required or env_set_required:
-        pretty_print("\nCockpit setup and verification completed successfully.", 'green')
-        input("Press ENTER to continue to the main menu.")
+        pretty_print("Cockpit setup and verification completed successfully.", 'green')
+        press_any_key()
         print_header()
-    from .spinner import Spinner
     spinner = Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
         conn = create_connection(cockpit_db)
-        register_types(conn, get_object_types_from_space(data))
+        types = get_object_types_from_space(data)
+        for type in types.values():
+            the_type = type[0]
+            sql = f"SELECT name FROM types WHERE name = '{the_type}';"
+            if len(db_select(conn, sql)) == 0:
+                sql =f"INSERT INTO types(name) VALUES(?);"
+                db_insert(conn, sql, (the_type,))
 
 
 def get_object_types_from_space(yaml_data):
@@ -417,72 +457,7 @@ def get_object_types_from_space(yaml_data):
             4: ['com.j_spaces.examples.benchmark.messages.MessagePOJO3', 130000],
             5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
             }
-    
     return object_types
-
-
-def get_object_types_from_db(conn):
-    """
-    get registered types from database
-    :param conn: connection object
-    :return: list of rows
-    """
-    c = conn.cursor()
-    c.execute("SELECT name FROM types;")
-    rows = c.fetchall()
-    object_types = {}
-    if len(rows) > 0:
-        index = 1
-        for t in rows:
-            object_types[index] = [t[0]]
-            index += 1
-    return object_types
-
-
-def register_types(conn, types):
-    """
-    register types
-    :param conn: database connection object
-    :param types: types data
-    :return:
-    """
-    cur = conn.cursor()
-    for type in types.values():
-        the_type = type[0]
-        if not type_exists(conn, the_type):
-            sql =f"INSERT INTO types(name) VALUES(?);"
-            cur.execute(sql, (the_type,))
-    conn.commit()
-
-
-def list_types(conn):
-    """
-    list registered types in database
-    :param conn: connection object
-    :return: list of rows
-    """
-    c = conn.cursor()
-    c.execute("SELECT * FROM types;")
-    rows = c.fetchall()
-    if len(rows) > 0:
-        for t in rows:
-            print(f"   {t[0]:<10}")
-
-
-def type_exists(conn, the_type):
-    """
-    check if type exists in database
-    :param conn: connection object
-    :return Boolean: True / Flase
-    """
-    c = conn.cursor()
-    c.execute("SELECT name FROM types WHERE name = ?;", (the_type,))
-    rows = c.fetchall()
-    if len(rows) > 0:
-        return True
-    else:
-        return False
-
 
 ###############################################################
 #################         DATABASES          ##################
@@ -537,21 +512,60 @@ def create_table(conn, create_table_sql):
         print(e)
 
 
-def list_tables(conn):
+def db_select(conn, sql):
     """
-    list tables in database
+    execute a select query on the database
     :param conn: database connection object
+    :param sql: the query to execute
     :return:
-    """    
-    c = conn.cursor()
-    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = c.fetchall()
-    if len(tables) > 0:
-        for table_name in tables:
-            c.execute(f"SELECT count(*) FROM {table_name[0]};")
-            num = c.fetchall()[0][0]
-            num_records = f"{num} record(s)"
-            print(f"   {table_name[0]:<10} : {num_records:<10}")
+    """
+    from sqlite3 import Error
+    try:
+        c = conn.cursor()
+        c.execute(sql)
+    except Error as e:
+        print(e)
+    else:
+        result = c.fetchall()
+        return result
+
+
+
+def db_insert(conn, sql, data):
+    """
+    insert into database
+    :param conn: database connection object
+    :param sql: the query to execute
+    :param data: the data to insert
+    :return: row id
+    """
+    from sqlite3 import Error
+    try:
+        c = conn.cursor()
+        c.execute(sql, data)
+    except Error as e:
+        print(e)
+    else:
+        conn.commit()
+        return c.lastrowid
+
+
+def db_delete(conn, sql):
+    """
+    delete from database
+    :param conn: database connection object
+    :param sql: the query to execute
+    :return:
+    """
+    from sqlite3 import Error
+    try:
+        c = conn.cursor()
+        c.execute(sql)
+    except Error as e:
+        print(e)
+    else:
+        conn.commit()
+        return c.lastrowid
 
 
 def write_to_influx(dbname, data):
@@ -590,144 +604,6 @@ def write_to_influx(dbname, data):
 ##################           JOBS            ##################
 ###############################################################
 
-def list_jobs(conn, filter_by, *columns):
-    """
-    list registered jobs in database
-    :param conn: connection object
-    :param filter_by: a dictionary for sql WHERE clause
-    :param *columns: list of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    # parse fields from columns
-    fields = ','.join(columns)
-    if len(columns) == 0:
-        fields = '*'
-    # build query
-    if filter_by == '':
-        sql = f"SELECT {fields} FROM jobs"
-    else:
-        for field, value in filter_by.items(): pass     # dictionary unpacking
-        sql = f"SELECT {fields} FROM jobs WHERE {field} = {value}"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-def list_jobs_old(conn, *columns):
-    """
-    list registered jobs in database
-    :param conn: database connection object
-    :param columns: collection of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    args = ','.join(columns)
-    if len(columns) == 0:
-        args = '*'
-    sql = f"SELECT {args} FROM jobs"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-def list_jobs_by_task_uid(conn, task_uid):
-    """
-    list jobs associated with a task uid
-    :param conn: connection object
-    :param task_uid: the task uid
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    sql = """ SELECT j.name, j.id, j.destination, j.metadata, j.content 
-              FROM tasks t INNER JOIN jobs j 
-              ON j.id = t.job_id 
-              WHERE t.uid = ?; """
-    cur.execute(sql, task_uid)
-    rows = cur.fetchall()
-    return rows
-
-
-def parse_jobs_selections(jobs):
-    """
-    parse user selected jobs
-    :param jobs: list of jobs
-    :return: list of selections
-    """
-    from colorama import Fore
-    choice = input("\nEnter your choice: ")
-    
-    # check if choice in range
-    def choice_ok(value, limit):
-        if not value.isdigit() or int(value) < 1 or int(value) > limit:
-            return False
-        return True
-        
-    while True:
-        valid_selections = []
-        if choice == '99':
-            valid_selections.append(-1)
-            return valid_selections
-        else:
-            selected_ok = False
-            selected = choice.split(',')
-            for c in selected:
-                if '-' in c:
-                    range_select = c.split('-')
-                    if len(range_select) != 2:
-                        selected_ok = False
-                        break
-                    for i in range(int(range_select[0]), int(range_select[1])+1):
-                        if choice_ok(str(i), len(jobs)):
-                            selected_ok = True
-                            valid_selections.append(i)
-                        else:
-                            selected_ok = False
-                            break
-                elif choice_ok(c, len(jobs)):
-                    selected_ok = True
-                    valid_selections.append(int(c))
-                else:
-                    selected_ok = False
-                    break
-            if selected_ok:
-                return list(set(valid_selections))
-            else:
-                choice = input(f"{Fore.RED}ERROR: Invalid input!{Fore.RESET}\nEnter you choice: ")
-
-
-def jobs_exist(conn, new_job_name):
-    """
-    check if job exists
-    :param conn: database connection object
-    :param new_job_name: the name of job to look for 
-    :return Boolean: True/False
-    """
-    job_exists = False
-    c = conn.cursor()
-    c.execute("SELECT name FROM jobs;")
-    registered_job_names = c.fetchall()
-    for name in registered_job_names:
-        if new_job_name in name:
-            return True
-    return False
-
-
-def register_job(conn, job):
-    """
-    register a new job
-    :param conn: database connection object
-    :param job: job data
-    :return: job id
-    """
-    sql = """ INSERT INTO jobs(name,metadata,content,command,destination,created)
-              VALUES(?,?,?,?,?,?) """
-    cur = conn.cursor()
-    cur.execute(sql, job)
-    conn.commit()
-    return cur.lastrowid
-
-
 def generate_job_file(job_type, env_name, obj_type, yaml_data):
     """
     create a file for a job
@@ -764,168 +640,3 @@ def generate_job_file(job_type, env_name, obj_type, yaml_data):
         j.writelines('\n'.join(lines))
     # set execution bit for job file
     subprocess.run([f"chmod +x {job_file}"], shell=True)
-
-
-###############################################################
-##################           TASKS           ##################
-###############################################################
-
-def list_tasks(conn, filter_by, *columns):
-    """
-    list registered tasks in database
-    :param conn: connection object
-    :param filter_by: a dictionary for sql WHERE clause
-    :param *columns: list of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    # parse fields from columns
-    fields = ','.join(columns)
-    if len(columns) == 0:
-        fields = '*'
-    # build query
-    if filter_by == '':
-        sql = f"SELECT {fields} FROM tasks"
-    else:
-        for field, value in filter_by.items(): pass     # dictionary unpacking
-        sql = f"SELECT {fields} FROM tasks WHERE {field} = '{value}'"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-
-def list_tasks_old(conn, *columns):
-    """
-    list registered tasks in database
-    :param conn: connection object
-    :param *columns: collection of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    args = ','.join(columns)
-    if len(columns) == 0:
-        args = '*'
-    sql = f"SELECT {args} FROM tasks"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-def list_tasks_grouped(conn, *columns):
-    """
-    list registered tasks in database
-    :param conn: connection object
-    :param *columns: collection of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    args = ','.join(columns)
-    if len(columns) == 0:
-        args = '*'
-    sql = f"SELECT {args} FROM tasks GROUP BY uid"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-def register_task(conn, task):
-    """
-    register a new task
-    :param conn: database connection object
-    :param task: task data
-    :return: task id
-    """
-    sql = """ INSERT INTO tasks(uid,type,sn_type,job_id,metadata,content,state,created)
-              VALUES(?,?,?,?,?,?,?,?) """
-    cur = conn.cursor()
-    cur.execute(sql, task)
-    conn.commit()
-    return cur.lastrowid
-
-
-def list_tasks_by_policy_schedule(conn, policy_schedule):
-    """
-    list tasks associated with a policy id
-    :param conn: connection object
-    :param policy_schedule: the policy_schedule
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    sql = "SELECT task_uid FROM policies WHERE policies.schedule_sec = ?;"
-    cur.execute(sql, (policy_schedule,))
-    rows = cur.fetchall()
-    return rows
-
-
-###############################################################
-##################         POLICIES          ##################
-###############################################################
-
-def list_policies(conn, filter_by, *columns):
-    """
-    list registered policies in database
-    :param conn: connection object
-    :param filter_by: a dictionary for sql WHERE clause
-    :param *columns: list of table columns
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    # parse fields from columns
-    fields = ','.join(columns)
-    if len(columns) == 0:
-        fields = '*'
-    # build query
-    if filter_by == '':
-        sql = f"SELECT {fields} FROM policies"
-    else:
-        for field, value in filter_by.items(): pass     # dictionary unpacking
-        sql = f"SELECT {fields} FROM policies WHERE {field} = {value}"
-    cur.execute(sql)
-    rows = cur.fetchall()
-    return rows
-
-
-def register_policy(conn, policy):
-    """
-    register a new policy
-    :param conn: database connection object
-    :param policy: the policy data
-    :return: policy id
-    """
-    sql = """ INSERT INTO policies(uid,name,schedule_sec,task_uid,metadata,content,active_state,created)
-              VALUES(?,?,?,?,?,?,?,?) """
-    cur = conn.cursor()
-    cur.execute(sql, policy)
-    conn.commit()
-    return cur.lastrowid
-
-
-def delete_policy(conn, policy_name):
-    """
-    delete a policy by id
-    :param conn: database connection object
-    :param policy_name: the name of the policy
-    :return:
-    """
-    sql = f"DELETE from policies where name = {policy_name}"
-    cur = conn.cursor()
-    cur.execute(sql)
-    conn.commit()
-    return cur.lastrowid
-
-
-def policy_schedule_exists(conn, policy_schedule):
-    """
-    check if policy schedule exists
-    :param conn: database connection object
-    :param policy_schedule: the policy schedule to check
-    :return Boolean: True/False
-    """
-    c = conn.cursor()
-    c.execute("SELECT schedule_sec FROM policies GROUP BY schedule_sec;")
-    schedules = c.fetchall()
-    for s in schedules:
-        if s[0] == int(policy_schedule):
-            return True
-    return False
