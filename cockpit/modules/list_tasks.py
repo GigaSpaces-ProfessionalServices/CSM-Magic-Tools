@@ -5,7 +5,7 @@ import os
 import yaml
 from functions import (
     create_connection, 
-    list_tasks,
+    db_select,
     press_any_key
     )
 
@@ -29,8 +29,8 @@ if len(task_uids) > 0:
     print(f'{"Type":<12} | {"UID":<40} | {"# Jobs":<6}')
     print("-"*12 + spc + "-"*40 + spc + "-"*6)
     for task_uid in task_uids:
-        cur = conn.cursor()
-        task = list_tasks(conn, {'uid': task_uid}, 'uid', 'type', 'job_id')
+        sql = f"SELECT 'uid', 'type', 'job_id' FROM tasks WHERE uid = '{task_uid}'"
+        task = db_select(conn, sql)        
         for attr in task:
             _, task_type, task_job = attr
         if task_job != 'NULL':

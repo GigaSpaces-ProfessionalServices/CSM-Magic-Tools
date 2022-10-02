@@ -6,8 +6,8 @@ import yaml
 import sqlite3
 from sqlite3 import Error
 from functions import (
-    create_connection, 
-    list_jobs, 
+    create_connection,
+    db_select, 
     press_any_key
     )
 
@@ -21,7 +21,8 @@ cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
-jobs = list_jobs(conn, '', 'id', 'name')
+sql = "SELECT id, name FROM jobs"
+jobs = db_select(conn, sql)
 j_len = []
 for ji, jn in jobs:
     j_len.append(len(jn))

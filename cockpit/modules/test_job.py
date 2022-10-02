@@ -7,7 +7,7 @@ import json
 import subprocess
 from functions import (
     create_connection, 
-    list_jobs,
+    db_select,
     press_any_key, 
     validate_option_select, 
     check_connection, 
@@ -25,7 +25,8 @@ cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
-jobs = dict(list_jobs(conn, '', 'id', 'name'))
+sql = "SELECT id, name FROM jobs"
+jobs = dict(db_select(conn, sql))
 if len(jobs) > 0:
     # conform jobs dictionary to validation func
     jobs_dict = {}
@@ -33,6 +34,7 @@ if len(jobs) > 0:
         jobs_dict[k] = [v]
     title = "Which jobs would you like to test?"
     choices = validate_option_select(jobs_dict, title)
+    if choices == None: quit()  # if KeyboardInterrupt
     if choices[0] != -1:
         for choice in choices:
             print(f"Testing Job: '{jobs[choice]}'")

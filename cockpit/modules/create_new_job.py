@@ -8,13 +8,12 @@ from influxdb import InfluxDBClient
 import datetime
 from colorama import Fore, Style
 from functions import (
-    get_object_types_from_db, 
-    create_connection, 
-    jobs_exist,
+    create_connection,
+    db_insert, 
+    db_select, 
     pretty_print,
     generate_job_file,
     press_any_key, 
-    register_job, 
     validate_option_select
     )
 
@@ -29,12 +28,22 @@ cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
 index = 1
+
+# build environment dictionary
 environments = {}
 for k, v in data['params'].items():
     if k != 'cockpit':
         environments[index] = [f'{k}'.upper(), data['params'][k]['variables']['pivot']]
         index += 1
-space_types = get_object_types_from_db(conn)
+# build space types dictionary
+sql = "SELECT name FROM types;"
+rows = db_select(conn, sql)
+space_types = {}
+if len(rows) > 0:
+    index = 1
+    for t in rows:
+        space_types[index] = [t[0]]
+        index += 1
 
 # introduction
 intro = [
@@ -44,22 +53,25 @@ intro = [
     ]
 for line in intro: pretty_print(line, 'LIGHTBLUE_EX')
 
-
 # choice env
 title = f"\nWhich environments would you like to validate?"
 choices = validate_option_select(environments, title)
-envs = {}
-for choice in choices:
-    envs[int(choice)] = [environments[int(choice)][0], environments[int(choice)][1]]
+if choices != None:
+    envs = {}
+    for choice in choices:
+        envs[int(choice)] = [environments[int(choice)][0], environments[int(choice)][1]]
+else: quit()
 
 # choice type
 title = f"\n\nWhich type(s) would you like to validate?"
 choices = validate_option_select(space_types, title)
-types = {}
-for choice in choices:
-    types[int(choice)] = [space_types[int(choice)][0]]
-print('\n\n')
+if choices != None:
+    types = {}
+    for choice in choices:
+        types[int(choice)] = [space_types[int(choice)][0]]
+else: quit()
 
+print('\n\n')
 for e in envs.values():
     the_env = e[0]
     for t in types.values():
@@ -71,10 +83,14 @@ for e in envs.values():
         j_dest = the_env.lower()
         j_creation_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
-        if jobs_exist(conn, j_name):
+        # if job doesn't exist we create it
+        sql = f"SELECT name FROM jobs WHERE name = '{j_name}';"
+        if len(db_select(conn, sql)) > 0:
             print(f"Job {j_name} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
-            r = register_job(conn, job)
+            sql = """ INSERT INTO jobs(name,metadata,content,command,destination,created)
+              VALUES(?,?,?,?,?,?) """
+            r = db_insert(conn, sql, job)
             print(f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
 press_any_key()
