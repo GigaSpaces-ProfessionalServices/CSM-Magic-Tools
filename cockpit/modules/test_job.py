@@ -47,11 +47,11 @@ if len(jobs) > 0:
                 response = subprocess.run([script], shell=True, stdout=subprocess.PIPE).stdout.decode()
                 # converting string to dictionary
                 response = json.loads(response.replace("\'", "\""))
-                print("[TEST JOB RESULT]")
                 for k,v in response.items():
                     if k != 'java.lang.Object':
-                        print(f"{'Object type:':<14} {k}")
-                        print(f"{'# of entries:':<14} {v['entries']}")
+                        print(f"{'   Object type:':<14} {k}")
+                        print(f"{'   # of entries:':<14} {v['entries']}")
+                        print('\n')
             else:
                 pretty_print(f"ERROR: connection to {env_name} pivot ({pivot}:{port}) could not be established", 'red')
 else:
