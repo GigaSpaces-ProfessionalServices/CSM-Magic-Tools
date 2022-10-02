@@ -82,21 +82,20 @@ def create_file(data, file):
     :param file: the file to create
     :return:
     """
-    from colorama import Fore, Style
     import os
     name = '.'.join(os.path.basename(file).split('.')[:-1])
     extension = os.path.basename(file).split('.')[-1:][0]
     if os.path.exists(file):
-        print(f"{name}.{extension} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
+        print(f"{name}.{extension} already exists. operation aborted")
     else:
         try:
             with open(file, 'w') as f:
                 f.writelines('\n'.join(data))
         except IOError as e:
-            print(f"{name}.{extension} {Fore.RED}creation failed!{Style.RESET_ALL}")
+            print(f"{name}.{extension} creation failed")
             print(e)
         else:
-            print(f"{name}.{extension} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
+            print(f"{name}.{extension} created successfully")
         
 
 def get_keypress():
