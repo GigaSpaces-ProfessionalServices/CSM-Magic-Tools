@@ -226,7 +226,7 @@ if get_user_ok("\nContinue with policy registration?"):
     print("\n")
     
     # if the schedule is new we create the policy manager and services
-    if not schedule_exists: deploy_systemd_components()
+    #if not schedule_exists: deploy_systemd_components()
     
     # register and generate policy worker(s)
     for task_id in selected_tasks:
@@ -268,12 +268,8 @@ if get_user_ok("\nContinue with policy registration?"):
         rows = db_select(conn, sql)
         if rows[0][0] == 'yes':
             try:
-                r = subprocess.run(
-                    ['systemctl', 'enable', '--now', f"{policy_timer}"], 
-                    check=True, 
-                    stdout=subprocess.DEVNULL, 
-                    stderr=subprocess.DEVNULL
-                    )
+                cmd = f'systemctl enable --now {policy_timer}'.split(' ')
+                r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
                 if r.returncode == 0:
                     print(f"policy '{policy_name}' {Fore.GREEN}enabled!{Style.RESET_ALL}")
                 else:
