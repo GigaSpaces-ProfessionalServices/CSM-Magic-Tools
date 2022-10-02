@@ -24,40 +24,41 @@ def main():
         print("ERROR: config.yaml is missing the path to cockpit.db database file!")
     
     create_jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
-                                            id integer PRIMARY KEY,
-                                            name text NOT NULL,
-                                            metadata text,
-                                            content text,
-                                            command text,
-                                            destination text,
-                                            created text NOT NULL
-                                        ); """
+        id          INTEGER PRIMARY KEY,
+        name        TEXT NOT NULL,
+        metadata    TEXT,
+        content     TEXT,
+        command     TEXT,
+        destination TEXT,
+        created     TEXT NOT NULL
+        ); """
 
     create_tasks_table = """CREATE TABLE IF NOT EXISTS tasks (
-                                        id integer PRIMARY KEY,
-                                        uid text NOT NULL,
-                                        type text NOT NULL,
-                                        sn_type integer,
-                                        job_id integer,
-                                        metadata text,
-                                        content text,
-                                        state text,
-                                        created text NOT NULL,
-                                        FOREIGN KEY (job_id) REFERENCES jobs (id)
-                                    );"""
+        id          INTEGER PRIMARY KEY,
+        uid         TEXT,
+        type        TEXT NOT NULL,
+        sn_type     INTEGER,
+        job_id      INTEGER,
+        metadata    TEXT,
+        content     TEXT,
+        state       TEXT,
+        created     TEXT NOT NULL,
+        FOREIGN KEY (job_id) REFERENCES jobs (id)
+        );"""
 
     create_policies_table = """CREATE TABLE IF NOT EXISTS policies (
-                                        id integer PRIMARY KEY,
-                                        uid text NOT NULL,
-                                        name text,
-                                        schedule_sec integer NOT NULL,
-                                        task_uid text,
-                                        metadata text,
-                                        content text,
-                                        active_state text NOT NULL,
-                                        created text NOT NULL,
-                                        FOREIGN KEY (task_uid) REFERENCES tasks (uid)
-                                    );"""
+        id              INTEGER PRIMARY KEY,
+        uid             TEXT NOT NULL,
+        name            TEXT,
+        schedule_sec    INTEGER NOT NULL,
+        task_id         INTEGER,
+        task_uid        TEXT,
+        metadata        TEXT,
+        content         TEXT,
+        active_state    TEXT NOT NULL,
+        created         TEXT NOT NULL,
+        FOREIGN KEY (task_id) REFERENCES tasks (id)
+        );"""
 
     create_types_table = """CREATE TABLE IF NOT EXISTS types (
                                         name text
