@@ -151,6 +151,25 @@ def press_any_key():
     print('\n')
 
 
+def execute_command(cmd, title):
+    """
+    execute subprocess command
+    :param cmd: command to execute
+    :param title: print title for operation
+    """
+    import subprocess
+    print(f"{'':<3}{title} ...", end=' ')
+    try:
+        r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    except subprocess.SubprocessError as e:
+        print(e)
+    else:
+        if r.returncode == 0:
+            print(f"successful")
+        else:
+            print(f"failed")
+
+
 ###############################################################
 ##################    MENU AND VALIDATION    ##################
 ###############################################################
