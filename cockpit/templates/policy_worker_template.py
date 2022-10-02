@@ -22,35 +22,22 @@ def create_connection(db_file):
     return conn
 
 
-def list_tasks_by_policy_uid(conn, policy_uid):
+def db_select(conn, sql):
     """
-    list tasks associated with a policy id
-    :param conn: connection object
-    :param policy_id: the policy id
-    :return: list of rows
+    execute a select query on the database
+    :param conn: database connection object
+    :param sql: the query to execute
+    :return:
     """
-    cur = conn.cursor()
-    sql = "SELECT task_uid FROM policies WHERE policies.uid = ?;"
-    cur.execute(sql, (policy_uid,))
-    rows = cur.fetchall()
-    return rows
-
-
-def list_jobs_by_task_uid(conn, task_uid):
-    """
-    list jobs associated with a task uid
-    :param conn: connection object
-    :param task_uid: the task uid
-    :return: list of rows
-    """
-    cur = conn.cursor()
-    sql = """ SELECT j.name, j.id, j.destination, j.metadata, j.content 
-              FROM tasks t INNER JOIN jobs j 
-              ON j.id = t.job_id 
-              WHERE t.uid = ?; """
-    cur.execute(sql, task_uid)
-    rows = cur.fetchall()
-    return rows
+    from sqlite3 import Error
+    try:
+        c = conn.cursor()
+        c.execute(sql)
+    except Error as e:
+        print(e)
+    else:
+        result = c.fetchall()
+        return result
 
 
 def write_to_influx(dbname, data):
@@ -103,11 +90,14 @@ cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
 conn = create_connection(cockpit_db)
-
-tasks = list_tasks_by_policy_uid(conn, policy_uid)
-for task_uid in tasks:
+sql = f"SELECT task_uid FROM policies WHERE uid = '{policy_uid}';"
+for task_uid in db_select(conn, sql):
     print(f"\n[ Task {task_uid[0]} ]")
-    for job in list_jobs_by_task_uid(conn, task_uid):
+    sql = f""" SELECT j.name, j.id, j.destination, j.metadata, j.content 
+            FROM tasks t INNER JOIN jobs j 
+            ON j.id = t.job_id 
+            WHERE t.uid = '{task_uid}'; """
+    for job in db_select(conn, sql):
         job_file = f"{job[0]}.py".lower()
         job_dest_env= job[2]
         job_type = job[3]
