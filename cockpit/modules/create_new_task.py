@@ -64,9 +64,17 @@ if len(jobs) > 0:
         jobs_dict[j[0]] = list(j[1:])
     print('\n')
     title = "\nChoose jobs to be executed by this task:"
-    selected_jobs = validate_option_select(jobs_dict, title, esc_to='Skip')
-    if selected_jobs == None: quit()    
-    if selected_jobs[0] != -1: jobs_selected = True
+    while True:
+        selected_jobs = validate_option_select(jobs_dict, title, esc_to='Skip')
+        if selected_jobs == None:
+            quit()
+        if len(selected_jobs) > 2:
+            pretty_print("ERROR: 2 jobs per task are required/allowed. try again...", 'red')
+            continue
+        if selected_jobs[0] != -1:
+            jobs_selected = True
+            break
+    
 
 # get user confirmation
 print()
