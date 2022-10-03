@@ -26,15 +26,16 @@ policies = db_select(conn, sql)
 
 if len(policies) > 0:
     spc = '- -'
-    print(f'{"Id":<4} | {"Name":<30} | {"UID":<38} | {"Schedule":<8} | {"Associated Task UID":<38} | {"Is_Active":<11}')
-    print("-"*4 + spc + "-"*30 + spc + "-"*38 + spc + "-"*8 + spc + "-"*38 + spc + "-"*11)
+    print(f'{"Id":<4} | {"Name":<30} | {"UID":<38} | {"Schedule":<8} | {"Retry":<5} | {"Associated Task UID":<38} | {"Is_Active":<11}')
+    print("-"*4 + spc + "-"*30 + spc + "-"*38 + spc + "-"*8 + spc + "-"*5 + spc + "-"*38 + spc + "-"*11)
     for policy in policies:
         p_id = policy[0]
         p_uid = policy[1]
         p_name = f"{policy[2]}"
         p_sched = f"{policy[3]} sec"
-        p_assoc_task = policy[5]
-        p_active = f"{policy[8]}"
+        p_retry = f"{policy[4]} times"
+        p_assoc_task = policy[6]
+        p_active = f"{policy[9]}"
         print(f'{p_id:<4} | {p_name:<30} | {p_uid:<38} | {p_sched:<8} | {p_assoc_task:<38} | {p_active:<11}')
 else:
     print("No policies found")
