@@ -77,6 +77,7 @@ config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 templates_dir = f"{os.environ['COCKPIT_HOME']}/templates"
 policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
 policies_workers_home = f"{policies_home}/workers"
+p_retry_default = 3
 
 # load config yaml
 with open(config_yaml, 'r') as yf:
@@ -209,7 +210,8 @@ if schedule_exists:
 else:
     if auto_gen_name: print(f"   {'Name:':<18}{policy_name} (name auto generated)")
     else: print(f"   {'Name:':<18}{policy_name}")
-print(f"   {'Run every:':<18}{str(sched_min)}m:{str(sched_sec)}s")
+print(f"   {'Start every:':<18}{str(sched_min)}m:{str(sched_sec)}s")
+print(f"   {'Retry:':<18}{str(p_retry_default)} times (* default)")
 print(f"   {'Associated Tasks:':<18}")
 for t in selected_tasks:
     task_type = tasks_dict[t][0]
@@ -232,17 +234,17 @@ if get_user_ok("\nContinue with policy registration?"):
     for task_id in selected_tasks:
         task_type = tasks_dict[task_id][0]
         task_uid = tasks_dict[task_id][1]
-        pol_uid = str(uuid.uuid4())
-        policy_worker_script = f"{pol_uid}.py"
-        p_metadata = 'NULL'
-        p_content = 'NULL'
+        p_uid = str(uuid.uuid4())
+        policy_worker_script = f"{p_uid}.py"
+        p_md = 'NULL'
+        p_cont = 'NULL'
         p_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         p_active = 'yes'
         
         # register worker in database
-        sql = """ INSERT INTO policies(uid, name, schedule_sec, task_id, task_uid, metadata, content, active_state, created) 
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?) """
-        policy_data = (pol_uid, policy_name, schedule, task_id, task_uid, p_metadata, p_content, p_active, p_created)
+        sql = """ INSERT INTO policies(uid, name, schedule_sec, retry, task_id, task_uid, metadata, content, active_state, created) 
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) """
+        policy_data = (p_uid, policy_name, schedule, p_retry_default, task_id, task_uid, p_md, p_cont, p_active, p_created)
         r = db_insert(conn, sql, policy_data)
         
         # generate policy worker script from template
@@ -259,22 +261,25 @@ if get_user_ok("\nContinue with policy registration?"):
                 except subprocess.CalledProcessError as e:
                     print(e.output)
                 finally:    # print summary
-                    print(f"policy worker '{pol_uid}' created successfully")
+                    print(f"policy worker '{p_uid}' created successfully")
         else:
             print(f"policy worker script already exists. creation aborted")
         
-        # enable timer for active services
-        sql = f"SELECT active_state FROM policies where name = '{policy_name}' GROUP BY name;"
-        rows = db_select(conn, sql)
-        if rows[0][0] == 'yes':
-            try:
-                cmd = f'systemctl enable --now {policy_timer}'.split(' ')
-                r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-                if r.returncode == 0:
-                    print(f"policy '{policy_name}' {Fore.GREEN}enabled!{Style.RESET_ALL}")
-                else:
-                    print(f"policy '{policy_name}' {Fore.RED}could not be enabled{Style.RESET_ALL}")
-            except subprocess.CalledProcessError as e:
-                print(e.output)
+        """
+        # if new policy manager we enable timer
+        if not schedule_exists:
+            sql = f"SELECT active_state FROM policies where name = '{policy_name}' GROUP BY name;"
+            rows = db_select(conn, sql)
+            if rows[0][0] == 'yes':
+                try:
+                    cmd = f'systemctl enable --now {policy_timer}'.split(' ')
+                    r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                    if r.returncode == 0:
+                        print(f"policy '{policy_name}' {Fore.GREEN}enabled!{Style.RESET_ALL}")
+                    else:
+                        print(f"policy '{policy_name}' {Fore.RED}could not be enabled{Style.RESET_ALL}")
+                except subprocess.CalledProcessError as e:
+                    print(e.output)
+        """
 
 press_any_key()
