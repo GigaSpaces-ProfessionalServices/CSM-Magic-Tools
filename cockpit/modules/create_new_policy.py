@@ -228,7 +228,7 @@ if get_user_ok("\nContinue with policy registration?"):
     print("\n")
     
     # if the schedule is new we create the policy manager and services
-    #if not schedule_exists: deploy_systemd_components()
+    if not schedule_exists: deploy_systemd_components()
     
     # register and generate policy worker(s)
     for task_id in selected_tasks:
@@ -265,7 +265,7 @@ if get_user_ok("\nContinue with policy registration?"):
         else:
             print(f"policy worker script already exists. creation aborted")
         
-        """
+        
         # if new policy manager we enable timer
         if not schedule_exists:
             sql = f"SELECT active_state FROM policies where name = '{policy_name}' GROUP BY name;"
@@ -280,6 +280,6 @@ if get_user_ok("\nContinue with policy registration?"):
                         print(f"policy '{policy_name}' {Fore.RED}could not be enabled{Style.RESET_ALL}")
                 except subprocess.CalledProcessError as e:
                     print(e.output)
-        """
+        
 
 press_any_key()
