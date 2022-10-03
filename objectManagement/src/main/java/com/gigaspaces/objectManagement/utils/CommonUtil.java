@@ -23,6 +23,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Properties;
 
 import static java.nio.file.Files.readAllBytes;
@@ -104,7 +105,7 @@ public class CommonUtil {
         builder.supportsDynamicProperties(synamicPropertiesSupported);
     }
 
-    public static String getTierCriteriaConfig(String typeName, String strTierCriteriaFile) {
+    public static String[] getTierCriteriaConfig(String typeName, String strTierCriteriaFile) {
         logger.info("Entering into -> getTierCriteriaConfig");
         logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
@@ -126,7 +127,7 @@ public class CommonUtil {
 
                             if (criteriaClass != null && criteriaClass.trim().equalsIgnoreCase(typeName)) {
                                 if (criteria != null && criteria.trim() != "") {
-                                    return criteria;
+                                    return lineContents;
                                 }
                             } else {
                                 logger.info("Tier configuration for '" + criteriaClass + "' is not found");
@@ -153,11 +154,36 @@ public class CommonUtil {
         logger.info("Entering into -> setTierCriteria");
         logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
-            String criteria = getTierCriteriaConfig(typeName, strTierCriteriaFile);
-            if (criteria != null && criteria.trim() != "") {
+            String[] criteriaArray = getTierCriteriaConfig(typeName, strTierCriteriaFile);
+            /*if (criteria != null && criteria.trim() != "") {
                 builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                         .setName(typeName)
                         .setCriteria(criteria));
+            }*/
+            if (criteriaArray[0].equalsIgnoreCase("C")) {
+                logger.info("Catagory :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
+                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                        .setName(criteriaArray[1])
+                        .setCriteria(criteriaArray[2]));
+            }
+            if (criteriaArray[0].equalsIgnoreCase("T")) {
+                logger.info("Time Criteria:  " + criteriaArray[1] + " :: " + criteriaArray[2] + " : " + criteriaArray[3]);
+                Duration duration = Duration.parse(criteriaArray[3]);
+                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                        .setName(criteriaArray[1])
+                        .setTimeColumn(criteriaArray[2]).setPeriod(duration));
+            }
+            if (criteriaArray[0].equalsIgnoreCase("A")) {
+                logger.info(criteriaArray[1] + "ALL ");
+                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                        .setName(criteriaArray[1])
+                        .setCriteria("all"));
+            }
+            if (criteriaArray[0].equalsIgnoreCase("R")) {
+                logger.info(criteriaArray[1] + "Transient :: ");
+                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                        .setName(criteriaArray[1])
+                        .setTransient(true));
             }
 
             logger.info("Exiting from -> setTierCriteria");

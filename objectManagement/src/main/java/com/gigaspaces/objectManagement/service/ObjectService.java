@@ -1,6 +1,7 @@
 package com.gigaspaces.objectManagement.service;
 
 import com.gigaspaces.document.SpaceDocument;
+import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageConfig;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableConfig;
 import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
@@ -150,7 +151,10 @@ public class ObjectService {
         IRemoteJSpaceAdmin remoteAdmin =
                 (IRemoteJSpaceAdmin) gigaSpace.getSpace().getAdmin();
 
-        Object classList[] = remoteAdmin.getRuntimeInfo().m_ClassNames.toArray();
+        List<String> classList = remoteAdmin.getRuntimeInfo().m_ClassNames;
+        List<Integer> countTypesInMemory = remoteAdmin.getRuntimeInfo().m_RamNumOFEntries;
+        TieredStorageConfig tieredStorageConfig = remoteAdmin.getRuntimeInfo().getTieredStorageConfig();
+        logger.info(">>>> tieredStorageConfig : " + tieredStorageConfig);
         List<SpaceObjectDto> spaceObjectDto = new ArrayList<>();
         GigaSpaceTypeManager gigaSpaceTypeManager = gigaSpace.getTypeManager();
         //((IRemoteJSpaceAdmin) gigaSpace.getSpace().getAdmin()).getName()
@@ -158,8 +162,10 @@ public class ObjectService {
         jsonObject.addProperty("spacename", gigaSpace.getSpaceName());
         JsonObject jsonObject3;
         JsonArray jsonArray3 = new JsonArray();
-        for (Object obj : classList) {
-            String objectType = obj.toString().trim();
+        for (int a = 0; a < classList.size(); a++) {
+            //for (Object obj : classList) {
+            String objectType = classList.get(a);
+            int objectCount = countTypesInMemory.get(a);
             if (objectType.equals("java.lang.Object")) continue;
             JsonArray jsonArray2 = new JsonArray();
             jsonObject3 = new JsonObject();
@@ -179,16 +185,29 @@ public class ObjectService {
                 routing = properties.getProperty("routing") != null ? properties.getProperty("routing") : "";
                 index = properties.getProperty("index") != null ? properties.getProperty("index") : "";
             }
-            String criteria = CommonUtil.getTierCriteriaConfig(objectType, strTierCriteriaFile);
+            //  String criteria = CommonUtil.getTierCriteriaConfig(objectType, strTierCriteriaFile);
 
             jsonObject3.addProperty("spaceId", spaceId);
+            //jsonObject3.addProperty("objectInMemory", gigaSpace.count(objectType, CountModifiers.MEMORY_ONLY_SEARCH));
+            //not required we can take from runtimeinfo
+            /*try {
+                SQLQuery<SpaceDocument> query = new SQLQuery<>(objectType,"");
+                logger.info(">>>>>>>>>>>objectType + count "+ gigaSpace.count(query, CountModifiers.MEMORY_ONLY_SEARCH));
+            } catch (Exception e){
+                logger.info(">>>>>objectType "+objectType+"======="+e.getLocalizedMessage(),e);
+            }*/
+            logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
+            jsonObject3.addProperty("objectInMemory", objectCount);
             jsonObject3.addProperty("routing", routing);
             jsonObject3.addProperty("index", index);
-            jsonObject3.addProperty("criteria", criteria != null && criteria.trim() != "" ? criteria : "");
+            //jsonObject3.addProperty("criteria", criteria != null && criteria.trim() != "" ? criteria : "");
 
 
             logger.info("####################");
+            logger.info(">>>> tieredStorageConfig objectType : " + objectType + ", tieredStorageConfig" + tieredStorageConfig.getTable(objectType));
+
             SpaceTypeDescriptor spaceTypeDescriptor = gigaSpaceTypeManager.getTypeDescriptor(objectType);
+
             String[] propertiesName = spaceTypeDescriptor.getPropertiesNames();
             String[] propertiesType = spaceTypeDescriptor.getPropertiesTypes();
 
@@ -198,19 +217,26 @@ public class ObjectService {
             //List<String> spaceIdList = spaceTypeDescriptor.getIdPropertiesNames();
             String routingPropertyName = spaceTypeDescriptor.getRoutingPropertyName();
             Map<String, SpaceIndex> indexesMap = spaceTypeDescriptor.getIndexes();
-            String criteriaName = "";
+            String tiercriteria = "";
             String criteriaFieldname = "";
             logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :" + spaceTypeDescriptor.getTieredStorageTableConfig());
             if (spaceTypeDescriptor.getTieredStorageTableConfig() != null) {
-                criteriaName = spaceTypeDescriptor.getTieredStorageTableConfig().getCriteria();
-                criteriaFieldname = criteriaName;
-                if (criteriaName.split("<").length > 1) {
-                    criteriaFieldname = criteriaName.split("<")[0];
-                } else if (criteriaName.split(">").length > 1) {
-                    criteriaFieldname = criteriaName.split(">")[0];
-                } else if (criteriaName.split("=").length > 1) {
-                    criteriaFieldname = criteriaName.split("=")[0];
+                tiercriteria = spaceTypeDescriptor.getTieredStorageTableConfig().getCriteria();
+                criteriaFieldname = spaceTypeDescriptor.getTieredStorageTableConfig().getName();
+                if (tiercriteria == null) {
+                    tiercriteria = spaceTypeDescriptor.getTieredStorageTableConfig().getPeriod().toString();
+                    criteriaFieldname = spaceTypeDescriptor.getTieredStorageTableConfig().getTimeColumn();
+                } else {
+                    if (tiercriteria.split("<").length > 1) {
+                        criteriaFieldname = tiercriteria.split("<")[0];
+                    } else if (tiercriteria.split(">").length > 1) {
+                        criteriaFieldname = tiercriteria.split(">")[0];
+                    } else if (tiercriteria.split("=").length > 1) {
+                        criteriaFieldname = tiercriteria.split("=")[0];
+                    }
                 }
+
+
             }
             for (int i = 0; i < propertiesName.length; i++) {
                 String prop = propertiesName[i];
@@ -227,7 +253,7 @@ public class ObjectService {
                 jsonObject2.addProperty("spaceId", idPropsList.contains(propertiesName[i]) ? "Yes" : "");
                 jsonObject2.addProperty("spaceRouting", propertiesName[i].equals(routingPropertyName) ? "Yes" : "");
                 jsonObject2.addProperty("spaceIndex", indexesMap.containsKey(propertiesName[i]) ? indexesMap.get(propertiesName[i]).getIndexType().name() : "");
-                jsonObject2.addProperty("tierCriteria", propertiesName[i].equals(criteriaFieldname) ? criteriaName : "");
+                jsonObject2.addProperty("tierCriteria", propertiesName[i].equals(criteriaFieldname) ? tiercriteria : "");
 //                jsonObject2.addProperty("isSpacePrimitive", idPropsList.toString());
 
               /*  spaceObject.setObjName(propertyDescriptor.getName());
