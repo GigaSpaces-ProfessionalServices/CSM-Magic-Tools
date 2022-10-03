@@ -51,6 +51,7 @@ def main():
         uid             TEXT NOT NULL,
         name            TEXT,
         schedule_sec    INTEGER NOT NULL,
+        retry           INTEGER NOT NULL,
         task_id         INTEGER,
         task_uid        TEXT,
         metadata        TEXT,
