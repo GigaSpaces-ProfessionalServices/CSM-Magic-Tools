@@ -17,7 +17,7 @@ echo "*** RELATED DATABASE RECORDS WILL HAVE TO BE REMOVED MANUALLY ***"
 
 read -p "Do you wish to continue? [yes/no]   " ans
 if [[ ${ans^^} == "YES" ]]; then
-    for unit in $(systemctl list-timers | awk '{print $13}' | grep cockpit); do
+    for unit in $(systemctl list-timers | egrep -iow "cockpit_policy.*"); do
         p_name=${unit%.*}
         p_service=${p_name}.service
         # stop
