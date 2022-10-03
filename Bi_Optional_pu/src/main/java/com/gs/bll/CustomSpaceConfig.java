@@ -26,11 +26,41 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
     @Value("${space.propertyFilePath}")
     private String spacePropertyFilePath;
 
+    @Value("${tieredCriteriaConfig.dirtyBitFile}")
+    private String tsdirtyBitFile;
+
     private String isTieredConfigFileExist;
 
     //@Value("${test}")
     //private String test;
 
+    Map<String,String> readPropertiesFile(String filename) {
+        BufferedReader br
+                = null;
+        Map<String, String> propertyFileContent = new HashMap<>();
+        if (new File(filename).exists()) {
+            try {
+                br = new BufferedReader(new FileReader(filename));
+
+                // Declaring a string variable
+                String st;
+                // Condition holds true till
+                // there is character in a string
+                while ((st = br.readLine()) != null) {
+                    if (st == null || "".equals(st.trim()) || !st.contains("=")) {
+                        continue;
+                    }
+                    String[] fileproperty = st.split("=");
+                    propertyFileContent.put(fileproperty[0], fileproperty[1]);
+                    // Print the string
+                    System.out.println(st);
+                }
+            } catch (IOException e) {
+                logger.error(e.getLocalizedMessage(), e);
+            }
+        }
+        return propertyFileContent;
+    }
     @Override
     protected void configure(EmbeddedSpaceFactoryBean factoryBean) {
         super.configure(factoryBean);
@@ -40,6 +70,13 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
         logger.info("spaceName"+getSpaceName());
         boolean isSpacePropertyFileExist = checkIsFileExist(spacePropertyFilePath);
         logger.info("isSpacePropertyFileExist : "+isSpacePropertyFileExist);
+        Map<String,String> tsdirtyBitFileMap = readPropertiesFile(tsdirtyBitFile);
+        boolean tsFileFlag = false;
+        logger.info("tsdirtyBitFileMap "+tsdirtyBitFileMap);
+        if(tsdirtyBitFileMap.containsKey("firstTimedeployment")){
+            tsFileFlag = tsdirtyBitFileMap.get("firstTimedeployment").equals("true");
+            logger.info("firstTimedeployment flag "+tsFileFlag);
+        }
         if(isSpacePropertyFileExist){
             spaceProperties = readPropertyFileAndSetValue(spaceProperties);
             for (Object key: spaceProperties.keySet()) {
@@ -49,7 +86,7 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
             factoryBean.setProperties(spaceProperties);
         }
         logger.info("tieredConfigFilePath : "+tieredConfigFilePath);
-        if(!tieredConfigFilePath.equals("")) {
+        if(!tsFileFlag && !tieredConfigFilePath.equals("")) {
             System.out.println("################## " + tieredConfigFilePath + "###############");
             logger.info("################## tieredConfigFilePath #### here ##################" + tieredConfigFilePath);
             TieredStorageConfig tieredStorageConfig = new TieredStorageConfig();
