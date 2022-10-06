@@ -41,7 +41,7 @@ def db_select(conn, sql):
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
 policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
-policies_exec_home = f"{policies_home}/exec"
+policies_workers_home = f"{policies_home}/workers"
 
 # get policy schedule from file name
 policy_schedule = '.'.join(os.path.basename(__file__).split('.')[:-1]).split('_').pop()
@@ -66,7 +66,7 @@ if len(schedules) != 0:
         p_active = p[1]
         if p_active == 'yes':   # run only workers that have active_state='yes'
             try:
-                subprocess.run([f"{policies_exec_home}/{p_uid}.py"], shell=True, check=True)
+                subprocess.run([f"{policies_workers_home}/{p_uid}.py"], shell=True, check=True)
             except subprocess.CalledProcessError as e:
                 print(e.output)
 else:
