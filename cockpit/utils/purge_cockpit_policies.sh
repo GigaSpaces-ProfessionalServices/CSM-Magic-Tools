@@ -27,7 +27,9 @@ if [[ ${ans^^} == "YES" ]]; then
         systemctl disable ${unit}
         systemctl disable ${p_service}
         # remove
-        rm -f ${SYS_HOME}/${policy_name}*
+        if [[ ${policy_name} != "" ]]; then
+            rm -f ${SYS_HOME}/${policy_name}*
+        fi
         # reload
         systemctl daemon-reload
     done
