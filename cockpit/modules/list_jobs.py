@@ -3,13 +3,8 @@
 
 import os
 import yaml
-import sqlite3
-from sqlite3 import Error
-from functions import (
-    create_connection,
-    db_select, 
-    press_any_key
-    )
+from classes import MySQLite
+from functions import press_any_key
 
 # main
 config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
@@ -20,9 +15,12 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
+
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
+
 sql = "SELECT id, name FROM jobs"
-jobs = db_select(conn, sql)
+jobs = sqlitedb.select(sql)
 j_len = []
 for ji, jn in jobs:
     j_len.append(len(jn))

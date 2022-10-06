@@ -4,11 +4,7 @@
 def main():
     import os
     import yaml
-    from functions import (
-        create_database_home, 
-        create_connection, 
-        create_table
-        )
+    from classes import MySQLite
     
     config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
     
@@ -19,6 +15,9 @@ def main():
     cockpit_db_home = data['params']['cockpit']['db_home']
     cockpit_db_name = data['params']['cockpit']['db_name']
     cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+
+    # instantiate db object
+    sqlitedb = MySQLite(cockpit_db)
 
     if cockpit_db == '':
         print("ERROR: config.yaml is missing the path to cockpit.db database file!")
@@ -69,16 +68,11 @@ def main():
     if 'drop_db' in globals():
         os.remove(cockpit_db)
 
-    # create sqlite3 home directory if it doesn't exists
-    create_database_home(cockpit_db_home)
-    
-    # create database and/or tables from sql statements
-    conn = create_connection(cockpit_db)
-    if conn is not None:
-        create_table(conn, create_tasks_table)
-        create_table(conn, create_jobs_table)
-        create_table(conn, create_policies_table)
-        create_table(conn, create_types_table)
+    if sqlitedb.connect() is not None:
+        sqlitedb.create(create_tasks_table)
+        sqlitedb.create(create_jobs_table)
+        sqlitedb.create(create_policies_table)
+        sqlitedb.create(create_types_table)
         print("Database created successfully!\n")
     else:
         print("ERROR: unable to establish database connection.")

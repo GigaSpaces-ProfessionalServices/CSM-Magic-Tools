@@ -3,10 +3,8 @@
 
 import os
 import yaml
+from classes import MySQLite
 from functions import (
-    create_connection,
-    db_delete,
-    db_select,
     execute_command,
     press_any_key, 
     validate_option_select, 
@@ -24,13 +22,15 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
+
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
 
 # get policies and conform to validation func
 policies = {}
 _index = 1
 sql = f"SELECT * FROM policies GROUP BY name;"
-rows = db_select(conn, sql)
+rows = sqlitedb.select(sql)
 for p in rows:
     pname = p[2]
     policies.update({_index: [f'{pname}']})
@@ -88,7 +88,7 @@ if len(policies) > 0:
         
         # remove policy workers
         sql = f"SELECT uid FROM policies WHERE name = '{policy_name}';"
-        for row in db_select(conn, sql):
+        for row in sqlitedb.select(sql):
             worker_name = row[0]
             title = f"removing policy worker {worker_name}"
             cmd = f'rm -f {policies_workers_home}/{worker_name}.py'.split(' ')
@@ -96,7 +96,7 @@ if len(policies) > 0:
 
         # delete from database
         sql = f"DELETE from policies WHERE name = '{policy_name}';"
-        r = db_delete(conn, sql)
+        r = sqlitedb.delete(sql)
         print(f"   policy deregistered successfully!")
 else:
     print("No policies found")

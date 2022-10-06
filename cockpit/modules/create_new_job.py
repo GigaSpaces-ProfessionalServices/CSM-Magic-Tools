@@ -7,10 +7,8 @@ import yaml
 from influxdb import InfluxDBClient
 import datetime
 from colorama import Fore, Style
+from classes import MySQLite
 from functions import (
-    create_connection,
-    db_insert, 
-    db_select, 
     pretty_print,
     generate_job_file,
     press_any_key, 
@@ -26,9 +24,11 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
-index = 1
 
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
+
+index = 1
 # build environment dictionary
 environments = {}
 for k, v in data['params'].items():
@@ -37,7 +37,8 @@ for k, v in data['params'].items():
         index += 1
 # build space types dictionary
 sql = "SELECT name FROM types;"
-rows = db_select(conn, sql)
+rows = sqlitedb.select(sql)
+
 space_types = {}
 if len(rows) > 0:
     index = 1
@@ -85,12 +86,12 @@ for e in envs.values():
         job = (j_name, j_metadata, j_content, j_command, j_dest, j_creation_time)
         # if job doesn't exist we create it
         sql = f"SELECT name FROM jobs WHERE name = '{j_name}';"
-        if len(db_select(conn, sql)) > 0:
+        if len(sqlitedb.select(sql)) > 0:
             print(f"Job {j_name} already exists. {Fore.RED}creation aborted!{Style.RESET_ALL}")
         else:
             generate_job_file(j_metadata, the_env, obj_type, data)
             sql = """ INSERT INTO jobs(name,metadata,content,command,destination,created)
               VALUES(?,?,?,?,?,?) """
-            r = db_insert(conn, sql, job)
+            r = sqlitedb.insert(sql, job)
             print(f"Job {j_name} {Fore.GREEN}created successfully!{Style.RESET_ALL}")
 press_any_key()

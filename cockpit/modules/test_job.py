@@ -5,9 +5,8 @@ import os
 import yaml
 import json
 import subprocess
+from classes import MySQLite
 from functions import (
-    create_connection, 
-    db_select,
     press_any_key, 
     validate_option_select, 
     check_connection, 
@@ -21,12 +20,16 @@ jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
 # load config yaml
 with open(config_yaml, 'r') as yf:
     data = yaml.safe_load(yf)
+
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
+
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
+
 sql = "SELECT id, name FROM jobs"
-jobs = dict(db_select(conn, sql))
+jobs = dict(sqlitedb.select(sql))
 if len(jobs) > 0:
     # conform jobs dictionary to validation func
     jobs_dict = {}

@@ -6,15 +6,13 @@ import yaml
 import uuid
 import datetime
 from colorama import Fore, Style
+from classes import MySQLite
 from functions import (
-    create_connection,
     get_user_ok,
     press_any_key,
     pretty_print,
     validate_option_select, 
     validate_type_select, 
-    db_select,
-    db_insert
     )
 
 # main
@@ -27,6 +25,9 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
 
 # generate db data by columns
 t_uid = str(uuid.uuid4())
@@ -51,9 +52,9 @@ t_content = "NULL"
 t_state = "NULL"
 t_created = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 # list jobs from db
-conn = create_connection(cockpit_db)
+
 sql = "SELECT * FROM jobs"
-jobs = db_select(conn, sql)
+jobs = sqlitedb.select(sql)
 jobs_selected = False
 
 # get jobs selections
@@ -85,10 +86,8 @@ if not jobs_selected:
 else:
     print(f"Associated Jobs:")
     for job_id in selected_jobs:
-        cur = conn.cursor()
         sql = f"SELECT name FROM jobs WHERE id = {job_id}"
-        cur.execute(sql)
-        rows = cur.fetchall()
+        rows = sqlitedb.select(sql)
         print(f"{' ':<3}{rows[0][0]}")
 if not get_user_ok("\nContinue with task registration?"): quit()
 
@@ -98,10 +97,10 @@ VALUES(?,?,?,?,?,?,?,?) """
 if jobs_selected:
     for job_id in selected_jobs:
         task_data = (t_uid,t_type,t_type_sn,job_id,t_metadata,t_content,t_state,t_created)
-        r = db_insert(conn, sql, task_data)
+        r = sqlitedb.insert(sql, task_data)
 else:
     task_data = (t_uid,t_type,t_type_sn,'NULL',t_metadata,t_content,t_state,t_created)
-    r = db_insert(conn, sql, task_data)
+    r = sqlitedb.insert(sql, task_data)
 print(f"\n\nTask '{t_type}' with UID {t_uid} {Fore.GREEN}registered successfully!{Style.RESET_ALL}")
 
 press_any_key()

@@ -9,10 +9,8 @@ import subprocess
 import uuid
 from signal import signal, SIGINT
 from colorama import Fore, Style
+from classes import MySQLite
 from functions import (
-    create_connection,
-    db_insert,
-    db_select, 
     get_user_ok,
     press_any_key, 
     validate_option_select, 
@@ -87,7 +85,9 @@ with open(config_yaml, 'r') as yf:
 cockpit_db_home = data['params']['cockpit']['db_home']
 cockpit_db_name = data['params']['cockpit']['db_name']
 cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
+
+# instantiate db object
+sqlitedb = MySQLite(cockpit_db)
 
 # introduction
 intro = [
@@ -100,7 +100,7 @@ for line in intro: pretty_print(line, 'LIGHTBLUE_EX')
 
 # get task(s) from database
 sql = f"SELECT id, uid, type FROM tasks GROUP BY uid"
-tasks = sort_tuples_list(db_select(conn, sql))
+tasks = sort_tuples_list(sqlitedb.select(sql))
 if len(tasks) == 0:
     pretty_print("\nERROR: tasks must be created first to add new policies!", 'red')
     press_any_key()
@@ -136,7 +136,7 @@ except (KeyboardInterrupt, SystemExit):
 sched_sec = schedule % 60
 sched_min = int(schedule / 60)
 sql = f"SELECT schedule_sec FROM policies WHERE schedule_sec = '{schedule}' GROUP BY schedule_sec;"
-if len(db_select(conn, sql)) > 0:
+if len(sqlitedb.select(sql)) > 0:
     schedule_exists = True
     pretty_print("(!) a policy already exists for this schedule. only workers will be added!", 'LIGHTYELLOW_EX')
 print('\n')
@@ -189,7 +189,7 @@ for task in tasks:
               FROM tasks t INNER JOIN jobs j 
               ON j.id = t.job_id 
               WHERE t.uid = '{task_uid}'; """
-        task_obj = ''.join(set([job[4] for job in db_select(conn, sql)]))
+        task_obj = ''.join(set([job[4] for job in sqlitedb.select(sql)]))
         # conform tasks dictionary to validation func
         tasks_menu_dict[task_id] = [f"{task_type} of object type '{task_obj}'", task_uid]
         tasks_dict[task_id] = [task_type, task_uid]
@@ -245,7 +245,7 @@ if get_user_ok("\nContinue with policy registration?"):
         sql = """ INSERT INTO policies(uid, name, schedule_sec, retry, task_id, task_uid, metadata, content, active_state, created) 
         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) """
         policy_data = (p_uid, policy_name, schedule, p_retry_default, task_id, task_uid, p_md, p_cont, p_active, p_created)
-        r = db_insert(conn, sql, policy_data)
+        r = sqlitedb.insert(sql, policy_data)
         
         # generate policy worker script from template
         if not os.path.exists(f"{policies_workers_home}/{policy_worker_script}"):
@@ -269,7 +269,7 @@ if get_user_ok("\nContinue with policy registration?"):
         # if new policy manager we enable timer
         if not schedule_exists:
             sql = f"SELECT active_state FROM policies where name = '{policy_name}' GROUP BY name;"
-            rows = db_select(conn, sql)
+            rows = sqlitedb.select(sql)
             if rows[0][0] == 'yes':
                 try:
                     cmd = f'systemctl enable --now {policy_timer}'.split(' ')
