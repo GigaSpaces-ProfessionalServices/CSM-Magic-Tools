@@ -40,7 +40,8 @@ if len(jobs) > 0:
     if choices == None: quit()  # if KeyboardInterrupt
     if choices[0] != -1:
         for choice in choices:
-            print(f"Testing Job: '{jobs[choice]}'")
+            print(f"[Testing Job]")
+            print(f"{'   Job Name:':<16} {jobs[choice]}")
             job_file = f"{jobs[choice]}.py".lower()
             script = f'{jobs_home}/{job_file}'
             env_name = jobs[choice].split('_')[1]
@@ -52,8 +53,8 @@ if len(jobs) > 0:
                 response = json.loads(response.replace("\'", "\""))
                 for k,v in response.items():
                     if k != 'java.lang.Object':
-                        print(f"{'   Object type:':<14} {k}")
-                        print(f"{'   # of entries:':<14} {v['entries']}")
+                        print(f"{'   Object type:':<16} {k}")
+                        print(f"{'   # of entries:':<16} {v['entries']}")
                         print('\n')
             else:
                 pretty_print(f"ERROR: connection to {env_name} pivot ({pivot}:{port}) could not be established", 'red')
