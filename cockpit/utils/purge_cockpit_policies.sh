@@ -35,7 +35,9 @@ if [[ ${ans^^} == "YES" ]]; then
     done
 
     # delete policy files
-    find ${COCKPIT_HOME}/policies -name "${policy_name}*" -exec rm -f {} \;
+    if [[ -d ${COCKPIT_HOME}/policies ]]; then
+        find ${COCKPIT_HOME}/policies -name "${policy_name}*" -exec rm -f {} \;
+    fi
 fi
 
 exit
