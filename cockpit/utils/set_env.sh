@@ -5,12 +5,10 @@
 #
 
 ENV_FILE=/etc/environment
-COCKPIT_HOME=$(realpath $(dirname $0))
+COCKPIT_HOME=$(realpath $(dirname $0)/../)
 
-# remove current setting
+# remove current setting and insert new
 sed -i '/COCKPIT_HOME=/d' $ENV_FILE
-
-# insert new setting
 echo "export COCKPIT_HOME=${COCKPIT_HOME}" >> $ENV_FILE
 
 echo "COCKPIT_HOME has been set to: '${COCKPIT_HOME}'"
