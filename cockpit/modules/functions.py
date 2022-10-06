@@ -5,6 +5,7 @@
 ##################          GENERAL          ##################
 ###############################################################
 
+
 def handler(signal_recieved, frame):
     ### catch CTRL+C keybaord press ###
     print('\n')
@@ -358,7 +359,8 @@ def check_settings(config):
     import os
     import yaml
     import subprocess
-    from .spinner import Spinner
+    from modules.classes import MySQLite, Spinner
+
     db_set_required = False
     env_set_required = False
     
@@ -370,6 +372,10 @@ def check_settings(config):
     cockpit_db_home = data['params']['cockpit']['db_home']
     cockpit_db_name = data['params']['cockpit']['db_name']
     cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
+
+    # instantiate db object
+    sqlitedb = MySQLite(cockpit_db)
+
     if cockpit_db_home == '' or cockpit_db_home is None or cockpit_db_name == '' or cockpit_db_name is None:
         pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
         pretty_print('\nERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
@@ -426,14 +432,13 @@ def check_settings(config):
         print_header()
     spinner = Spinner
     with spinner('Loading cockpit data... ', delay=0.1):
-        conn = create_connection(cockpit_db)
         types = get_object_types_from_space(data)
         for type in types.values():
             the_type = type[0]
             sql = f"SELECT name FROM types WHERE name = '{the_type}';"
-            if len(db_select(conn, sql)) == 0:
+            if len(sqlitedb.select(sql)) == 0:
                 sql =f"INSERT INTO types(name) VALUES(?);"
-                db_insert(conn, sql, (the_type,))
+                sqlitedb.insert(sql, (the_type,))
 
 
 def get_object_types_from_space(yaml_data):
@@ -476,147 +481,6 @@ def get_object_types_from_space(yaml_data):
             5: ['com.j_spaces.examples.benchmark.messages.MessagePOJO4', 140000]
             }
     return object_types
-
-###############################################################
-#################         DATABASES          ##################
-###############################################################
-
-def create_database_home(db_folder):
-    """
-    create sqlite3 home directory if doesn't exists
-    :param db_folder: sqlite3 home path
-    :return:
-    """
-    import os
-    if not os.path.exists(db_folder):
-        try:
-            os.makedirs(db_folder)
-        except OSError as e:
-            if 'Errno 13' in str(e):
-                print(f"\n{e}\n *try changing the path in config.yaml")
-            else:
-                print(e)
-            exit(1)
-
-
-def create_connection(db_file):
-    """
-    establish a database connection (or create a new db if not exist)
-    :param db_file: path to db file
-    :return: connection object
-    """
-    import sqlite3
-    from sqlite3 import Error
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-    except Error as e:
-        print(e)
-    return conn
-
-
-def create_table(conn, create_table_sql):
-    """
-    create a table from sql create_table_sql
-    :param conn: connection object
-    :param create_table_sql: sqlite create table statement
-    :return:
-    """
-    from sqlite3 import Error
-    try:
-        c = conn.cursor()
-        c.execute(create_table_sql)
-    except Error as e:
-        print(e)
-
-
-def db_select(conn, sql):
-    """
-    execute a select query on the database
-    :param conn: database connection object
-    :param sql: the query to execute
-    :return:
-    """
-    from sqlite3 import Error
-    try:
-        c = conn.cursor()
-        c.execute(sql)
-    except Error as e:
-        print(e)
-    else:
-        result = c.fetchall()
-        return result
-
-
-
-def db_insert(conn, sql, data):
-    """
-    insert into database
-    :param conn: database connection object
-    :param sql: the query to execute
-    :param data: the data to insert
-    :return: row id
-    """
-    from sqlite3 import Error
-    try:
-        c = conn.cursor()
-        c.execute(sql, data)
-    except Error as e:
-        print(e)
-    else:
-        conn.commit()
-        return c.lastrowid
-
-
-def db_delete(conn, sql):
-    """
-    delete from database
-    :param conn: database connection object
-    :param sql: the query to execute
-    :return:
-    """
-    from sqlite3 import Error
-    try:
-        c = conn.cursor()
-        c.execute(sql)
-    except Error as e:
-        print(e)
-    else:
-        conn.commit()
-        return c.lastrowid
-
-
-def write_to_influx(dbname, data):
-    """
-    write data to influx database
-    :param dbname: the name of the target database
-    :param data: dictionary of the data payload
-    e.g: data = {env: 'prod/dr', type: 'the_object', count: num_of_entries}
-    :return:
-    """
-    import datetime
-    from influxdb import InfluxDBClient
-
-    client = InfluxDBClient(host='localhost', port=8086)
-    if dbname not in str(client.get_list_database()):
-        client.create_database(dbname)
-    client.switch_database(dbname)
-    timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
-    json_body = [
-        {
-            "measurement": "validation",
-            "tags": {
-                "env": data['env'],
-                "obj_type": data['obj_type']
-            },
-            "time": timestamp,
-            "fields": {
-                "count": data['count']
-            }
-        }
-    ]
-    client.write_points(json_body)
-
 
 ###############################################################
 ##################           JOBS            ##################
