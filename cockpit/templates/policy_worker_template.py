@@ -9,6 +9,8 @@ import subprocess
 from time import sleep
 import datetime
 import multiprocessing
+import sqlite3
+from sqlite3 import Error
 
 def create_connection(db_file):
     """
@@ -16,8 +18,6 @@ def create_connection(db_file):
     :param db_file: path to db file
     :return: connection object
     """
-    import sqlite3
-    from sqlite3 import Error
     conn = None
     try:
         conn = sqlite3.connect(db_file)
@@ -33,7 +33,6 @@ def db_select(conn, sql):
     :param sql: the query to execute
     :return:
     """
-    from sqlite3 import Error
     try:
         c = conn.cursor()
         c.execute(sql)
@@ -159,7 +158,14 @@ if __name__ == '__main__':
     # get retry and wait params
     for _retry, _wait in calculate_retries(conn, policy_uid): pass
     rand_wait = _wait + random.randrange(-2, 2)  # we randomize wait time by offset of 2
-    multiprocessing.set_start_method('spawn')
+    process = multiprocessing.set_start_method('spawn')
+    process(name='tasksMain', daemon=True)
     sql = f"SELECT task_uid FROM policies WHERE uid = '{policy_uid}';"
-    for task_uid in db_select(conn, sql):
-        multiprocessing.Process(target=exec_task_routine, args=(_retry, rand_wait)).start()
+    # creating child processes by task_uid
+    processes = [process(target=exec_task_routine, args=(_retry, rand_wait)) for task_uid in db_select(conn, sql)]
+    # start child processes
+    for p in processes:
+        p.start()
+    # wait for child processes to finish
+    for p in processes:
+        p.join()

@@ -4,15 +4,15 @@
 import os
 import yaml
 import subprocess
+import sqlite3
+from sqlite3 import Error
 
 def create_connection(db_file):
     """
     establish a database connection (or create a new db file)
     :param db_file: path to db file
     :return: connection object
-    """
-    import sqlite3
-    from sqlite3 import Error
+    """    
     conn = None
     try:
         conn = sqlite3.connect(db_file)
@@ -28,7 +28,6 @@ def db_select(conn, sql):
     :param sql: the query to execute
     :return:
     """
-    from sqlite3 import Error
     try:
         c = conn.cursor()
         c.execute(sql)
