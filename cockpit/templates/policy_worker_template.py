@@ -89,7 +89,7 @@ def calculate_retries(_conn, _puid):
     return (_rtr,_wait)
 
 
-def exec_task_routine(_jobs_home, _db, _task_uid, _retry, _wait):
+def exec_task_routine(_cockpit_db, _jobs_home, _task_uid, _retry, _wait):
     """
     execute task
     :param _jobs_home: jobs home folder
@@ -105,7 +105,7 @@ def exec_task_routine(_jobs_home, _db, _task_uid, _retry, _wait):
 
     i = 1
     results_ok = False
-    #conn = create_connection(_db)
+    _conn = create_connection(_cockpit_db)
     while i < _retry + 1:
         print(f"\n[ Task {_task_uid[0]}: run # {i} ]")
         _sql = f""" SELECT j.name, j.id, j.destination, j.metadata, j.content
@@ -113,7 +113,7 @@ def exec_task_routine(_jobs_home, _db, _task_uid, _retry, _wait):
                 ON j.id = t.job_id
                 WHERE t.uid = '{_task_uid}'; """
         job_results = []
-        for job in db_select(conn, _sql):
+        for job in db_select(_conn, _sql):
             job_file = f"{job[0]}.py".lower()
             job_dest_env= job[2]
             job_type = job[3]
@@ -150,9 +150,9 @@ def exec_task_routine(_jobs_home, _db, _task_uid, _retry, _wait):
             sleep(_wait)
     # if results not ok we raise an alert
     if not results_ok:
-        raise_alert(f"{datetime.datetime.now()} object type: {job_obj_type} validation failed")
+        raise_alert(f"{datetime.datetime.now()} object type: {job_obj_type} status: validation failed")
     else:
-        print(f"{datetime.datetime.now()} object type: {job_obj_type} validation ok")
+        print(f"{datetime.datetime.now()} object type: {job_obj_type} status: validation ok")
 
 
 if __name__ == '__main__':
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     processes = [
         multiprocessing.Process(
             target=exec_task_routine,
-            args=(JOBS_HOME, cockpit_db, task_uid, _retry, rand_wait),
+            args=(cockpit_db, JOBS_HOME, task_uid, _retry, rand_wait),
             daemon=True
             ) for task_uid in db_select(conn, sql)[0]
     ]
