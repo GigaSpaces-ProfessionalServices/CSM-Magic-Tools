@@ -101,7 +101,7 @@ def get_object_types_from_space(_yaml_data):
     for env_name in _yaml_data['params']:
         if env_name != 'cockpit':
             pivot = _yaml_data['params'][env_name]['endpoints']['pivot']
-            exec_script = f"{os.environ['COCKPIT_HOME']}/modules/get_space_objects.py"
+            exec_script = f"{os.environ['COCKPIT_HOME']}/scripts/get_space_objects.py"
             if check_connection(pivot, 22):
                 connections_ok.append(True)
                 cmd = f"cat {exec_script} | ssh {pivot} python3 -"
@@ -155,7 +155,7 @@ def generate_job_file(_job_type, _env_name, _obj_type, _yaml_data):
     lines = [
         '#!/usr/bin/python3\n\n',
         'import subprocess\n',
-        f'exec_script = "{os.environ["COCKPIT_HOME"]}/modules/get_space_objects.py"',
+        f'exec_script = "{os.environ["COCKPIT_HOME"]}/scripts/get_space_objects.py"',
         f'cmd = f"{cmd}"',
         f'response = {sp_exec}',
         'print(response)\n\n'
