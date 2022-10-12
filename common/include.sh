@@ -77,3 +77,26 @@ function logit() {
         *)  echo -ne "$txt_to_screen" ;;
     esac
 }
+
+
+function get_cluster_hosts {
+    local cluster_name=$1
+    local prefix=$2
+    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
+        ${ODSXARTIFACTS}/odsx/host.yaml |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        }
+    }' | while read line; do
+        [[ "$line" =~ .*"${cluster_name}_host".* ]] && \
+        echo $line | sed 's/ *//g' | sed 's/"//g' | cut -d= -f2
+    done
+}
