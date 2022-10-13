@@ -64,7 +64,7 @@ sql = f"SELECT schedule_sec FROM policies WHERE \
     schedule_sec = '{policy_schedule}' GROUP BY schedule_sec"
 schedules = db_select(conn, sql)
 if len(schedules) != 0:
-    sql = f"SELECT 'uid', 'active_state' FROM policies WHERE schedule_sec = '{policy_schedule}'"
+    sql = f"SELECT uid, active_state FROM policies WHERE schedule_sec = '{policy_schedule}'"
     policies_to_run = db_select(conn,sql)
     for p in policies_to_run:
         p_uid = p[0]
