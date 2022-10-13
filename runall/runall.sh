@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.5.2
+VERSION=2.5.3
 
 function usage() {
     printf "\nrunall.sh v$VERSION\n"
@@ -54,28 +54,61 @@ function usage() {
 }
 
 function get_targeted_servers() {
+    local SERVER_GROUP=(
+        "space"             # [0]
+        "manager"           # [1]
+        "dataIntegration"   # [2]
+        "nb_applicative"    # [3]
+        "nb_management"     # [4]
+        "pivot"             # [5]
+    )
     case $1 in
         -l) list_all_servers ; exit ;;
-        -s) local env_grep="_s_" ; local svc_grep=("_s_") ;;
-        -m) local env_grep="_m_" ; local svc_grep=("_m_") ;;
-        -a) local env_grep="_a_" ; local svc_grep=("_s_" "_m_") ;;
-        -c) local env_grep="_c_" ; local svc_grep=("_c_") ;;
-        -d) local env_grep="_d_" ; local svc_grep=("_d_") ;;
-        -na) local env_grep="_na_" ; local svc_grep=("_na_") ;;
-        -nm) local env_grep="_nm_" ; local svc_grep=("_nm_") ;;
-        -n) local env_grep="_n_" ; local svc_grep=("_na_" "_nm_") ;;
-        -p) local env_grep="_p_" ; local svc_grep=("_p_") ;;
-        -A) local env_grep="_A_" ; local svc_grep=("_s_" "_m_" "_c_" "_d_" "_na_" "_nm_" "_p_") ;;
+        -s)
+            local env_preffix="_s_"
+            local srv_group=(${SERVER_GROUP[0]}) ;;
+        -m)
+            local env_preffix="_m_"
+            local srv_group=(${SERVER_GROUP[1]}) ;;
+        -a)
+            local env_preffix="_a_"
+            local srv_group=(${SERVER_GROUP[0]} ${SERVER_GROUP[1]}) ;;
+        -c)
+            local env_preffix="_c_"
+            local srv_group=(${SERVER_GROUP[2]}) ;;
+        -d)
+            local env_preffix="_d_"
+            local srv_group=(${SERVER_GROUP[2]}) ;;
+        -na)
+            local env_preffix="_na_"
+            local srv_group=(${SERVER_GROUP[3]}) ;;
+        -nm)
+            local env_preffix="_nm_"
+            local srv_group=(${SERVER_GROUP[4]}) ;;
+        -n)
+            local env_preffix="_n_"
+            local srv_group=(${SERVER_GROUP[3]} ${SERVER_GROUP[4]}) ;;
+        -p)
+            local env_preffix="_p_"
+            local srv_group=(${SERVER_GROUP[5]}) ;;
+        -A)
+            local env_preffix="_A_"
+            local srv_group=${SERVER_GROUP[@]} ;;
         *)
             echo "invalid option or bad syntax."
             usage ; exit
     esac
-    ENV_NAME="$(cat $CONFIG_FILE | grep "${env_grep}ENV_NAME" | cut -d'=' -f2)"
-    [[ ${#svc_grep[@]} -eq 1 ]] && SERVICES="$(cat $CONFIG_FILE | grep "${svc_grep[0]}SERVICES" | cut -d'=' -f2)"
+    ENV_NAME="$(cat $CONFIG_FILE | grep "${env_preffix}ENV_NAME" | cut -d'=' -f2)"
     servers=""
-    for s in ${svc_grep[@]}; do servers+=" $(cat $CONFIG_FILE | grep "${s}SERVER_LIST" | cut -d'=' -f2)" ; done
+    for s in ${srv_group[@]}; do
+        servers+=" $(for h in $(get_cluster_hosts $s); do hlist+=" $h"; done ; echo $hlist)"
+    done
+    servers=$(echo $servers | xargs)
     SERVER_LIST=""
-    for node in $servers; do grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+="${node} " ; done
+    for node in $servers; do
+        grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+="${node} "
+    done
+    SERVER_LIST=$(echo $SERVER_LIST | xargs)
 }
 
 function text_align() {
@@ -543,7 +576,6 @@ if [[ ! -f $INCLUDE ]]; then
     echo "unable to find required '${INCLUDE}' file. operation aborted."
     exit 1
 else
-    #sed -i 's/\r$//g' $INCLUDE
     source $INCLUDE
 fi
 
@@ -553,7 +585,7 @@ RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
 
-# keys/switches of the clusters in the environment
+# switches representing the clusters in the environment
 # as specified in function 'get_targeted_servers()'
 ENV_TYPES="-s -m -c -d -na -nm -p"
 
@@ -567,6 +599,11 @@ if [[ ! -e $CONFIG_FILE ]]; then
 else
     # remove carriage return characters from config file
     sed -i 's/\r$//g' $CONFIG_FILE
+fi
+
+# abort if host.yaml file is missing
+if [[ ! -e ${ODSXARTIFACTS}/odsx/host.yaml ]]; then
+    echo "ERROR: '${ODSXARTIFACTS}/odsx/host.yaml' could not be found!" ; exit
 fi
 
 # parse arguments
