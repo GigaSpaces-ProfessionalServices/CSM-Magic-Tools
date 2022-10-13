@@ -2,16 +2,16 @@
 # *-* coding: utf-8 *-*
 
 """
-policy_worker_template: template for creating worker scripts
+policy_worker: policy worker script (run by policy service)
 """
 
 import os
 import json
-from random import randrange
+from random import randint, randrange
 import subprocess
 from time import sleep
 import datetime
-import multiprocessing
+import multiprocessing, threading
 import sqlite3
 from sqlite3 import Error
 from influxdb import InfluxDBClient
@@ -48,35 +48,6 @@ def db_select(_conn, _sql):
         return _c.fetchall()
 
 
-def write_to_influx(_dbname, _data):
-    """
-    write data to influx database
-    :param dbname: the name of the target database
-    :param data: dictionary of the data payload
-                 e.g: data = {env: 'prod/dr', type: 'the_object', count: num_of_entries}
-    :return:
-    """
-    client = InfluxDBClient(host='localhost', port=8086)
-    if _dbname not in str(client.get_list_database()):
-        client.create_database(_dbname)
-    client.switch_database(_dbname)
-    timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
-    json_body = [
-        {
-            "measurement": "validation",
-            "tags": {
-                "env": _data['env'],
-                "obj_type": _data['obj_type']
-            },
-            "time": timestamp,
-            "fields": {
-                "count": _data['count']
-            }
-        }
-    ]
-    client.write_points(json_body)
-
-
 def calculate_retries(_conn, _puid):
     """
     calculate retry cycles and intervals accordding to database setting
@@ -99,9 +70,70 @@ def exec_task_routine(_cockpit_db, _jobs_home, _task_uid, _retry, _wait):
     :param _wait: interval between retris
     :return:
     """
+
     # alert handeling
     def raise_alert(_string):
         print(_string)  # DEBUG
+
+
+    def create_connection(db_file):
+        """
+        establish a database connection (or create a new db file)
+        :param db_file: path to db file
+        :return: connection object
+        """
+        _c = None
+        try:
+            _c = sqlite3.connect(db_file)
+        except Error as err:
+            print(err)
+        return _c
+
+
+    def db_select(_conn, _sql):
+        """
+        execute a select query on the database
+        :param conn: database connection object
+        :param sql: the query to execute
+        :return: list of rows
+        """
+        try:
+            _c = _conn.cursor()
+            _c.execute(_sql)
+        except Error as err:
+            print(err)
+            return None
+        else:
+            return _c.fetchall()
+
+    def write_to_influx(_dbname, _data):
+        """
+        write data to influx database
+        :param dbname: the name of the target database
+        :param data: dictionary of the data payload
+                    e.g: data = {env: 'prod/dr', type: 'the_object', count: num_of_entries}
+        :return:
+        """
+        client = InfluxDBClient(host='localhost', port=8086)
+        if _dbname not in str(client.get_list_database()):
+            client.create_database(_dbname)
+        client.switch_database(_dbname)
+        timestamp = (datetime.datetime.now()).strftime('%Y-%m-%dT%H:%M:%SZ')
+        json_body = [
+            {
+                "measurement": "validation",
+                "tags": {
+                    "env": _data['env'],
+                    "obj_type": _data['obj_type']
+                },
+                "time": timestamp,
+                "fields": {
+                    "count": _data['count']
+                }
+            }
+        ]
+        client.write_points(json_body)
+
 
     i = 1
     results_ok = False
@@ -148,17 +180,18 @@ def exec_task_routine(_cockpit_db, _jobs_home, _task_uid, _retry, _wait):
         i += 1
         if i < _retry + 1:
             sleep(_wait)
-    # if results not ok we raise an alert
+    # notify results
     if not results_ok:
         raise_alert(f"{datetime.datetime.now()} object type: {job_obj_type} status: validation failed")
     else:
         print(f"{datetime.datetime.now()} object type: {job_obj_type} status: validation ok")
-
+    os.system("echo 'finished process' >> /tmp/cp.log")
+    
 
 if __name__ == '__main__':
     CONFIG_YAML = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
     JOBS_HOME = f"{os.environ['COCKPIT_HOME']}/jobs"
-    multiprocessing.set_start_method('spawn')
+    multiprocessing.set_start_method('fork')
 
     # get policy schedule from file name
     POLICY_UID = '.'.join(os.path.basename(__file__).split('.')[:-1])
@@ -167,10 +200,10 @@ if __name__ == '__main__':
     with open(CONFIG_YAML, 'r', encoding="utf-8") as yf:
         data = yaml.safe_load(yf)
 
-    cockpit_db_home = data['params']['cockpit']['db_home']
-    cockpit_db_name = data['params']['cockpit']['db_name']
-    cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-    conn = create_connection(cockpit_db)
+    COCKPIT_DB_HOME = data['params']['cockpit']['db_home']
+    COCKPIT_DB_NAME = data['params']['cockpit']['db_name']
+    COCKPIT_DB = f"{COCKPIT_DB_HOME}/{COCKPIT_DB_NAME}"
+    conn = create_connection(COCKPIT_DB)
 
     # get retry and wait params
     _retry, _wait = calculate_retries(conn, POLICY_UID)
@@ -178,16 +211,32 @@ if __name__ == '__main__':
 
     # creating child processes by task_uid
     sql = f"SELECT task_uid FROM policies WHERE uid = '{POLICY_UID}';"
-    processes = [
-        multiprocessing.Process(
+    # processes = [
+    #     multiprocessing.Process(
+    #         target=exec_task_routine,
+    #         args=(COCKPIT_DB, JOBS_HOME, task_uid, _retry, rand_wait),
+    #         daemon=True
+    #         ) for task_uid in db_select(conn, sql)[0]
+    # ]
+
+    threads = [
+        threading.Thread (
             target=exec_task_routine,
-            args=(cockpit_db, JOBS_HOME, task_uid, _retry, rand_wait),
+            args=(COCKPIT_DB, JOBS_HOME, task_uid, _retry, rand_wait),
             daemon=True
             ) for task_uid in db_select(conn, sql)[0]
     ]
-    # start child processes
-    for p in processes:
-        p.start()
+
+    # # start child processes
+    # for p in processes:
+    #     p.start()
+    # # wait for child processes to finish
+    # for p in processes:
+    #     p.join()
+
+    # start child threads
+    for t in threads:
+        t.start()
     # wait for child processes to finish
-    for p in processes:
-        p.join()
+    for t in threads:
+        t.join()
