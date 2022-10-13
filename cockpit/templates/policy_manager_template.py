@@ -2,7 +2,7 @@
 # *-* coding: utf-8 *-*
 
 """
-policy_manager_template: template for creating manager scripts
+policy_manager: policy manager script based on schedule
 """
 
 import os
@@ -43,36 +43,36 @@ def db_select(_conn, _sql):
 
 
 # main
-config_yaml = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
-policies_home = f"{os.environ['COCKPIT_HOME']}/policies"
-policies_workers_home = f"{policies_home}/workers"
+CONFIG_YAML = f"{os.environ['COCKPIT_HOME']}/config/config.yaml"
+POLICIES_HOME = f"{os.environ['COCKPIT_HOME']}/policies"
+POLICIES_WORKERS_HOME = f"{POLICIES_HOME}/workers"
 
 # get policy schedule from file name
-policy_schedule = '.'.join(os.path.basename(__file__).split('.')[:-1]).split('_').pop()
+POLICY_SCHEDULE = '.'.join(os.path.basename(__file__).split('.')[:-1]).split('_').pop()
 
 # load config yaml
-with open(config_yaml, 'r', encoding="utf-8") as yf:
+with open(CONFIG_YAML, 'r', encoding="utf-8") as yf:
     data = yaml.safe_load(yf)
 
-cockpit_db_home = data['params']['cockpit']['db_home']
-cockpit_db_name = data['params']['cockpit']['db_name']
-cockpit_db = f"{cockpit_db_home}/{cockpit_db_name}"
-conn = create_connection(cockpit_db)
+COCKPIT_DB_HOME = data['params']['cockpit']['db_home']
+COCKPIT_DB_NAME = data['params']['cockpit']['db_name']
+COCKPIT_DB = f"{COCKPIT_DB_HOME}/{COCKPIT_DB_NAME}"
+conn = create_connection(COCKPIT_DB)
 
 # initialize policy workers
 sql = f"SELECT schedule_sec FROM policies WHERE \
-    schedule_sec = '{policy_schedule}' GROUP BY schedule_sec"
+    schedule_sec = '{POLICY_SCHEDULE}' GROUP BY schedule_sec"
 schedules = db_select(conn, sql)
 if len(schedules) != 0:
-    sql = f"SELECT uid, active_state FROM policies WHERE schedule_sec = '{policy_schedule}'"
+    sql = f"SELECT uid, active_state FROM policies WHERE schedule_sec = '{POLICY_SCHEDULE}'"
     policies_to_run = db_select(conn,sql)
     for p in policies_to_run:
         p_uid = p[0]
         p_active = p[1]
         if p_active == 'yes':   # run only workers that have active_state='yes'
             try:
-                subprocess.run([f"{policies_workers_home}/{p_uid}.py"], shell=True, check=True)
+                subprocess.run([f"{POLICIES_WORKERS_HOME}/{p_uid}.py"], shell=True, check=True)
             except subprocess.CalledProcessError as e:
                 print(e.output)
 else:
-    print(f"ERROR: policy schedule {policy_schedule} does not exist!")
+    print(f"ERROR: policy schedule {POLICY_SCHEDULE} does not exist!")
