@@ -1,5 +1,6 @@
 package com.gigaspaces.objectManagement.service;
 
+import com.gigaspaces.client.CountModifiers;
 import com.gigaspaces.document.SpaceDocument;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageConfig;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableConfig;
@@ -17,6 +18,7 @@ import com.gigaspaces.query.IdQuery;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.j_spaces.core.admin.IRemoteJSpaceAdmin;
+import com.j_spaces.core.client.ReadModifiers;
 import com.j_spaces.core.client.SQLQuery;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsm.GridServiceManager;
@@ -153,6 +155,11 @@ public class ObjectService {
 
         List<String> classList = remoteAdmin.getRuntimeInfo().m_ClassNames;
         List<Integer> countTypesInMemory = remoteAdmin.getRuntimeInfo().m_RamNumOFEntries;
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries " + remoteAdmin.getRuntimeInfo().m_RamNumOFEntries);
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFEntries " + remoteAdmin.getRuntimeInfo().m_NumOFEntries);
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFTemplates " + remoteAdmin.getRuntimeInfo().m_NumOFTemplates);
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries com.mycompany.app.Employee " + remoteAdmin.getRuntimeInfo("com.mycompany.app.Employee").m_RamNumOFEntries);
+        logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo());
         TieredStorageConfig tieredStorageConfig = remoteAdmin.getRuntimeInfo().getTieredStorageConfig();
         logger.info(">>>> tieredStorageConfig : " + tieredStorageConfig);
         List<SpaceObjectDto> spaceObjectDto = new ArrayList<>();
@@ -190,12 +197,12 @@ public class ObjectService {
             jsonObject3.addProperty("spaceId", spaceId);
             //jsonObject3.addProperty("objectInMemory", gigaSpace.count(objectType, CountModifiers.MEMORY_ONLY_SEARCH));
             //not required we can take from runtimeinfo
-            /*try {
+            try {
                 SQLQuery<SpaceDocument> query = new SQLQuery<>(objectType,"");
                 logger.info(">>>>>>>>>>>objectType + count "+ gigaSpace.count(query, CountModifiers.MEMORY_ONLY_SEARCH));
             } catch (Exception e){
                 logger.info(">>>>>objectType "+objectType+"======="+e.getLocalizedMessage(),e);
-            }*/
+            }
             logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
             jsonObject3.addProperty("objectInMemory", objectCount);
             jsonObject3.addProperty("routing", routing);
@@ -220,12 +227,12 @@ public class ObjectService {
             String tiercriteria = "";
             String criteriaFieldname = "";
             logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :" + spaceTypeDescriptor.getTieredStorageTableConfig());
-            if (spaceTypeDescriptor.getTieredStorageTableConfig() != null) {
-                tiercriteria = spaceTypeDescriptor.getTieredStorageTableConfig().getCriteria();
-                criteriaFieldname = spaceTypeDescriptor.getTieredStorageTableConfig().getName();
+            if (tieredStorageConfig.getTable(objectType) != null) {
+                tiercriteria = tieredStorageConfig.getTable(objectType).getCriteria();
+                criteriaFieldname = tieredStorageConfig.getTable(objectType).getName();
                 if (tiercriteria == null) {
-                    tiercriteria = spaceTypeDescriptor.getTieredStorageTableConfig().getPeriod().toString();
-                    criteriaFieldname = spaceTypeDescriptor.getTieredStorageTableConfig().getTimeColumn();
+                    tiercriteria = tieredStorageConfig.getTable(objectType).getPeriod().toString();
+                    criteriaFieldname = tieredStorageConfig.getTable(objectType).getTimeColumn();
                 } else {
                     if (tiercriteria.split("<").length > 1) {
                         criteriaFieldname = tiercriteria.split("<")[0];
