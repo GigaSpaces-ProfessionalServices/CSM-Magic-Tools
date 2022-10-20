@@ -40,10 +40,11 @@ for p in rows:
     policies.update({i: [f'{pname}']})
     i += 1
 
-
 # choice policy
 if len(policies) > 0:
     choices = validate_option_select(policies, "Which policies would you like to delete?")
+    if -1 in choices:
+        sys.exit()
     if choices is not None:
         pol_selected = {}
         for choice in choices:
