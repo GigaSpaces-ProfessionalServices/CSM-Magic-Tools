@@ -158,7 +158,6 @@ public class ObjectService {
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries " + remoteAdmin.getRuntimeInfo().m_RamNumOFEntries);
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFEntries " + remoteAdmin.getRuntimeInfo().m_NumOFEntries);
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFTemplates " + remoteAdmin.getRuntimeInfo().m_NumOFTemplates);
-        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries com.mycompany.app.Employee " + remoteAdmin.getRuntimeInfo("com.mycompany.app.Employee").m_RamNumOFEntries);
         logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo());
         TieredStorageConfig tieredStorageConfig = remoteAdmin.getRuntimeInfo().getTieredStorageConfig();
         logger.info(">>>> tieredStorageConfig : " + tieredStorageConfig);
