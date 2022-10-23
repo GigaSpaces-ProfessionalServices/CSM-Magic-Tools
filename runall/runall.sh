@@ -99,6 +99,9 @@ function get_targeted_servers() {
             usage ; exit
     esac
     ENV_NAME="$(cat $CONFIG_FILE | grep "${env_preffix}ENV_NAME" | cut -d'=' -f2)"
+    if [[ ${#env_preffix[@]} -eq 1 ]]; then
+        SERVICES="$(cat $CONFIG_FILE | grep "${env_preffix[0]}SERVICES" | cut -d= -f2)"
+    fi
     servers=""
     for s in ${srv_group[@]}; do
         servers+=" $(for h in $(get_cluster_hosts $s); do hlist+=" $h"; done ; echo $hlist)"
