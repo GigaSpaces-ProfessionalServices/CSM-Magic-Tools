@@ -371,19 +371,31 @@ function check_network_consistency() {
     echo $percent_packet_loss
 }
 
-function check_systemd_service(){
+function check_system_service(){
     # check systemd service exists and active
     local host=$1
     local service_name=$2
     local service_desc=$3
-    local retval=$(ssh $host systemctl list-units | grep -o "$service_name" > /dev/null 2>&1 ; echo $?)
-    if [[ $retval -ne 0 ]]; then
+    local sysd_retval=$(ssh $host systemctl list-units | grep -o "$service_name" > /dev/null 2>&1 ; echo $?)
+    local sysv_retval=$(ssh $host [[ -f /etc/init.d/${service_name} ]] > /dev/null 2>&1 ; echo $?)
+    if [[ $sysd_retval -ne 0 ]] && [[ $sysv_retval -ne 0 ]]; then
         logit --text "[${host}]${R_SPC}${service_desc^^} service not deployed!\n" -fs ERROR
         $ERR_REPORT && \
         CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}${service_desc^^} service not deployed!"
-    else
+    elif [[ $sysd_retval -eq 0 ]]
         retval=$(ssh $host "systemctl is-active $service_name")
         if [[ $retval == "active" ]]; then
+            severity="INFO"
+        else
+            severity="ERROR"
+            $ERR_REPORT && \
+            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}${service_desc^^} service status is: ${retval^}"
+        fi
+        logit --text "$(text_align "[${host}]${R_SPC}${service_desc^^} service status")" -fs $severity
+        logit --state ${retval^} -fs
+    elif [[ $sysv_retval -eq 0 ]]
+        retval=$(ssh $host "service $service_name status | grep -o 'running'")
+        if [[ $retval == "running" ]]; then
             severity="INFO"
         else
             severity="ERROR"
@@ -514,7 +526,7 @@ function run_health_checks() {
             local port=$(echo $svc | cut -d: -f2)
             local service_name=$(echo $svc | cut -d: -f3)
             if ! [[ $port =~ $is_number ]] ; then
-                check_systemd_service $host $port $service_name
+                check_system_service $host $port $service_name
                 continue
             else
                 local retval=$(check_services $host $port $service_name)
