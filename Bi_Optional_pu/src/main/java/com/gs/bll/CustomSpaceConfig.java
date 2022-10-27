@@ -150,6 +150,8 @@ public class CustomSpaceConfig extends EmbeddedSpaceBeansConfig {
             factoryBean.setCachePolicy(new TieredStorageCachePolicy(tieredStorageConfig));
         }else{
             logger.info("Skipping Tiered Storage file configuration.");
+            TieredStorageConfig tieredStorageConfig = new TieredStorageConfig();
+            factoryBean.setCachePolicy(new TieredStorageCachePolicy(tieredStorageConfig));
         }
     }
 
