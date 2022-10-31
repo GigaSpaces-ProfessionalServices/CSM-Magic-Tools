@@ -160,30 +160,32 @@ public class CommonUtil {
                         .setName(typeName)
                         .setCriteria(criteria));
             }*/
-            if (criteriaArray[0].equalsIgnoreCase("C")) {
-                logger.info("Catagory :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
-                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
-                        .setName(criteriaArray[1])
-                        .setCriteria(criteriaArray[2]));
-            }
-            if (criteriaArray[0].equalsIgnoreCase("T")) {
-                logger.info("Time Criteria:  " + criteriaArray[1] + " :: " + criteriaArray[2] + " : " + criteriaArray[3]);
-                Duration duration = Duration.parse(criteriaArray[3]);
-                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
-                        .setName(criteriaArray[1])
-                        .setTimeColumn(criteriaArray[2]).setPeriod(duration));
-            }
-            if (criteriaArray[0].equalsIgnoreCase("A")) {
-                logger.info(criteriaArray[1] + "ALL ");
-                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
-                        .setName(criteriaArray[1])
-                        .setCriteria("all"));
-            }
-            if (criteriaArray[0].equalsIgnoreCase("R")) {
-                logger.info(criteriaArray[1] + "Transient :: ");
-                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
-                        .setName(criteriaArray[1])
-                        .setTransient(true));
+            if (criteriaArray !=null) {
+                if (criteriaArray[0].equalsIgnoreCase("C")) {
+                    logger.info("Catagory :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
+                    builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                            .setName(criteriaArray[1])
+                            .setCriteria(criteriaArray[2]));
+                }
+                if (criteriaArray[0].equalsIgnoreCase("T")) {
+                    logger.info("Time Criteria:  " + criteriaArray[1] + " :: " + criteriaArray[2] + " : " + criteriaArray[3]);
+                    Duration duration = Duration.parse(criteriaArray[3]);
+                    builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                            .setName(criteriaArray[1])
+                            .setTimeColumn(criteriaArray[2]).setPeriod(duration));
+                }
+                if (criteriaArray[0].equalsIgnoreCase("A")) {
+                    logger.info(criteriaArray[1] + "ALL ");
+                    builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                            .setName(criteriaArray[1])
+                            .setCriteria("all"));
+                }
+                if (criteriaArray[0].equalsIgnoreCase("R")) {
+                    logger.info(criteriaArray[1] + "Transient :: ");
+                    builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
+                            .setName(criteriaArray[1])
+                            .setTransient(true));
+                }
             }
 
             logger.info("Exiting from -> setTierCriteria");

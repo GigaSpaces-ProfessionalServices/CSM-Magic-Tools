@@ -154,11 +154,11 @@ public class ObjectService {
                 (IRemoteJSpaceAdmin) gigaSpace.getSpace().getAdmin();
 
         List<String> classList = remoteAdmin.getRuntimeInfo().m_ClassNames;
-        List<Integer> countTypesInMemory = remoteAdmin.getRuntimeInfo().m_RamNumOFEntries;
+      /*  List<Integer> countTypesInMemory = remoteAdmin.getRuntimeInfo().m_RamNumOFEntries;
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries " + remoteAdmin.getRuntimeInfo().m_RamNumOFEntries);
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFEntries " + remoteAdmin.getRuntimeInfo().m_NumOFEntries);
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFTemplates " + remoteAdmin.getRuntimeInfo().m_NumOFTemplates);
-        logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo());
+        logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo());*/
         TieredStorageConfig tieredStorageConfig = remoteAdmin.getRuntimeInfo().getTieredStorageConfig();
         logger.info(">>>> tieredStorageConfig : " + tieredStorageConfig);
         List<SpaceObjectDto> spaceObjectDto = new ArrayList<>();
@@ -171,7 +171,7 @@ public class ObjectService {
         for (int a = 0; a < classList.size(); a++) {
             //for (Object obj : classList) {
             String objectType = classList.get(a);
-            int objectCount = countTypesInMemory.get(a);
+          //  int objectCount = countTypesInMemory.get(a);
             if (objectType.equals("java.lang.Object")) continue;
             JsonArray jsonArray2 = new JsonArray();
             jsonObject3 = new JsonObject();
@@ -196,14 +196,14 @@ public class ObjectService {
             jsonObject3.addProperty("spaceId", spaceId);
             //jsonObject3.addProperty("objectInMemory", gigaSpace.count(objectType, CountModifiers.MEMORY_ONLY_SEARCH));
             //not required we can take from runtimeinfo
-            try {
+          /*  try {
                 SQLQuery<SpaceDocument> query = new SQLQuery<>(objectType,"");
                 logger.info(">>>>>>>>>>>objectType + count "+ gigaSpace.count(query, CountModifiers.MEMORY_ONLY_SEARCH));
             } catch (Exception e){
                 logger.info(">>>>>objectType "+objectType+"======="+e.getLocalizedMessage(),e);
-            }
-            logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
-            jsonObject3.addProperty("objectInMemory", objectCount);
+            }*/
+          //  logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
+          //  jsonObject3.addProperty("objectInMemory", objectCount);
             jsonObject3.addProperty("routing", routing);
             jsonObject3.addProperty("index", index);
             //jsonObject3.addProperty("criteria", criteria != null && criteria.trim() != "" ? criteria : "");
