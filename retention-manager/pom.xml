@@ -15,7 +15,7 @@
 	<description>Data Retention Manager for space objects</description>
 	<properties>
 		<java.version>8</java.version>
-		<gs.version>16.2.0-m26-thu-30</gs.version>
+		<gs.version>16.2.0-patch-L-1</gs.version>
 	</properties>
 
 	<repositories>
