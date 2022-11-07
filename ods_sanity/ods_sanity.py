@@ -4,6 +4,7 @@
 import os
 import requests
 import json
+import yaml
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from signal import SIGINT, signal
 import subprocess
@@ -31,7 +32,10 @@ def handler(signal_recieved, frame):
 
 
 def argument_parser():
-
+    '''
+    argument parser function    
+    :return: arguments object/dictionary
+    '''
     parser = argparse.ArgumentParser(
         description='description: kill space instances duo - primary and backup',
         epilog='* please report any issue to alon.segal2@bankleumi.co.il'
@@ -69,31 +73,15 @@ def argument_parser():
     return the_arguments
 
 
-def get_managers_from_runall_conf():
+def get_host_yaml_servers(_cluster):
     """
-    Get ODS management hosts from runall.conf
+    Get ODS hosts from host.yaml
+    :_cluster: name of cluster to filter
     :return: List of management hosts
     """
-    with open(runall_conf, 'r') as cfile:
-        for line in cfile:
-            if '_m_SERVER_LIST' in line:
-                mng_hosts = line.split('=')
-                mng_hosts = mng_hosts[1].split()
-                break
-    return mng_hosts
-
-
-def get_iidr_from_runall_conf():
-    """
-    Get ODS management hosts from runall.conf
-    :return: List of management hosts
-    """
-    with open(runall_conf, 'r') as cfile:
-        for line in cfile:
-            if '_c_SERVER_LIST' in line:
-                _hosts = line.split('=')
-                _hosts = _hosts[1].split()
-                break
+    with open(host_yaml, 'r', encoding='utf8') as cfile:
+        ydata = yaml.safe_load(cfile)
+    _hosts = [h for h in ydata['servers'][_cluster].values()]
     return _hosts
 
 
@@ -304,17 +292,15 @@ class OdsServiceGrid:
                 return False
 
 
-def test_microservice_e2e(the_host, the_port):
-    the_url = f"http://{the_host}:{the_port}/v1/u1"
+def test_microservice_e2e(_the_host, _the_port, _the_json):
+    the_url = f"http://{_the_host}:{_the_port}/v1/u1"
     the_headers = {'Content-Type': 'application/json'}
-    the_json = {
-        "_COL": "VAL",
-        "_COL": "VAL",
-        "_COL": "VAL",
-        "_COL": "FROM_DATE",
-        "_COL": "TO_DATE"
-    }
-    response = requests.get(the_url, json=the_json, auth=(auth['user'], auth['pass']), headers=the_headers)
+    response = requests.get(
+        the_url,
+        json=_the_json,
+        auth=(auth['user'], auth['pass']),
+        headers=the_headers
+    )
     return response.status_code
 
 
@@ -346,7 +332,7 @@ def show_service_polling(the_service_name):
             return
         colorama.init(autoreset=True)
         time.sleep(0.5)
-        response = test_microservice_e2e(connection_params[0], connection_params[1])
+        response = test_microservice_e2e(connection_params[0], connection_params[1], ms_config_data[the_service_name])
         if response == 200:
             svc_status = f"{Fore.GREEN}Successful"
             svc_log_status = 'Successful'
@@ -393,6 +379,8 @@ def show_grid_info():
     for _h in hosts:
         if _h not in the_info['managers']:
             spaces_servers.append(_h)
+    if len(spaces_servers) == 0:
+        spaces_servers = the_info['managers']
     print(f"{'space servers':<14}: {spaces_servers}")
     print(f"{'partitions':<14}: {osg.Space.partition_count()}")
     logging.shutdown()
@@ -544,7 +532,7 @@ def is_env_secured(the_manager):
 def show_di_pipeline_info():
     logger = logging.getLogger()
     print('#' * 80 + '\n' + '#' * 31 + ' [ DI PIPELINES ] ' + '#' * 31 + '\n' + '#' * 80)
-    servers = get_iidr_from_runall_conf()
+    servers = get_host_yaml_servers('dataIntergation')
     port = "6080"
     service_active = False
     for server in servers:
@@ -570,7 +558,7 @@ def show_iidr_subscriptions():
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     logger = logging.getLogger()
     print('#' * 80 + '\n' + '#' * 28 + ' [ IIDR SUBSCRIPTIONS ] ' + '#' * 28 + '\n' + '#' * 80)
-    servers = get_iidr_from_runall_conf()
+    servers = get_host_yaml_servers('dataIntergation')
     port = 10101
     user = "USERNAME"
     service_active = False
@@ -611,9 +599,11 @@ config_dir = utils_dir + "/mega_loader/config"
 mega_loader_exec = utils_dir + "/mega_loader/mega_loader.py"
 runall_exe = utils_dir + "/runall/runall.sh"
 runall_conf = utils_dir + "/runall/runall.conf"
+host_yaml = f"{os.environ['ODSXARTIFACTS']}/odsx/host.yaml"
 recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
 defualt_port = 8090
 k6_test = f"{utils_dir}/sanity/run_k6.sh"
+ms_config = f"{gs_root}/microservices/config.json"
 
 if __name__ == '__main__':
     # catch user CTRL+C key press
@@ -637,7 +627,7 @@ if __name__ == '__main__':
         # present title
         print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
         # check REST status and set operational manager
-        managers = get_managers_from_runall_conf()
+        managers = get_host_yaml_servers('manager')
         # configure authentication
         auth = {}
         if is_env_secured(managers[0]):
@@ -679,6 +669,9 @@ if __name__ == '__main__':
             logger.info('Sanity complete.')
             logging.shutdown()
             exit(1)
+        # load microservices config
+        with open(ms_config, 'r', encoding='utf8') as msc:
+            ms_config_data = json.load(msc) 
         if 'cycles' in arguments:
             cycles = True
             total_cycles = int(arguments['cycles'])
