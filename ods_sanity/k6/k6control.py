@@ -5,15 +5,82 @@ import sys
 import time
 import json
 import getopt
+import itertools
+import threading
 import datetime
 import requests
 import curses
 from math import log10, pow
 
+
+class Spinner:
+    """
+    spinner class to show spinner while executing something
+    """
+    def __init__(self, message, delay=0.1):
+        self.spinner = itertools.cycle(['|', '/', '-', '\\'])
+        self.delay = delay
+        self.busy = False
+        self.spinner_visible = False
+        self._screen_lock = threading.Lock()
+        self.thread = threading.Thread(target=self.spinner_task)
+        sys.stdout.write(message)
+
+    def write_next(self):
+        """
+        write the next char for spinner
+        """
+        with self._screen_lock:
+            if not self.spinner_visible:
+                sys.stdout.write(next(self.spinner))
+                self.spinner_visible = True
+                sys.stdout.flush()
+
+    def remove_spinner(self, cleanup=False):
+        """
+        delete the spinner
+        """
+        with self._screen_lock:
+            if self.spinner_visible:
+                sys.stdout.write('\b')
+                self.spinner_visible = False
+                if cleanup:
+                    sys.stdout.write(' ')       # overwrite spinner with blank
+                    sys.stdout.write('\r')      # move to next line
+                sys.stdout.flush()
+
+    def spinner_task(self):
+        """
+        task routine: run -> wait -> remove
+        """
+        while self.busy:
+            self.write_next()
+            time.sleep(self.delay)
+            self.remove_spinner()
+
+    def __enter__(self):
+        """
+        context manager func
+        """
+        if sys.stdout.isatty():
+            self.busy = True
+            self.thread.start()
+
+    def __exit__(self, _exception, _value, _tb):
+        """
+        context manager func
+        """
+        if sys.stdout.isatty():
+            self.busy = False
+            self.remove_spinner(cleanup=True)
+        else:
+            sys.stdout.write('\r')
+
+
 k6_url = "http://localhost:6565"
 refresh_interval = 1
 vumod = 1
-
+spinner = Spinner
 
 def main():
     global k6_url, refresh_interval, vumod
@@ -45,6 +112,16 @@ def main():
             if not o in ("-h", "--help"):
                 sys.exit(1)
             sys.exit(0)
+
+    # this loop waits for a k6 process to start
+    with spinner("waiting for k6 to start ... ", delay=0.1):
+        while True:
+            try:
+                r = requests.get(k6_url)
+            except:
+                time.sleep(1)
+            else:
+                break
 
     # Execute the run() function via the curses wrapper
     curses.wrapper(run)
@@ -307,4 +384,7 @@ def usage():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nAborted.")
