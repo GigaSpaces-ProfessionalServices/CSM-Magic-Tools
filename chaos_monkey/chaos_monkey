@@ -1,0 +1,751 @@
+#!/bin/bash
+# ODS chaos monkey
+# Author: Josh Roden
+# _VERSION=3.0
+# _BUILD=2022-11-09
+
+
+####################ENVIRONMENT variables
+source ~/.bash_profile
+[[ ! -f /dbagiga/utils/chaos_monkey/chaos_monkey.conf ]] && { echo "chaos config file does not exist" ; exit 1 ; }
+source /dbagiga/utils/chaos_monkey/chaos_monkey.conf       # get env vars from conf file - allows chaos to be normalized
+
+#################### FUNCTIONS
+
+# Find the active ods manager
+query_active_manager() {
+  find ${_MANAGER_CONTROLLER}/logs -type f -mtime +2 -delete
+  cd $_MANAGER_CONTROLLER ; ./testController.sh 2>&1 | tail -1
+}
+
+crontab_list() {
+  [[ $# -eq 0 ]] && { echo -e "\n Provide action to query\n" ; exit 1 ; } 
+  echo -e "\nList of all scheduled chaos actions:\n"
+  local crontab_out=$(crontab -l | grep "${1}")
+  if [[ "$crontab_out" == "" ]] ; then
+    echo -e "No actions are scheduled\n"
+  else
+    crontab -l | grep "${1}" ; echo
+  fi
+}
+
+# Function chooses a random server...
+#   Receives 1 parameter - array holding all servers belonging to a role.
+#   Returns randomly selected server name.
+chaos_get_rnd() {
+  eval local temp=('$'{${1}[@]})
+  if [[ "$1" == "_ALL_ODS_SPC" || ( "${_ENVIRONMENT}" == "GRG" && "$1" == "_ALL_ODS_MNG" ) ]] ; then    # Don't kill first SPACE or first GRG MANAGER - TBD: This will not be necessary when GSC's of PU's that were killed are recreated by automation script
+    local min=2
+  else
+    local min=1
+  fi
+  local max=${#temp[@]}
+  rnd=$(shuf -i ${min}-$max -n1)                        # choose random no. between "min" and "total num of elements"
+  ((rnd--))                                             # arrays start from 0 so decrease index by 1
+  echo ${temp[$rnd]}
+}
+
+
+# ROLE variables are assigned a random server of its role type
+get_random_servers() {
+  ods_mng=$(chaos_get_rnd _ALL_ODS_MNG)
+  ods_spc=$(chaos_get_rnd _ALL_ODS_SPC)
+  nb_mng=$(chaos_get_rnd _ALL_NB_MNG)
+  nb_app=$(chaos_get_rnd _ALL_NB_APP)
+  _ALL_RND_MACHINES="$ods_mng $ods_spc $nb_mng $nb_app"         # _ALL_RND_MACHINES contains randomly assigned server for each role
+}
+
+
+# Check that all ROLE variables have values
+check_role_vars_set() {
+  for h in $_ALL_ROLES ; do
+    eval y='$'$h
+    if [[ -z $y ]] ; then 
+      echo -e "\n Role variable $h is not set.\n" | tee -a ${_LOG}
+      exit 1
+    fi
+  done
+}
+
+# Check if selected servers are up
+check_servers_up() {
+  local check_up=0
+  for h in $_ALL_RND_MACHINES ; do
+    if [[ ! "`ping -c1 -w1 $h 2>/dev/null`" ]] ;then 
+      echo -e "$(date) Machine $h is down" | tee -a ${_LOG}
+      check_up=1
+    fi
+  done
+  [[ $check_up -eq 1 ]] && { echo -e "$(date) More than one machine down so exiting." | tee -a $_LOG ; exit 1 ; }
+}
+
+
+#################### Disruptive Chaos FUNCTIONS
+
+# F1 - Kill GSA on ODS MANAGER
+chaos_kill_gsa_ods_mng_cron() {
+  if crontab -l | grep 'kill_gsa_ods_mng' > /dev/null ; then
+    echo -e "$(date) Kill GSA ODS MANAGER - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "1 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_gsa_ods_mng" ) | crontab -
+    echo -e "$(date) Kill GSA ODS MANAGER - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F2 - Kill GSA on ODS SPACE
+chaos_kill_gsa_ods_spc_cron() {
+  if crontab -l | grep 'kill_gsa_ods_spc' > /dev/null ; then
+    echo -e "$(date) Kill GSA on ODS SPACE - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "16 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_gsa_ods_spc" ) | crontab -
+    echo -e "$(date) Kill GSA on ODS SPACE - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F3 - Kill primary bll-service GSC on ODS SPACE
+chaos_kill_gsc_ods_spc_cron() {
+  if crontab -l | grep 'kill_gsc_ods_spc' > /dev/null ; then
+    echo -e "$(date) Kill GSC on ODS SPACE - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+  ( crontab -l ; echo "9 17,20,23,2,5 * * * /usr/local/bin/chaos_monkey kill_gsc_ods_spc" ) | crontab -
+    echo -e "$(date) Kill GSC on ODS SPACE - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+chaos_kill_gsc_ods_spc() {
+  # get all PRIMARY GSC's of specific space server in the form of "SPACE_SERVER~PID bllspace~10_1"
+  num_ods_spc=${#_ALL_ODS_SPC[@]} loop_num=1 spc_min=0 spc_max=$(( ${#_ALL_ODS_SPC[@]} - 1 ))
+  echo -e num_ods_spc=${#_ALL_ODS_SPC[@]} loop_num=1 spc_min=0 spc_max=$(( ${#_ALL_ODS_SPC[@]} - 1 )) >> $_FULL_LOG
+  while true ; do
+    ods_spc=${_ALL_ODS_SPC[$( shuf -i 0-${spc_max} -n1)]}   # get random space server
+    echo chosen random ods_spc=$ods_spc >> $_FULL_LOG
+    # curl LB->NB manager->ODS manager
+    unset gsc_names ; readarray gsc_names < <( curl -skX GET --header 'Accept: application/json' "https://${_END_POINT}:8090/v2/spaces/bllspace/instances" |jq '.[] | select(.mode | contains("PRIMARY")) | {id,containerId}'| sed -En 's/.*(LINX.{9}~[0-9]*).*/\1/p ; s/.*(bllspace~[0-9]*_[0-9]).*/\1/p'|sed 'N;s/\n/ /' | grep $ods_spc )
+    gsc_num=${#gsc_names[@]}
+    echo -e loop_num=$loop_num gsc_num=$gsc_num >> $_FULL_LOG
+    [[ $gsc_num -ne 0 ]] && break   # if SPACE_SERVER has one or more PRIMARY GSC then break, else try another SPACE_SERVER
+    [[ $((loop_num++)) -gt 50 ]] && { echo -e "$(date) kill_gsc_ods_spc failed 50 times to find PRIMARY GSC to kill" | tee -a $_LOG ; exit 1 ; }
+  done
+  unset gsc_names_temp ; for ((i=0 ; i<gsc_num ; i++)) ; do gsc_names_temp+=( "$( echo -en ${gsc_names[${i}]} | tr -d '\n' )" ) ; done
+  gsc_names_rnd=${gsc_names_temp[$(shuf -i 0-$((gsc_num - 1)) -n1)]}  # Get random "container_id + space_id" pair
+  container_id=${gsc_names_rnd#* } space_id=${gsc_names_rnd[0]% *}    # derive from random gsc pair "container_id" and "space_id"
+  gsc_pid=${container_id#*~} 
+  echo -e "$(date) Killing primary GSC: ${space_id}, on server: ${ods_spc}, pid: ${gsc_pid}." | tee -a $_LOG $_FULL_LOG
+  ssh $ods_spc "kill -9 ${gsc_pid}"
+}
+
+# F4 - Reboot ODS MANAGER
+chaos_reboot_ods_mng_cron() {
+  if crontab -l | grep 'reboot_ods_mng' > /dev/null ; then
+    echo -e "$(date) Reboot ODS MANAGER - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+  ( crontab -l ; echo "31 4 * * * /usr/local/bin/chaos_monkey reboot_ods_mng" ) | crontab -
+    echo -e "$(date) Reboot ODS MANAGER - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F5 - Reboot ODS SPACE
+chaos_reboot_ods_spc_cron() {
+  if crontab -l | grep 'reboot_ods_spc' > /dev/null ; then
+    echo -e "$(date) Reboot ODS SPACE - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+  ( crontab -l ; echo "41 4 * * * /usr/local/bin/chaos_monkey reboot_ods_spc" ) | crontab -
+    echo -e "$(date) Reboot ODS SPACE - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F6 Disconnect ODS MANAGER
+chaos_down_up_net_ods_mng_cron() {
+  if crontab -l | grep 'down_up_net_ods_mng' > /dev/null ; then
+    echo -e "$(date) Disconnect ODS MANAGER - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+  ( crontab -l ; echo "46 17,23,5 * * * /usr/local/bin/chaos_monkey down_up_net_ods_mng" ) | crontab -
+    echo -e "$(date) Disconnect ODS MANAGER - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F7 Disconnect ODS SPACE from network every 6hrs for 1min.
+chaos_down_up_net_ods_spc_cron() {
+  if crontab -l | grep 'down_up_net_ods_spc' > /dev/null ; then
+    echo -e "$(date) Disconnect ODS SPACE - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "56 18,0,6 * * * /usr/local/bin/chaos_monkey down_up_net_ods_spc" ) | crontab -
+    echo -e "$(date) Disconnect ODS SPACE - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F8 - Reboot NB APP every 3hrs
+chaos_reboot_nb_app_cron() {
+  if crontab -l | grep 'reboot_nb_app' > /dev/null ; then
+    echo -e "$(date) Reboot NB Application - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "6 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey reboot_nb_app" ) | crontab -
+    echo -e "$(date) Reboot NB Application - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F9 - Reboot NB Manager every 3hrs
+chaos_reboot_nb_mng_cron() {
+  if crontab -l | grep 'reboot_nb_mng' > /dev/null ; then
+    echo -e "$(date) Reboot NB Manager - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "18 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey reboot_nb_mng" ) | crontab -
+    echo -e "$(date) Reboot NB Manager - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F10 Out of memory.
+
+# F11 Partition full
+
+# F12a Kill nginx on NB Manager
+chaos_kill_nginx_nb_mng_cron() {
+  if crontab -l | grep 'kill_nginx_nb_mng' > /dev/null ; then
+    echo -e "$(date) Kill nginx on NB Manager - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "22 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_nginx_nb_mng" ) | crontab -
+    echo -e "$(date) Kill nginx on NB Manager - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F12b Kill nginx on NB Application
+chaos_kill_nginx_nb_app_cron() {
+  if crontab -l | grep 'kill_nginx_nb_app' > /dev/null ; then
+    echo -e "$(date) Kill nginx on NB Application - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "26 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_nginx_nb_app" ) | crontab -
+    echo -e "$(date) Kill nginx on NB Application - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F14 Kill microservice
+
+# F15a Kill consul on NB APP
+chaos_kill_consul_nb_app_cron() {
+  if crontab -l | grep 'kill_consul_nb_app' > /dev/null ; then
+    echo -e "$(date) Kill consul on NB Application - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "29 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_consul_nb_app" ) | crontab -
+    echo -e "$(date) Kill consul on NB Application - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F15b Kill consul on ODS SPACE
+chaos_kill_consul_ods_spc_cron() {
+  if crontab -l | grep 'kill_consul_ods_spc' > /dev/null ; then
+    echo -e "$(date) Kill consul on ODS SPACE - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "41 17,20,23,2,5 * * * /usr/local/bin/chaos_monkey kill_consul_ods_spc" ) | crontab -
+    echo -e "$(date) Kill consul on ODS SPACE - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+# F16 Kill consul-template on NB APP
+chaos_kill_consul-template_nb_app_cron() {
+  if crontab -l | grep 'kill_consul-template_nb_app' > /dev/null ; then
+    echo -e "$(date) Kill consul-template on NB Application - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "32 18,21,0,3,6 * * * /usr/local/bin/chaos_monkey kill_consul-template_nb_app" ) | crontab -
+    echo -e "$(date) Kill consul-template on NB Application - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  fi
+}
+
+
+# Schedule Check STATUS, ENTRIES, and STATE of bllspace
+chaos_entries_and_state_cron() {
+  if [[ "$(crontab -l | grep 'chaos_monkey -i' )" ]] ; then
+    echo -e "$(date) Check STATUS, ENTRIES, and STATE of bllspace - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "* 17-23,0-8 * * * /usr/local/bin/chaos_monkey -i" ) | crontab -
+    echo -e "$(date) Check STATUS, ENTRIES, and STATE for bllspace - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG 
+  fi
+}
+
+# STATUS check of ENTRIES and STATE of bllspace
+chaos_entries_and_state() {
+  sleep 5
+  bllspace_entries=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $ods_mng --username=$_USER --password=$_PASS space info --operation-stats bllspace | grep 'Objects Count' | awk '{print $3}' | tr -d ",")
+  echo -e "\n\nShowing statistics for bllspace: RecNum=${bllspace_entries}, State=${_BLL_STATE}\n"
+  local prev_state=$(grep State= /var/log/chaos_monkey.log|tail -1 | awk -F= '{print $3}')
+  local prev_ent=$(grep State= /var/log/chaos_monkey.log | tail -1 | awk -F= '{print $2}' | awk -F', ' '{print $1}')
+  if [[ "${prev_ent}" != "${bllspace_entries}" && "${prev_state}" = "${_BLL_STATE}" ]] ; then
+    echo -e "$(date) bllspace: changed RecNum=${bllspace_entries}, State=${_BLL_STATE}" | tee -a $_INSTANCE_LOG | tee -a $_LOG
+  elif [[ "${prev_ent}" = "${bllspace_entries}" && "${prev_state}" != "${_BLL_STATE}" ]] ; then
+    echo -e "$(date) bllspace: RecNum=${bllspace_entries}, changed State=${_BLL_STATE}" | tee -a $_INSTANCE_LOG | tee -a $_LOG
+  elif [[ "${prev_ent}" != "${bllspace_entries}" && "${prev_state}" != "${_BLL_STATE}" ]] ; then
+    echo -e "$(date) bllspace: changed RecNum=${bllspace_entries}, changed State=${_BLL_STATE}" | tee -a $_INSTANCE_LOG | tee -a $_LOG
+  else
+    echo -e "$(date) bllspace: RecNum=${bllspace_entries}, State=${_BLL_STATE}" >> $_INSTANCE_LOG
+  fi
+}
+
+# Schedule Check curl microservices ms-digital-nt2cr ms-digital-iban ms-digital-users tn_mati
+chaos_curl_micros_cron() {
+  if [[ "$(crontab -l | grep chaos_monkey_micros)" ]] ; then
+    echo -e "$(date) Check curl microservices ms-digital-nt2cr ms-digital-iban ms-digital-users tn_mati - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "* 17-23,0-8 * * * /usr/local/bin/chaos_monkey_micros" ) | crontab -
+    echo -e "$(date) Check curl microservices ms-digital-nt2cr ms-digital-iban ms-digital-users tn_mati - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG 
+  fi
+}
+
+# Schedule Check instance count and role for bllspace
+chaos_instance_cron() {
+  if [[ "$(crontab -l | grep chaos_monkey_inst)" ]] ; then
+    echo -e "$(date) Check instance count and role for bllspace - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "* 17-23,0-8 * * * /usr/local/bin/chaos_monkey_inst.sh" ) | crontab -
+    echo -e "$(date) Check instance count and role for bllspace - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG 
+  fi
+}
+
+# TBD - REBALANCER function isn't working properly yet
+chaos_rebalancer_cron() {
+  if [[ "$(crontab -l | grep 'rebalancer' )" ]] ; then
+    echo -e "$(date) Rebalancer - ${_RC}already scheduled${_NC}" | tee -a $_LOG >> $_MSG
+  else
+    ( crontab -l ; echo "10 7 * * * /usr/local/bin/chaos_monkey rebalancer" ) | crontab -
+    echo -e "$(date) Rebalancer - ${_GC}successfully scheduled${_NC}" | tee -a $_LOG >> $_MSG 
+  fi
+}
+
+# TBD - REBALANCER function isn't working properly yet
+rebal_setup_env() {
+  _REBAL_WAIT_SEC=30
+  _REBAL_LOG=/dbagigalogs/chaos_monkey_REBALANCER
+  _REBAL_TMP=/tmp/rebal$$
+  _NUM_SPACES=${#_ALL_ODS_SPC[@]}
+  _LIST_INST=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $_ALL_ODS_MNG --username=$_USER --password=$_PASS space list-instances bllspace)
+  _TOTAL_INST=$(sed 's/.*SUMMARY//' <(echo $_LIST_INST) | awk '{print $2}')
+  _TOTAL_PRIME_INST=$(sed 's/.*SUMMARY//' <(echo $_LIST_INST ) | awk '{print $4}')
+  _INST_PER_SPACE=$(( $_TOTAL_INST / $_NUM_SPACES ))
+  _PRIME_INST_PER_SPACE=$(( $_TOTAL_PRIME_INST / $_NUM_SPACES  ))
+  echo "Env architecture: $(sed 's/.*SUMMARY//' <( echo ${_LIST_INST} ))" | tee -a $_REBAL_LOG
+}
+
+# TBD - REBALANCER function isn't working properly yet
+echo_state() {
+  if [[ "$(grep 'bllspace state=' $_LOG | tail -1 | awk -F'=' '{print $2}')" != "${1}" ]] ; then
+    echo "$(date) bllspace state=${1}" | tee -a $_REBAL_LOG | tee -a $_LOG
+  fi
+}
+
+# TBD - REBALANCER function isn't working properly yet
+echo_wait() {
+  if [[ ! "$(tail -1 $_LOG | grep 'Waiting for stable INTACT state')" ]] ; then
+    echo "$(date) Waiting for stable INTACT state ${_REBAL_WAIT_SEC} sec." | tee -a $_REBAL_LOG | tee -a $_LOG
+  fi
+}
+
+# TBD - REBALANCER function isn't working properly yet
+check_state() {
+  while true ; do
+    local bll_state=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $_ALL_ODS_MNG service list |grep -A1 STATUS|tail -1|awk '{print $6}')
+    echo_state "${bll_state}"
+    echo_wait ; sleep ${_REBAL_WAIT_SEC}
+    local bll_state=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $_ALL_ODS_MNG service list |grep -A1 STATUS|tail -1|awk '{print $6}')
+    echo_state "${bll_state}"
+    [[ "${bll_state}" = "INTACT" ]] && { break ; }
+  done
+}
+
+# TBD - REBALANCER function isn't working properly yet
+rebal_get_status() {
+  /dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $_ALL_ODS_MNG --username=$_USER --password=$_PASS space list-instances bllspace > $_REBAL_TMP 2>&1
+  local str=""
+  for spc in ${_ALL_ODS_SPC[@]} ; do
+    local actual_primary=$(grep PRIMARY $_REBAL_TMP | grep $spc | wc -l)
+    str+="${spc}=${actual_primary} "
+  done
+  echo $str
+}
+
+# TBD - REBALANCER function isn't working properly yet
+rebal_rebalance_space() {
+  eval local spc="${1}"
+  cd /dbagiga
+  spc=$(host ${spc} | awk '{print $NF}')
+  local mng_ip=$( host $_ALL_ODS_MNG | awk '{print $NF}' )
+  ( java -Djava.util.logging.config.file=/dbagiga/recovery_rebalance_logging.properties -cp /dbagiga/node-rebalancer.jar com.gigaspaces.odsx.noderebalancer.RunRebalancer -locators $mng_ip -hostIp $spc -zone bll -gscCount $_INST_PER_SPACE | tee $_REBAL_TMP | tee -a $_REBAL_LOG 2>&1 & )
+  local rebal_pid=$(ps -ef | grep 'com.gigaspaces.odsx.noderebalancer.RunRebalancer' | grep -v grep |awk '{print $2}')
+  echo "$(date) ########## Rebalancing pid=$rebal_pid "| tee -a $_REBAL_LOG
+  ps -ef |grep -v grep | grep $rebal_pid| tee -a $_REBAL_LOG
+  local count=0
+  while [[ ! "$(grep 'Running DeleteAction' ${_REBAL_TMP})" ]] ; do
+    echo "########## count=${count}"| tee -a $_REBAL_LOG
+    (( count++ )) ; sleep 10
+    ps -ef | grep -v grep |grep $rebal_pid| tee -a $_REBAL_LOG
+  done
+  sleep $_REBAL_WAIT_SEC
+  ps -ef | grep -v grep |grep $rebal_pid| tee -a $_REBAL_LOG
+  echo "$(date) ########## Killing rebal pid=$rebal_pid" | tee -a $_REBAL_LOG
+  kill $rebal_pid
+}
+
+# TBD - REBALANCER function isn't working properly yet
+chaos_rebalancer() {
+  echo "$(date) Start checking spaces." | tee -a $_REBAL_LOG | tee -a $_LOG
+  echo "$(date) Primaries status BEFORE: $(rebal_get_status)" | tee -a $_REBAL_LOG | tee -a $_LOG
+  for spc in ${_ALL_ODS_SPC[@]} ; do
+    echo "########## Check ${spc}" | tee -a $_REBAL_LOG
+    /dbagiga/gigaspaces-smart-ods/bin/gs.sh --server $_ALL_ODS_MNG --username=$_USER --password=$_PASS space list-instances bllspace > $_REBAL_TMP 2>&1
+    local actual_primary=$(grep PRIMARY $_REBAL_TMP | grep $spc | wc -l)
+    if [[ $actual_primary -lt 5 ]] ; then
+      echo "$(date) Running rebalancer for ${spc}" | tee -a $_REBAL_LOG | tee -a $_LOG
+      rebal_rebalance_space "${spc}"
+      echo "$(date) Primaries status: $(rebal_get_status)" | tee -a $_REBAL_LOG | tee -a $_LOG
+    fi
+  done
+  echo "$(date) Finished checking spaces." | tee -a $_REBAL_LOG | tee -a $_LOG
+  rm -f $_REBAL_TMP
+}
+
+
+#################### ROLLBACK ####################
+
+# F1 - Rollback kill GSA on ODS MANAGER every 3hrs
+chaos_kill_gsa_ods_mng_rollb() {
+  echo -e "$(date) Unscheduled kill GSA on ODS MANAGER every 3hrs" >> $_LOG
+  ( crontab -l | sed '/kill_gsa_ods_mng/d' ) | crontab -
+}
+
+# F2 - Rollback kill GSA on ODS SPACE every 3hrs
+chaos_kill_gsa_ods_spc_rollb() {
+  echo -e "$(date) Unscheduled kill GSA on ODS SPACE every 3hrs" >> $_LOG
+    ( crontab -l | sed '/kill_gsa_ods_spc/d' ) | crontab -
+}
+
+# F3 - Rollback kill GSC on ODS SPACE every 3hrs
+chaos_kill_gsc_ods_spc_rollb () {
+  echo -e "$(date) Unscheduled kill GSC on ODS SPACE every 3hrs" >> $_LOG
+  ( crontab -l | sed '/kill_gsc_ods_spc/d' ) | crontab -
+}
+
+# F4 - Rollback reboot ODS MANAGER every night at 03:00
+chaos_reboot_ods_mng_rollb(){
+  echo -e "$(date) Unscheduled reboot ODS MANAGER every night at 03:00" >> $_LOG
+  ( crontab -l | sed "/reboot_ods_mng/d" ) | crontab -
+}
+
+# F5 - Rollback not relevant
+
+# F6 - Rollback Disconnect ODS MANAGER
+chaos_down_up_net_ods_mng_rollb () {
+  echo -e "$(date) Unscheduled Disconnect ODS MANAGER every 6hrs for 1min" >> $_LOG
+  ( crontab -l | sed "/down_up_net_ods_mng/d" ) | crontab -
+}
+
+# F7 - Rollback Disconnect ODS SPACE from network every 6hrs for 1min.
+chaos_down_up_net_ods_spc_rollb () {
+  echo -e "$(date) Unscheduled Disconnect ODS SPACE from network every 6hrs for 1min" >> $_LOG
+  ( crontab -l | sed "/down_up_net_ods_spc/d" ) | crontab -
+}
+
+# F8 - Rollback Reboot NB APP every 3hrs
+chaos_reboot_nb_app_rollb() {
+  echo -e "$(date) Unscheduled Reboot NB APP every 3hrs" >> $_LOG
+  ( crontab -l | sed "/reboot_nb_app/d" ) | crontab -
+}
+
+# F9 - Rollback Reboot NB Manager every 3hrs
+chaos_reboot_nb_mng_rollb () {
+  echo -e "$(date) Unscheduled Reboot NB Manager every 3hrs" >> $_LOG
+  ( crontab -l | sed "/reboot_nb_mng/d" ) | crontab -
+}
+
+# Rollback all chaos monkey actions
+chaos_all_actions_rollb () {
+  echo -e "$(date) Unscheduled all chaos monkey actions" >> $_LOG
+  ( crontab -l | sed "/chaos_monkey/d" ) | crontab -
+}
+
+list_friendly() {
+  case "$1" in
+    "chaos_monkey")
+      echo -e "\nKill GSA of ODS Manager"
+      echo -e "Reboot ODS Manager"
+      echo -e "Network disconnect of ODS Manager"
+      echo -e "Kill GSA of ODS Space"
+      echo -e "Kill GSC of ODS Space"
+      echo -e "Network disconnect of ODS Space"
+      echo -e "Reboot of Northbound Manager"
+      echo -e "Kill nginx Northbound Manager"
+      echo -e "Reboot of Northbound Application"
+      echo -e "Kill nginx Northbound Application\n"
+      ;;
+    "ods_mng")
+      echo -e "\nKill GSA of ODS Manager"
+      echo -e "Reboot ODS Manager"
+      echo -e "Network disconnect of ODS Manager\n"
+      ;;
+    "ods_spc")
+      echo -e "\nKill GSA of ODS Space"
+      echo -e "Kill GSC of ODS Space"
+      echo -e "Network disconnect of ODS Space\n"
+      ;;
+    "nb_mng")
+      echo -e "\nReboot of Northbound Manager"
+      echo -e "Kill nginx Northbound Manager\n"
+      ;;
+    "nb_app")
+      echo -e "\nReboot of Northbound Application"
+      echo -e "Kill nginx Northbound Application\n"
+      ;;
+    *)
+      echo -e "\nBad option\n"
+    exit 0
+  esac
+}
+
+chaos_help() {
+  clear
+  python3 -c 'import pyfiglet ; print(pyfiglet.figlet_format("Chaos Monkey"))'
+  echo -e "Chaos Monkey Ver. ${_VERSION}\nBuild: ${_BUILD}\n---------------------"
+  echo -e "\nUsage: `basename $0` [option]\n"
+  echo -e "   -h    Show this HELP menu."
+  echo -e "   -l    List all chaos actions defined in crontab."
+  echo -e "   -i    Space information."
+  echo -e
+  echo -e "Schedule actions:"
+  echo -e "   -m    ODS Manager actions (kill gsa, reboot, net disconnect)."
+  echo -e "   -s    ODS Space actions (kill gsa, kill gsc, net disconnect)."
+  echo -e "   -nm   NB Manager actions (reboot, kill nginx)."
+  echo -e "   -na   NB Application actions (reboot, kill nginx/consul/consul-template)."
+  echo -e "   -oom  (TBD) Out of memory."
+  echo -e "   -pf   (TBD) Partition full."
+  echo -e "   -km   (TBD) Kill microservice."
+  echo -e "   -dm   DEMO - ODS Manager - kill gsa."
+  echo -e "   -A    ALL actions."
+  echo -e
+  echo -e "Unschedule actions:"
+  echo -e "   -um   ODS Manager actions."
+  echo -e "   -us   ODS Space actions."
+  echo -e "   -unm  NB Manager actions."
+  echo -e "   -una  NB Application actions."
+  echo -e "   -uoom (TBD) Out of memory."
+  echo -e "   -upf  (TBD) Partition full."
+  echo -e "   -ukm  (TBD) Kill microservice."
+  echo -e "   -uA   All actions."
+  echo
+}
+
+# Program menu
+chaos_menu() {
+  case "$1" in 
+    "-h" )    
+              chaos_help
+              ;;
+    "-l" )    
+              crontab_list "chaos_monkey"
+              ;;
+    "-i" )    
+              ( chaos_entries_and_state ) &
+              ;;
+    "-m" )
+              echo -e "\n${_GC}All ODS Manager actions successfully scheduled:${_NC}\n" > $_MSG
+              chaos_kill_gsa_ods_mng_cron
+              chaos_reboot_ods_mng_cron
+              chaos_down_up_net_ods_mng_cron 
+              cat $_MSG ; echo ; rm $_MSG
+              ;;
+    "ods_mng" )
+              chaos_kill_gsa_ods_mng
+              chaos_reboot_ods_mng
+              chaos_down_up_net_ods_mng
+              ;;
+    "kill_gsa_ods_mng" )
+              echo "$(date) REST: $(query_active_manager)" | tee -a $_LOG
+              mng_gsa_pid=$(ssh $ods_mng ps -ef | grep -v grep | grep 'SystemBoot services=GSA'| awk '{print $2}')
+              echo -e "$(date) Killing GSA pid ${mng_gsa_pid} on ODS MANAGER ${ods_mng}" >> $_LOG
+              ssh $ods_mng "kill -9 ${mng_gsa_pid}"
+              ;;
+    "reboot_ods_mng" )
+              echo "$(date) REST: $(query_active_manager)" | tee -a $_LOG
+              echo -e "$(date) Rebooting ODS MANAGER ${ods_mng}" >> $_LOG
+              ( ssh $nb_mng "/usr/sbin/reboot -f" & )
+              ;;
+    "down_up_net_ods_mng" )
+              echo "$(date) REST: $(query_active_manager)" | tee -a $_LOG
+              echo -e "$(date) Disconnecting ODS MANAGER from network ${ods_mng}" >> $_LOG
+              ssh $ods_mng '( nmcli networking off ; sleep 120 ; nmcli networking on )'
+              ;;
+    "-s" )  
+              echo -e "\n${_GC}All ODS Space actions successfully scheduled:${_NC}\n" > $_MSG
+              chaos_kill_gsa_ods_spc_cron
+              chaos_kill_gsc_ods_spc_cron
+              chaos_reboot_ods_spc_cron
+              chaos_down_up_net_ods_spc_cron 
+              chaos_kill_consul_ods_spc_cron
+              cat $_MSG ; echo ; rm $_MSG
+              ;;
+    "kill_gsa_ods_spc" )  
+              spc_gsa_pid=$(ssh $ods_spc ps -ef | grep -v grep | grep 'SystemBoot services=GSA'| awk '{print $2}')
+              echo -e "$(date) Killing GSA pid $spc_gsa_pid on ODS SPACE ${ods_spc}" >> $_LOG
+              ssh $ods_spc "kill -9 ${spc_gsa_pid}"
+              ;;
+    "kill_gsc_ods_spc" )  
+              chaos_kill_gsc_ods_spc
+              ;;
+    "down_up_net_ods_spc" )  
+              echo -e "$(date) Disconnecting ODS SPACE from network ${ods_spc}" >> $_LOG
+              ssh $ods_spc '( nmcli networking off ; sleep 120 ; nmcli networking on )'
+              ;;
+    "kill_consul_ods_spc" )   
+              consul_pid=$(ssh ${ods_spc} "pgrep -x  consul")
+              echo -e "$(date) Killing consul pid $consul_pid on ODS SPACE ${ods_spc}" >> $_LOG
+              ssh ${ods_spc} "pkill -9 -x consul"
+              ;;
+    "reboot_ods_spc" )   
+              echo -e "$(date) Rebooting ODS SPACE ${ods_spc}" >> $_LOG
+              ( ssh $nb_mng "/usr/sbin/reboot -f" & )
+              ;;
+    "-nm" )   
+              echo -e "\n${_GC}All NB Manager actions successfully scheduled:${_NC}\n" > $_MSG
+              chaos_reboot_nb_mng_cron
+              chaos_kill_nginx_nb_mng_cron
+              cat $_MSG ; echo ; rm $_MSG
+              ;;
+    "reboot_nb_mng" )   
+              echo -e "$(date) Rebooting NB Manager ${nb_mng}" >> $_LOG
+              ( ssh $nb_mng "/usr/sbin/reboot -f" & )
+              ;;
+    "kill_nginx_nb_mng" )   
+              nginx_pid=$(ssh ${nb_mng} "pgrep -x  nginx"|xargs)
+              echo -e "$(date) Killing nginx pid $nginx_pid on NB Manager ${nb_mng}" >> $_LOG
+              ssh ${nb_mng} "pkill -9 -x nginx"
+              ;;
+    "-na" )   
+              echo -e "\n${_GC}All NB Application actions successfully scheduled:${_NC}\n" > $_MSG
+              chaos_reboot_nb_app_cron
+              chaos_kill_nginx_nb_app_cron
+              chaos_kill_consul_nb_app_cron
+              chaos_kill_consul-template_nb_app_cron
+              cat $_MSG ; echo ; rm $_MSG
+              ;;
+    "reboot_nb_app" )   
+              echo -e "$(date) Rebooting NB Application ${nb_app}" >> $_LOG
+              ( ssh $nb_app "/usr/sbin/reboot -f" & )
+              ;;
+    "kill_nginx_nb_app" )   
+              nginx_pid=$(ssh ${nb_app} "pgrep -x nginx"|xargs)
+              echo -e "$(date) Killing nginx pid $nginx_pid on NB Application ${nb_app}" >> $_LOG
+              ssh ${nb_app} "pkill -9 -x nginx"
+              ;;
+    "kill_consul_nb_app" )   
+              consul_pid=$(ssh ${nb_app} "pgrep -x  consul")
+              echo -e "$(date) Killing consul pid $consul_pid on NB Application ${nb_app}" >> $_LOG
+              ssh ${nb_app} "pkill -9 -x consul"
+              ;;
+    "kill_consul-template_nb_app" )   
+              consul_template_pid=$(ssh ${nb_app} "pgrep -x consul-template")
+              echo -e "$(date) Killing consul-template pid $consul_template_pid on NB Application ${nb_app}" >> $_LOG
+              ssh ${nb_app} "pkill -9 -x consul-template"
+              ;;
+    "-dm" )
+              echo -e "\n${_GC} DEMO - ODS Manager kill GSA in 60s.${_NC}\n"
+              ( sleep 60 ; chaos_monkey kill_gsa_ods_mng ) &
+              ;;
+    #"-oom" )
+#              chaos_out_of_mem_cron
+              #;;
+    #"-pf" )
+#              chaos_partition_full_cron
+              #;;
+    "-knm" )
+              chaos_kill_nginx_nb_mng_cron
+              ;;
+    "-kna" )
+              chaos_kill_nginx_nb_app_cron
+              ;;
+    #"-km" )
+#              chaos_kill_micro_cron
+              #;;
+# TBD - REBALANCER function isn't working properly yet
+#    "rebalancer" )
+#              rebal_setup_env
+#              check_state
+#              chaos_rebalancer
+#              ;;
+    "-A" )  
+              echo -e "\n${_GC}Scheduling ALL actions:${_NC}\n" > $_MSG
+              chaos_entries_and_state_cron
+              chaos_curl_micros_cron
+              chaos_instance_cron
+              #chaos_rebalancer_cron
+              chaos_kill_gsa_ods_mng_cron
+              chaos_reboot_ods_mng_cron
+              chaos_down_up_net_ods_mng_cron
+              chaos_kill_gsc_ods_spc_cron
+              chaos_kill_gsa_ods_spc_cron
+              chaos_reboot_ods_spc_cron
+              chaos_down_up_net_ods_spc_cron
+              chaos_kill_consul_ods_spc_cron
+              if [[ "${_ENVIRONMENT}" == "STG" || "${_ENVIRONMENT}" = "DR" || "${_ENVIRONMENT}" == "PRD" ]] ; then
+                chaos_kill_nginx_nb_mng_cron
+                chaos_kill_nginx_nb_app_cron
+                chaos_reboot_nb_mng_cron
+                chaos_reboot_nb_app_cron 
+              fi
+              cat $_MSG ; echo ; rm $_MSG
+              ;;
+    "-um" )   
+              chaos_kill_gsa_ods_mng_rollb
+              chaos_reboot_ods_mng_rollb
+              chaos_down_up_net_ods_mng_rollb
+              echo -e "\n${_GC}All ODS Manager chaos actions successfully unscheduled:${_NC}"
+              list_friendly "ods_mng"
+              ;;
+    "-us" )   
+              chaos_kill_gsa_ods_spc_rollb
+              chaos_kill_gsc_ods_spc_rollb
+              chaos_down_up_net_ods_spc_rollb
+              echo -e "\n${_GC}All ODS Space chaos actions successfully unscheduled:${_NC}"
+              list_friendly "ods_spc"
+              ;;
+    "-unm" )  
+              chaos_reboot_nb_mng_rollb
+              echo -e "\n${_GC}All NB Manager chaos actions successfully unscheduled:${_NC}"
+              list_friendly "nb_mng"
+              ;;
+    "-una" )  
+              chaos_reboot_nb_app_rollb
+              echo -e "\n${_GC}All NB Application chaos actions successfully unscheduled:${_NC}"
+              list_friendly "nb_app"
+              ;;
+    #"-uoom" )
+#              chaos_out_of_mem_unsched
+              #;;
+    #"-upf" )
+#              chaos_partition_full_unsched
+              #;;
+    #"-uknm" )
+              #chaos_kill_nginx_nb_mng_unsched
+              #;;
+    #"-ukna" )
+              #chaos_kill_nginx_nb_app_unsched
+              #;;
+    #"-ukm" )
+#              chaos_kill_micro_unsched
+              #;;
+    "-uA" )   
+              chaos_all_actions_rollb
+              echo -e "\n${_GC}Unscheduling All chaos actions:${_NC}"
+              list_friendly "chaos_monkey"
+              ;;
+    *)    
+              echo -e "\n\e[93mBad option or TBD.${_NC}\n"
+              ;;
+  esac
+}
+
+#################### MAIN ####################
+
+[[ "$1" = "-l" ]] && { crontab_list "$0" ; exit 0 ; }
+[[ $# -eq 0 || "${1}" == "-h" ]] && { chaos_help ; exit 0 ; }
+
+# Don't perform choas actions if bllspace not INTACT
+[[ "${_BLL_STATE}" != "INTACT" && !( "${1}" = "-A" || "${1}" = "-i" || "${1}" = "-uA" || "${1}" = "rebalancer" ) ]] && { echo -e "$(date) bllspace not INTACT" | tee -a $_LOG ; exit 1 ; }
+get_random_servers
+check_role_vars_set
+check_servers_up
+chaos_menu "$1"
