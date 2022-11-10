@@ -4,7 +4,7 @@
 GS_ROOT="/dbagiga"
 UTILS_DIR="${GS_ROOT}/utils"
 LOGS_DIR="${UTILS_DIR}/logs"
-LOG_FILE="${LOGS_DIR}/$(echo $(basename ${0%.*}))"
+LOG_FILE="${LOGS_DIR}/$(echo $(basename ${0%.*})).log"
 
 ### text styling globals ###
 
@@ -60,11 +60,13 @@ function logit() {
             local txt_to_file="${log_text}\n"
             case $log_text in
                 "Passed") log_text="${lgreen}${log_text}${reset}" ;;
-                "Failed") log_text="${red}${log_text}${reset}" ;;
+                "Failed") log_text="${lred}${log_text}${reset}" ;;
                 "Up") log_text="${lgreen}${log_text}${reset}" ;;
-                "Down") log_text="${red}${log_text}${reset}" ;;
-                "Inactive") log_text="${lgreen}${log_text}${reset}" ;;
-                "Leader") log_text="${red}${log_text}${reset}" ;;
+                "Down") log_text="${lred}${log_text}${reset}" ;;
+                "Active") log_text="${lgreen}${log_text}${reset}" ;;
+                "Inactive") log_text="${lred}${log_text}${reset}" ;;
+                "Leader") log_text="${lblue}${log_text}${reset}" ;;
+                "Follower") log_text="${lblue}${log_text}${reset}" ;;
             esac
             local txt_to_screen="${log_text}\n"
     esac
