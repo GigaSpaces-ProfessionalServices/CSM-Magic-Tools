@@ -382,28 +382,32 @@ function check_system_service(){
         logit --text "[${host}]${R_SPC}${service_desc^^} service not deployed!\n" -fs ERROR
         $ERR_REPORT && \
         CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}${service_desc^^} service not deployed!"
-    elif [[ $sysd_retval -eq 0 ]]
+    elif [[ $sysd_retval -eq 0 ]]; then
         retval=$(ssh $host "systemctl is-active $service_name")
         if [[ $retval == "active" ]]; then
             severity="INFO"
+            status="Active"
         else
             severity="ERROR"
+            status="Inactive"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}${service_desc^^} service status is: ${retval^}"
         fi
         logit --text "$(text_align "[${host}]${R_SPC}${service_desc^^} service status")" -fs $severity
-        logit --state ${retval^} -fs
-    elif [[ $sysv_retval -eq 0 ]]
+        logit --state $status -fs
+    elif [[ $sysv_retval -eq 0 ]]; then
         retval=$(ssh $host "service $service_name status | grep -o 'running'")
         if [[ $retval == "running" ]]; then
             severity="INFO"
+            status="Active"
         else
             severity="ERROR"
+            status="Inactive"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}${service_desc^^} service status is: ${retval^}"
         fi
         logit --text "$(text_align "[${host}]${R_SPC}${service_desc^^} service status")" -fs $severity
-        logit --state ${retval^} -fs
+        logit --state $status -fs
     fi
 }
 
