@@ -200,9 +200,17 @@ def print_table_row(type, dl=[]):
     if type == 'seperator':
         row = f"{h_border}"
     if type == 'row':
+        if len(dl[1]) > 13:
+            dl1 = f'{dl[1][0:13]}...'
+        else:
+            dl1 = dl[1]
+        if len(dl[4]) > 13:
+            dl4 = f'{dl[4][0:13]}...'
+        else:
+            dl4 = dl[4]
         row = f"|{dl[0]:^13}|" + \
-            f"{f'{dl[1][0:13]:^13}...'}|{dl[2]:^9}|{dl[3]:^3}|" + \
-            f"{f'{dl[4][0:13]:^13}...'}|{dl[5]:^9}|{dl[6]:^3}|" + \
+            f"{dl1:^16}|{dl[2]:^9}|{dl[3]:^3}|" + \
+            f"{dl4:^16}|{dl[5]:^9}|{dl[6]:^3}|" + \
             f"{dl[7]:^12}|{dl[8]:^12}|{dl[9]:<14}|"
         if debug:
             row += f"{dl[10]} ; {dl[11]}"
