@@ -18,6 +18,7 @@ import random
 import itertools
 import threading
 import pyfiglet
+import socket
 
 
 def handler(signal_recieved, frame):
@@ -531,44 +532,56 @@ def is_env_secured(the_manager):
 
 def show_di_pipeline_info():
     logger = logging.getLogger()
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print('#' * 80 + '\n' + '#' * 31 + ' [ DI PIPELINES ] ' + '#' * 31 + '\n' + '#' * 80)
     servers = get_host_yaml_servers('dataIntergation')
-    port = "6080"
-    service_active = False
+    port = 6080
+    port_ok, service_ok = False, False
     for server in servers:
-        url = f"http://{server}:{port}/api/v1/pipeline/"
-        response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
-        if len(response_data.json()) != 0:
-            service_active = True
+        a_socket.settimeout(5)
+        check_port = a_socket.connect_ex((server, port))
+        a_socket.settimeout(None)
+        if check_port == 0:
+            port_ok = True
             break
-    if not service_active:
-        print(f"ERROR: API is not available on any of the DI servers.")
-        logger.error("[IIDR] API is not available on any of the DI servers.")
+    if not port_ok:
+        print(f"ERROR: unable to connect to DI server(s) on port {port}.")
+        logger.error("[IIDR] unable to connect to DI server(s) on port {port}.")
     else:
-        r = response_data.json()[0]
-        for k,v in r.items():
-            key = f"{k}:"
-            print(f"{k:<18} {v}")
-            logger.info(f"[IIDR] {k:<18} {v}")
+        for server in servers:
+            url = f"http://{server}:{port}/api/v1/pipeline/"
+            response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
+            if len(response_data.json()) != 0:
+                service_ok = True
+                break
+        if service_ok:
+            r = response_data.json()[0]
+            for k,v in r.items():
+                key = f"{k}:"
+                print(f"{k:<18} {v}")
+                logger.info(f"[IIDR] {k:<18} {v}")
+        else:
+            print(f"ERROR: unable to connect to API on DI server(s).")
+            logger.error("[IIDR] unable to connect to API on DI server(s).")
     logging.shutdown()
 
 
 def show_iidr_subscriptions():
-    import socket
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     logger = logging.getLogger()
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print('#' * 80 + '\n' + '#' * 28 + ' [ IIDR SUBSCRIPTIONS ] ' + '#' * 28 + '\n' + '#' * 80)
     servers = get_host_yaml_servers('dataIntergation')
     port = 10101
     user = "USERNAME"
-    service_active = False
+    service_ok = False
     for server in servers:
-        location = (server, port)
-        check_port = a_socket.connect_ex(location)
+        a_socket.settimeout(5)
+        check_port = a_socket.connect_ex((server, port))
+        a_socket.settimeout(None)
         if check_port == 0:
-            service_active = True
+            service_ok = True
             break
-    if not service_active:
+    if not service_ok:
         print(f"ERROR: none of the DI server listens on port {port}")
         logger.error(f"[IIDR] none of the DI server listens on port {port}")
     else:
