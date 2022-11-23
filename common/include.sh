@@ -6,8 +6,12 @@ UTILS_DIR="${GS_ROOT}/utils"
 LOGS_DIR="${UTILS_DIR}/logs"
 LOG_FILE="${LOGS_DIR}/$(echo $(basename ${0%.*})).log"
 
-### text styling globals ###
+# check if host.yaml exists
+if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
+    echo "ERROR: '${ENV_CONFIG}/host.yaml' could not be found!"; exit
+fi
 
+### text styling globals ###
 bold=$(tput bold)        # bold text
 nbold=$(tput sgr0)       # not bold text
 red='\033[0;31m'        # red text
@@ -23,7 +27,6 @@ lpurple='\033[1;35m'    # light purple text
 cyan='\033[0;36m'       # cyan text
 lcyan='\033[1;36m'      # light cyan text
 reset='\033[0m'         # no colour
-
 
 function logit() {
     # print to screen or logfile
@@ -88,7 +91,7 @@ function get_cluster_hosts {
     sed -ne "s|^\($s\):|\1|" \
         -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
         -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
-        ${ODSXARTIFACTS}/odsx/host.yaml |
+        ${ENV_CONFIG}/host.yaml |
     awk -F$fs '{
         indent = length($1)/2;
         vname[indent] = $2;
