@@ -132,6 +132,9 @@ public class CommonUtil {
                             } else {
                                 logger.info("Tier configuration for '" + criteriaClass + "' is not found");
                             }
+                        } else if(lineContents != null && lineContents.length == 2 && lineContents[0].equals("A")) {
+                            String criteriaClass = lineContents[1];
+                            return lineContents;
                         } else {
                             logger.info("Tier criteria for '" + typeName + "' is not defined");
                         }
@@ -175,7 +178,7 @@ public class CommonUtil {
                             .setTimeColumn(criteriaArray[2]).setPeriod(duration));
                 }
                 if (criteriaArray[0].equalsIgnoreCase("A")) {
-                    logger.info(criteriaArray[1] + "ALL ");
+                    logger.info(criteriaArray[1] + " ALL ");
                     builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                             .setName(criteriaArray[1])
                             .setCriteria("all"));
