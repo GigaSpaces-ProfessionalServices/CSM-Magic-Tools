@@ -13,6 +13,7 @@ import random
 import pyfiglet
 from math import floor
 import os
+import re
 
 
 def argument_parser():
@@ -23,12 +24,37 @@ def argument_parser():
     )
     parser = argparse.ArgumentParser()
     required = parser.add_argument_group('required arguments')
-    required.add_argument('space_name', action="store", help="The name of the space")
-    required.add_argument('-t', '--type', action="store", dest="type", help="Query a specific type")
-    required.add_argument('-l', '--list', action="store_true", help="List all registered types")
-    required.add_argument('-u', '--unattended', action="store_true", help="Show table only - minimal output")
-    required.add_argument('--debug', action="store_true", help="Print additional info")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.0')
+    required.add_argument(
+        'space_name',
+        action="store",
+        help="The name of the space"
+    )
+    required.add_argument(
+        '-t', '--type',
+        action="store",
+        dest="type",
+        help="Query a specific type"
+    )
+    required.add_argument(
+        '-l', '--list',
+        action="store_true",
+        help="List all registered types"
+    )
+    required.add_argument(
+        '-u', '--unattended',
+        action="store_true",
+        help="Show table only - minimal output"
+    )
+    required.add_argument(
+        '--debug',
+        action="store_true",
+        help="Print additional info"
+    )
+    parser.add_argument(
+        '-v', '--version',
+        action='version',
+        version='%(prog)s v1.0'
+    )
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -68,15 +94,15 @@ def get_auth(host):
     return auth_params
 
 
-def is_env_secured(the_manager):
-    setenv_file = "/dbagiga/gigaspaces-smart-ods/bin/setenv-overrides.sh"
-    catch_str = 'Dcom.gs.security.enabled=true'
-    sh_cmd = f"ssh {the_manager} 'cat {setenv_file} | grep {catch_str} > /dev/null 2>&1' ; echo $?"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout).strip("b' \\n")
-    if int(the_response) == 0:
-        return True
-    else:
-        return False
+def is_env_secured():
+    if os.environ['ENV_CONFIG'] is not None:
+        with open(app_config, 'r', encoding='utf8') as appconf:
+            for line in appconf:
+                if re.search("app.setup.profile", line):
+                    secure_flag = line.strip().replace('\n','').split('=')[1]
+                    if secure_flag == '""':
+                        return False
+                    return True
 
 
 def is_restful_ok(the_url):
@@ -226,7 +252,8 @@ def get_sqlite_id(item_id):
 
 # globals
 gs_root = "/dbagiga"
-odsx_hosts_config = f"{os.environ['ODSXARTIFACTS']}/odsx/host.yaml"
+hosts_config = f"{os.environ['ENV_CONFIG']}/host.yaml"
+app_config = f"{os.environ['ENV_CONFIG']}/app.config"
 utils_dir = gs_root + "/utils"
 runall_exe = utils_dir + "/runall/runall.sh"
 runall_conf = utils_dir + "/runall/runall.conf"
@@ -240,7 +267,7 @@ if __name__ == '__main__':
         try:
             space_name = arguments['space_name']
             # check REST status and set operational manager
-            with open(odsx_hosts_config, 'r') as y:
+            with open(hosts_config, 'r') as y:
                 hosts = yaml.safe_load(y)
             manager_hosts = hosts['servers']['manager']
             managers = []
@@ -248,7 +275,7 @@ if __name__ == '__main__':
                 managers.append(mgr)
             # configure authentication
             auth = {}
-            if is_env_secured(managers[0]):
+            if is_env_secured():
                 auth = get_auth(managers[0])
             else:
                 auth['user'], auth['pass'] = '', ''
@@ -375,6 +402,5 @@ if __name__ == '__main__':
                 print(f"{'Total number of records in BACKUP instances:':<46}{b_total_display:<10}")
         except (KeyboardInterrupt, SystemExit):
             print('\n')
-            exit(0)
 exit(0)
 
