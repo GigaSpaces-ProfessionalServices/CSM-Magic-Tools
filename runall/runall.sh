@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.5.3
+VERSION=2.5.4
 
 function usage() {
     printf "\nrunall.sh v$VERSION\n"
@@ -411,6 +411,14 @@ function check_system_service(){
     fi
 }
 
+function check_time() {
+    # check time sync
+    h=$1
+    result=$(ssh $h "timedatectl | grep 'synchronized' | cut -d: -f2 | sed 's/ *//g'")
+    [[ $result == "yes" ]] && return 0 || return 1
+}
+
+
 function print_errors_report() {
     # display errors report and clean up temporary files
     printf "\n\n"
@@ -503,7 +511,7 @@ function run_health_checks() {
                         logit --state "Failed" -fs
                         $ERR_REPORT && \
                         CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}Unable to establish SSH connection"
-            local net_fail=true
+                        local net_fail=true
                         break
                     fi
                     ;;
@@ -513,6 +521,13 @@ function run_health_checks() {
         if $net_fail; then
             logit --text "\n" -s
             continue
+        fi
+        # check NTP
+        logit --text "$(text_align "[${host}]${R_SPC}Time synchronization")" -fs INFO
+        if [[ $(check_time $host) -eq 0 ]]; then
+            logit --state "Passed" -fs
+        else
+            logit --state "Failed" -fs
         fi
 		# check NFS mount
         local retval=$(ssh $host "findmnt /dbagigashare > /dev/null" ; echo $?)
@@ -606,8 +621,7 @@ RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
 
-# switches representing the clusters in the environment
-# as specified in function 'get_targeted_servers()'
+# keys representing clusters in the environment as per 'get_targeted_servers()'
 ENV_TYPES="-s -m -c -d -na -nm -p"
 
 # text styling globals
@@ -620,11 +634,6 @@ if [[ ! -e $CONFIG_FILE ]]; then
 else
     # remove carriage return characters from config file
     sed -i 's/\r$//g' $CONFIG_FILE
-fi
-
-# abort if host.yaml file is missing
-if [[ ! -e ${ODSXARTIFACTS}/odsx/host.yaml ]]; then
-    echo "ERROR: '${ODSXARTIFACTS}/odsx/host.yaml' could not be found!" ; exit
 fi
 
 # parse arguments
