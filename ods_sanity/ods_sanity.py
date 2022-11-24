@@ -2,14 +2,14 @@
 # -*- coding: utf8 -*-
 
 import os
+import sys
 import requests
 import json
 import yaml
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from signal import SIGINT, signal
 import subprocess
 import argparse
-import sys
+import re
 import time
 import colorama
 from colorama import Fore, Back, Style
@@ -21,22 +21,12 @@ import pyfiglet
 import socket
 
 
-def handler(signal_recieved, frame):
-    '''
-    catch CTRL+C keybaord press
-    :param signal_recieved: caught by signal class
-    :param frame:
-    :return:
-    '''
-    print('\n\nOperation aborted by user!')
-    exit(0)
-
-
 def argument_parser():
     '''
     argument parser function    
     :return: arguments object/dictionary
     '''
+    
     parser = argparse.ArgumentParser(
         description='description: kill space instances duo - primary and backup',
         epilog='* please report any issue to alon.segal2@bankleumi.co.il'
@@ -80,6 +70,7 @@ def get_host_yaml_servers(_cluster):
     :_cluster: name of cluster to filter
     :return: List of management hosts
     """
+    
     with open(host_yaml, 'r', encoding='utf8') as cfile:
         ydata = yaml.safe_load(cfile)
     _hosts = [h for h in ydata['servers'][_cluster].values()]
@@ -92,6 +83,7 @@ def is_restful_ok(the_url):
     :param the_url: url for GET request
     :return: True / False
     """
+    
     try:
         the_response = requests.get(the_url, verify=False, timeout=3)
         if the_response.status_code == 200:
@@ -158,7 +150,12 @@ class OdsServiceGrid:
     def info(self):
         self.headers = {'Accept': 'application/json'}
         self.url = f"http://{manager}:{defualt_port}/v2/info"
-        response_data = requests.get(self.url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
+        response_data = requests.get(
+            self.url,
+            auth=(auth['user'], auth['pass']),
+            headers=self.headers,
+            verify=False
+        )
         return response_data.json()
 
     class Host:
@@ -294,6 +291,14 @@ class OdsServiceGrid:
 
 
 def test_microservice_e2e(_the_host, _the_port, _the_json):
+    """
+    test a microservice by sending a REST GET query
+    :param _the_host: url for the GET request
+    :param _the_port: port for the GET request
+    :param _the_json: data for the GET request
+    :return: response status code
+    """
+
     the_url = f"http://{_the_host}:{_the_port}/v1/u1"
     the_headers = {'Content-Type': 'application/json'}
     response = requests.get(
@@ -306,7 +311,12 @@ def test_microservice_e2e(_the_host, _the_port, _the_json):
 
 
 def get_service_space_from_nb(the_service_name):
-    # get northbound host
+    """
+    get the space server hosting a specific service
+    :param the_service_name: the name of the microservice
+    :return: response status code
+    """
+    
     sh_cmd = "/dbagiga/utils/runall/runall.sh -na -l | grep -v '===' | head -1"
     the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
     nb_host = the_response.strip("\\n'").strip("b'")
@@ -519,15 +529,15 @@ def get_auth(host):
     return auth_params
 
 
-def is_env_secured(the_manager):
-    setenv_file = "/dbagiga/gigaspaces-smart-ods/bin/setenv-overrides.sh"
-    catch_str = 'Dcom.gs.security.enabled=true'
-    sh_cmd = f"ssh {the_manager} 'cat {setenv_file} | grep {catch_str} > /dev/null 2>&1' ; echo $?"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout).strip("b' \\n")
-    if int(the_response) == 0:
-        return True
-    else:
-        return False
+def is_env_secured():
+    if os.environ['ENV_CONFIG'] is not None:
+        with open(app_config, 'r', encoding='utf8') as appconf:
+            for line in appconf:
+                if re.search("app.setup.profile", line):
+                    secure_flag = line.strip().replace('\n','').split('=')[1]
+                    if secure_flag == '""':
+                        return False
+                    return True
 
 
 def show_di_pipeline_info():
@@ -550,12 +560,18 @@ def show_di_pipeline_info():
     else:
         for server in servers:
             url = f"http://{server}:{port}/api/v1/pipeline/"
-            response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
-            if len(response_data.json()) != 0:
+            response_data = requests.get(
+                url,
+                auth=(auth['user'], auth['pass']),
+                verify=False
+            ).json()
+            if len(response_data) != 0:
+                if type(response_data).__name__ != 'list':
+                    break   # if not a list then pipeline is not installed, we break
                 service_ok = True
                 break
         if service_ok:
-            r = response_data.json()[0]
+            r = response_data[0]
             for k,v in r.items():
                 key = f"{k}:"
                 print(f"{k:<18} {v}")
@@ -607,210 +623,208 @@ def show_iidr_subscriptions():
 # globals
 gs_root = "/dbagiga"
 utils_dir = gs_root + "/utils"
-lib_dir = utils_dir + "/mega_loader/lib"
-config_dir = utils_dir + "/mega_loader/config"
-mega_loader_exec = utils_dir + "/mega_loader/mega_loader.py"
 runall_exe = utils_dir + "/runall/runall.sh"
 runall_conf = utils_dir + "/runall/runall.conf"
-host_yaml = f"{os.environ['ODSXARTIFACTS']}/odsx/host.yaml"
+host_yaml = f"{os.environ['ENV_CONFIG']}/host.yaml"
+app_config = f"{os.environ['ENV_CONFIG']}/app.config"
 recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
 defualt_port = 8090
 k6_test = f"{utils_dir}/sanity/run_k6.sh"
 ms_config = f"{gs_root}/microservices/config.json"
 
 if __name__ == '__main__':
-    # catch user CTRL+C key press
-    signal(SIGINT, handler)
-    
-    # creating logger
-    log_format = "%(asctime)s %(levelname)s %(message)s"
-    log_file = "/var/log/ods_sanity.log"
-    logging.basicConfig(filename=log_file,
-                        filemode="a",
-                        format=log_format,
-                        datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.INFO)
-    logger = logging.getLogger()
-    logger.info('Sanity started.')
-    # disable insecure request warning
-    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-    arguments = argument_parser()
-    if arguments:
-        subprocess.run(['clear'])
-        # present title
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
-        # check REST status and set operational manager
-        managers = get_host_yaml_servers('manager')
-        # configure authentication
-        auth = {}
-        if is_env_secured(managers[0]):
-            auth = get_auth(managers[0])
-        else:
-            auth['user'], auth['pass'] = '', ''
-        rest_ok_hosts = []
-        for mgr in managers:
-            url = f'http://{mgr}:{defualt_port}/v2/index.html'
-            if is_restful_ok(url):
-                rest_ok_hosts.append(mgr)
-        if len(rest_ok_hosts) == 0:
-            print('REST status: DOWN')
-            logger.error('REST status: DOWN')
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(1)
-        else:
-            # we use 1st host from rest_ok_hosts
-            manager = rest_ok_hosts[0]
-        # flags
-        interactive_mode = False
-        info = False
-        cycles = False
-        duration = False
-        status = False
-        stats = False
-        stress = False
-        polling = False
-        cycles_passed = 0
-        total_cycles = 1
-        ### parse arguments ###
-        # check if 'space_name' is valid
-        space_name = arguments['space_name']
-        osg = OdsServiceGrid()
-        if not osg.Space.exist():
-            print(f"space {space_name} does not exist!\n")
-            logger.error(f"space {space_name} does not exist!")
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(1)
-        # load microservices config
-        with open(ms_config, 'r', encoding='utf8') as msc:
-            ms_config_data = json.load(msc) 
-        if 'cycles' in arguments:
-            cycles = True
-            total_cycles = int(arguments['cycles'])
-        if 'duration' in arguments:
-            duration = True
-            time_passed = 0
-            duration_sec = int(arguments['duration'])
-        if 'info' in arguments:
-            info = True
-        if 'status' in arguments:
-            status = True
-        if 'stats' in arguments:
-            stats = True
-        if 'stress' in arguments:
-            stress = True
-        if 'service' in arguments:
-            polling = True
-            service_name = arguments['service']
+    try:
+        # creating logger
+        log_format = "%(asctime)s %(levelname)s %(message)s"
+        log_file = "/dbagigalogs/sanity/ods_sanity.log"
+        logging.basicConfig(filename=log_file,
+                            filemode="a",
+                            format=log_format,
+                            datefmt='%Y-%m-%d %H:%M:%S',
+                            level=logging.INFO)
+        logger = logging.getLogger()
+        logger.info('Sanity started.')
+        # disable insecure request warning
+        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+        arguments = argument_parser()
+        if arguments:
+            subprocess.run(['clear'])
+            # present title
+            print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+            # check REST status and set operational manager
+            managers = get_host_yaml_servers('manager')
+            # configure authentication
+            auth = {}
+            if is_env_secured():
+                auth = get_auth(managers[0])
+            else:
+                auth['user'], auth['pass'] = '', ''
+            rest_ok_hosts = []
+            for mgr in managers:
+                url = f'http://{mgr}:{defualt_port}/v2/index.html'
+                if is_restful_ok(url):
+                    rest_ok_hosts.append(mgr)
+            if len(rest_ok_hosts) == 0:
+                print('REST status: DOWN')
+                logger.error('REST status: DOWN')
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(1)
+            else:
+                # we use 1st host from rest_ok_hosts
+                manager = rest_ok_hosts[0]
+            # flags
+            interactive_mode = False
+            info = False
+            cycles = False
+            duration = False
+            status = False
+            stats = False
+            stress = False
+            polling = False
+            cycles_passed = 0
+            total_cycles = 1
+            ### parse arguments ###
+            # check if 'space_name' is valid
+            space_name = arguments['space_name']
+            osg = OdsServiceGrid()
+            if not osg.Space.exist():
+                print(f"space {space_name} does not exist!\n")
+                logger.error(f"space {space_name} does not exist!")
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(1)
+            # load microservices config
+            with open(ms_config, 'r', encoding='utf8') as msc:
+                ms_config_data = json.load(msc) 
+            if 'cycles' in arguments:
+                cycles = True
+                total_cycles = int(arguments['cycles'])
+            if 'duration' in arguments:
+                duration = True
+                time_passed = 0
+                duration_sec = int(arguments['duration'])
+            if 'info' in arguments:
+                info = True
+            if 'status' in arguments:
+                status = True
+            if 'stats' in arguments:
+                stats = True
+            if 'stress' in arguments:
+                stress = True
+            if 'service' in arguments:
+                polling = True
+                service_name = arguments['service']
 
-        ### execute operations ###
-        # if both cycles and duration requested we abort
-        if cycles and duration:
-            print("ERROR: count and duration are mutually exclusive. choose one or the other.\n")
+            ### execute operations ###
+            # if both cycles and duration requested we abort
+            if cycles and duration:
+                print("ERROR: count and duration are mutually exclusive. choose one or the other.\n")
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(1)
+            started = int(time.time())
+            if info:
+                show_grid_info()
+                print('\n'*2)
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            if polling:
+                if duration:
+                    while time_passed < duration_sec:
+                        show_service_polling(service_name)
+                        print()
+                        time_passed = int(time.time() - started)
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+                else:
+                    while cycles_passed < total_cycles:
+                        show_service_polling(service_name)
+                        print()
+                        cycles_passed += 1
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+            else:
+                ### add additional services here! ###
+                services = ['ms-digital-nt2cr']
+            if status:
+                the_pu_list = osg.ProcessingUnit.list()
+                if duration:
+                    while time_passed < duration_sec:
+                        show_pu_status()
+                        time_passed = int(time.time() - started)
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+                else:
+                    while cycles_passed < total_cycles:
+                        show_pu_status()
+                        cycles_passed += 1
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+            if stats:
+                if duration:
+                    while time_passed < duration_sec:
+                        time.sleep(0.2)
+                        show_total_objects()
+                        time_passed = int(time.time() - started)
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+                else:
+                    while cycles_passed < total_cycles:
+                        time.sleep(0.2)
+                        show_total_objects()
+                        cycles_passed += 1
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+            if stress:
+                if duration:
+                    while time_passed < duration_sec:
+                        time.sleep(0.2)
+                        run_stress_test()
+                        time_passed = int(time.time() - started)
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+                else:
+                    while cycles_passed < total_cycles:
+                        time.sleep(0.2)
+                        run_stress_test()
+                        cycles_passed += 1
+                    logger.info('Sanity complete.')
+                    logging.shutdown()
+                    exit(0)
+            if duration:
+                while time_passed < duration_sec:
+                    run_sanity_routine()
+                    time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            if cycles:
+                while cycles_passed < total_cycles:
+                    run_sanity_routine()
+                    cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            else:
+                interactive_mode = True
+                run_sanity_routine()
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+        else:
+            print('\nmissing option(s). use [mega_loader.py -h] for help.\n')
+            logger.error("missing option(s). use [mega_loader.py -h] for help.\n")
             logger.info('Sanity complete.')
             logging.shutdown()
             exit(1)
-        started = int(time.time())
-        if info:
-            show_grid_info()
-            print('\n'*2)
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(0)
-        if polling:
-            if duration:
-                while time_passed < duration_sec:
-                    show_service_polling(service_name)
-                    print()
-                    time_passed = int(time.time() - started)
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-            else:
-                while cycles_passed < total_cycles:
-                    show_service_polling(service_name)
-                    print()
-                    cycles_passed += 1
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-        else:
-            ### add additional services here! ###
-            services = ['ms-digital-nt2cr']
-        if status:
-            the_pu_list = osg.ProcessingUnit.list()
-            if duration:
-                while time_passed < duration_sec:
-                    show_pu_status()
-                    time_passed = int(time.time() - started)
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-            else:
-                while cycles_passed < total_cycles:
-                    show_pu_status()
-                    cycles_passed += 1
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-        if stats:
-            if duration:
-                while time_passed < duration_sec:
-                    time.sleep(0.2)
-                    show_total_objects()
-                    time_passed = int(time.time() - started)
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-            else:
-                while cycles_passed < total_cycles:
-                    time.sleep(0.2)
-                    show_total_objects()
-                    cycles_passed += 1
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-        if stress:
-            if duration:
-                while time_passed < duration_sec:
-                    time.sleep(0.2)
-                    run_stress_test()
-                    time_passed = int(time.time() - started)
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-            else:
-                while cycles_passed < total_cycles:
-                    time.sleep(0.2)
-                    run_stress_test()
-                    cycles_passed += 1
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-        if duration:
-            while time_passed < duration_sec:
-                run_sanity_routine()
-                time_passed = int(time.time() - started)
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(0)
-        if cycles:
-            while cycles_passed < total_cycles:
-                run_sanity_routine()
-                cycles_passed += 1
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(0)
-        else:
-            interactive_mode = True
-            run_sanity_routine()
-            logger.info('Sanity complete.')
-            logging.shutdown()
-            exit(0)
-    else:
-        print('\nmissing option(s). use [mega_loader.py -h] for help.\n')
-        logger.error("missing option(s). use [mega_loader.py -h] for help.\n")
-        logger.info('Sanity complete.')
-        logging.shutdown()
-        exit(1)
+    except (KeyboardInterrupt, SystemExit):
+        print('\nAborted!')
