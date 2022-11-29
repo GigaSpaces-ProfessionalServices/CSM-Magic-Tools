@@ -87,7 +87,7 @@ public class TestTask  implements Serializable  {
 					logger.info("DataSource: "+dataSource);
 					logger.info("Agent: "+dataSource.getAgent());
 					logger.info("Agent Host: "+dataSource.getAgent().getHostIp());
-					String endPoint = "http://"+dataSource.getAgent().getHostIp()+":7891/measurement/run";
+					String endPoint = "http://"+dataSource.getAgent().getHostIp()+":3223/measurement/run";
 					String data= "{" +
 							"\"measurementId\":\""+measurement.getId()+"\"" +
 							",\"test\":\""+measurement.getType()+"\"" +
@@ -105,7 +105,7 @@ public class TestTask  implements Serializable  {
 							",\"integratedSecurity\":\""+dataSource.getIntegratedSecurity()+"\"" +
 							",\"properties\":\""+dataSource.getProperties()+"\"" +
 							",\"authenticationScheme\":\""+dataSource.getAuthenticationScheme()+"\"" +
-									"}";
+							"}";
 
 					this.result=NetClientPost.send(endPoint,data);
 					ObjectMapper objectMapper = new ObjectMapper();
@@ -167,7 +167,7 @@ public class TestTask  implements Serializable  {
 						logger.info("val1:     " + val1);
 					}*/
 
-					String endPoint = "http://"+dataSource1.getAgent().getHostIp()+":7891/measurement/run";
+					String endPoint = "http://"+dataSource1.getAgent().getHostIp()+":3223/measurement/run";
 					String data= "{" +
 							"\"measurementId\":\""+measurement1.getId()+"\"" +
 							",\"test\":\""+measurement1.getType()+"\"" +
@@ -211,7 +211,7 @@ public class TestTask  implements Serializable  {
 					logger.info("DataSource2: "+dataSource2);
 					logger.info("Agent2: "+dataSource2.getAgent());
 					logger.info("Agent2 Host: "+dataSource2.getAgent().getHostIp());
-					String endPoint2 = "http://"+dataSource2.getAgent().getHostIp()+":7891/measurement/run";
+					String endPoint2 = "http://"+dataSource2.getAgent().getHostIp()+":3223/measurement/run";
 					String data2= "{" +
 							"\"measurementId\":\""+measurement2.getId()+"\"" +
 							",\"test\":\""+measurement2.getType()+"\"" +
@@ -281,11 +281,11 @@ public class TestTask  implements Serializable  {
 		String testType = this.type;
 		Measurement measurement1 = null;
 		Measurement measurement2 = null;
-		
+
 		try {
-		
+
 			if (testType != null && testType.equals("Measure")) {
-			
+
 				Measurement measurement = measurementList.get(0);
 				if (measurement != null) {
 					DataSource dataSource = measurement.getDataSource();
@@ -316,7 +316,7 @@ public class TestTask  implements Serializable  {
 
 				measurement1 = measurementList.get(0);
 				measurement2 = measurementList.get(1);
-		
+
 				if (measurement1 != null && measurement2 != null) {
 					DataSource dataSource1 = measurement1.getDataSource();
 					DataSource dataSource2 = measurement2.getDataSource();
@@ -363,9 +363,9 @@ public class TestTask  implements Serializable  {
 					}
 				}
 			} else {
-				
+
 				this.result = "Incorrect type";
-			
+
 			}
 
 		} catch (Exception e) {
@@ -385,7 +385,7 @@ public class TestTask  implements Serializable  {
 		return this.result;
 	}
 
-	
+
 
 	public String getResult() {
 		return (result == null) ? "pending" : result;
