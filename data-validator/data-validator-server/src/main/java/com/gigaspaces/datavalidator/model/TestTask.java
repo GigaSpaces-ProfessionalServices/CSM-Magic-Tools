@@ -30,6 +30,7 @@ public class TestTask  implements Serializable  {
 	private String result = null;
 	private String measurementIds;
 	private String errorSummary;
+	private String summary;
 	private String query;
 	private List<Measurement> measurementList;
 
@@ -242,6 +243,7 @@ public class TestTask  implements Serializable  {
 					if(!response1.contains("FAIL") && !response2.contains("FAIL")){
 						if (Float.parseFloat(response1) == Float.parseFloat(response2)) {
 							this.result = "PASS";
+							this.summary = "Results matched. Result-1: "+response1 +"  Result-2: "+response2;
 						} else {
 							logger.info("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + response1
 									+ ", DataSource2 Result: " + response2);
@@ -461,5 +463,13 @@ public class TestTask  implements Serializable  {
 
 	public void setQuery(String query) {
 		this.query = query;
+	}
+
+	public String getSummary() {
+		return summary;
+	}
+
+	public void setSummary(String summary) {
+		this.summary = summary;
 	}
 }
