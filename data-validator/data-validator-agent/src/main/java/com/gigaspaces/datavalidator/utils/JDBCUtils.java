@@ -1,7 +1,5 @@
 package com.gigaspaces.datavalidator.utils;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -33,6 +31,7 @@ public class JDBCUtils {
 		String authenticationScheme = measurement.getAuthenticationScheme();
 		String properties = measurement.getProperties();
 		String schemaName = measurement.getSchemaName();
+		String gslookupGroup = measurement.getGsLookupGroup();
 
 		Connection connection = null;
 		String connectionString = "";
@@ -40,19 +39,22 @@ public class JDBCUtils {
 		switch (dataSourceType) {
 
 		case "gigaspaces":
-			Class.forName("com.j_spaces.jdbc.driver.GDriver").newInstance();
+			Class.forName("com.j_spaces.jdbc.driver.GDriver");
 			connectionString = "jdbc:gigaspaces:url:jini://" + dataSourceHostIp + ":" + dataSourcePort + "/*/"
 					+ schemaName;
+			if(gslookupGroup!=null && gslookupGroup.length()>0){
+				connectionString += "?groups="+ gslookupGroup;
+			}
 			break;
 
 		case "mysql":
-			Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
+			Class.forName("com.mysql.cj.jdbc.Driver");
 			connectionString = "jdbc:mysql://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName
 					+ "?zeroDateTimeBehavior=CONVERT_TO_NULL";
 			break;
 
 		case "db2":
-			Class.forName("com.ibm.db2.jcc.DB2Driver").newInstance();
+			Class.forName("com.ibm.db2.jcc.DB2Driver");
 			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
 			break;
 

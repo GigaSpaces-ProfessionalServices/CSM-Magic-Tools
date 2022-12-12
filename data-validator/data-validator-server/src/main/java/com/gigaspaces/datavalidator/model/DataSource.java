@@ -22,6 +22,7 @@ public class DataSource implements Serializable{
 	private String integratedSecurity;
 	private String properties;
 	private String authenticationScheme;
+	private String gsLookupGroup="xap-16.2.0";
 	private String status;
 	@JsonManagedReference
 	private Agent agent;
@@ -117,6 +118,14 @@ public class DataSource implements Serializable{
 
 	public void setAgent(Agent agent) {
 		this.agent = agent;
+	}
+
+	public String getGsLookupGroup() {
+		return gsLookupGroup;
+	}
+
+	public void setGsLookupGroup(String gsLookupGroup) {
+		this.gsLookupGroup = gsLookupGroup;
 	}
 
 	@Override

@@ -18,6 +18,7 @@ public class MeasurementRequestModel {
     private String integratedSecurity;
     private String properties;
     private String authenticationScheme;
+    private String gsLookupGroup;
     
     public MeasurementRequestModel() {
     }
@@ -146,6 +147,14 @@ public class MeasurementRequestModel {
         this.limitRecords = limitRecords;
     }
 
+    public String getGsLookupGroup() {
+        return gsLookupGroup;
+    }
+
+    public void setGsLookupGroup(String gsLookupGroup) {
+        this.gsLookupGroup = gsLookupGroup;
+    }
+
     @Override
     public String toString() {
         return "MeasurementRequestModel{" +
@@ -165,6 +174,7 @@ public class MeasurementRequestModel {
                 ", integratedSecurity='" + integratedSecurity + '\'' +
                 ", properties='" + properties + '\'' +
                 ", authenticationScheme='" + authenticationScheme + '\'' +
+                ", gsLookupGroup='" + gsLookupGroup + '\'' +
                 '}';
     }
 }

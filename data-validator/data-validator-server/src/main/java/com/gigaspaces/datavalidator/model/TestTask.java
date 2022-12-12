@@ -106,6 +106,7 @@ public class TestTask  implements Serializable  {
 							",\"integratedSecurity\":\""+dataSource.getIntegratedSecurity()+"\"" +
 							",\"properties\":\""+dataSource.getProperties()+"\"" +
 							",\"authenticationScheme\":\""+dataSource.getAuthenticationScheme()+"\"" +
+							",\"gsLookupGroup\":\""+dataSource.getGsLookupGroup()+"\"" +
 							"}";
 
 					this.result=NetClientPost.send(endPoint,data);

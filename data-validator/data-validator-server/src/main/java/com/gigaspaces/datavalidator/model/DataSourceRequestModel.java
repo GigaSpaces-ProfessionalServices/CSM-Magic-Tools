@@ -11,6 +11,7 @@ public class DataSourceRequestModel {
 	private String integratedSecurity;
     private String authenticationScheme;
     private String properties;
+	private String gsLookupGroup;
     
 	public String getDataSourceId() {
 		return dataSourceId;
@@ -87,6 +88,15 @@ public class DataSourceRequestModel {
 	public void setProperties(String properties) {
 		this.properties = properties;
 	}
+
+	public String getGsLookupGroup() {
+		return gsLookupGroup;
+	}
+
+	public void setGsLookupGroup(String gsLookupGroup) {
+		this.gsLookupGroup = gsLookupGroup;
+	}
+
 	@Override
 	public String toString() {
 		return "DataSourceRequestModel [dataSourceId=" + dataSourceId + ", dataSourceName=" + dataSourceName

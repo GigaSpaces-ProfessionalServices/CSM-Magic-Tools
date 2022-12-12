@@ -398,7 +398,8 @@ public class ValidateController {
         			);
         	dataSource.setAuthenticationScheme(dataSourceRequestModel.getAuthenticationScheme());
         	dataSource.setIntegratedSecurity(dataSourceRequestModel.getIntegratedSecurity());
-        	dataSource.setProperties(dataSourceRequestModel.getProperties());
+            dataSource.setProperties(dataSourceRequestModel.getProperties());
+            dataSource.setGsLookupGroup(dataSourceRequestModel.getGsLookupGroup());
         	dataSource.setStatus(ModelConstant.ACTIVE);
         	dataSourceService.add(dataSource);
             response.put("response", "DataSource added successfully");
@@ -441,6 +442,7 @@ public class ValidateController {
             properties.put("integratedSecurity",dataSource.getIntegratedSecurity());
             properties.put("properties",dataSource.getProperties());
             properties.put("agentHostIp",dataSource.getAgent()!=null?dataSource.getAgent().getHostIp():"-1");
+            properties.put("gsLookupGroup",dataSource.getGsLookupGroup());
             dataSourcePropList.add(properties);
         }
         Gson gson = new Gson();
@@ -462,7 +464,8 @@ public class ValidateController {
 			dataSource.setPassword(dataSourceRequestModel.getPassword());
 			dataSource.setAuthenticationScheme(dataSourceRequestModel.getAuthenticationScheme());
         	dataSource.setIntegratedSecurity(dataSourceRequestModel.getIntegratedSecurity());
-        	dataSource.setProperties(dataSourceRequestModel.getProperties());
+            dataSource.setProperties(dataSourceRequestModel.getProperties());
+            dataSource.setGsLookupGroup(dataSourceRequestModel.getGsLookupGroup());
 			dataSourceService.update(dataSource);
 			response.put("response","Datasource with id '" + dataSourceRequestModel.getDataSourceId() + "' updated successfully");
 		} catch (Exception exe) {
