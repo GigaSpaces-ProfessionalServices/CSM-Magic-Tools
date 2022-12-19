@@ -15,7 +15,7 @@
     <description>Gigaspaces Data Validator</description>
     <properties>
         <java.version>1.8</java.version>
-        <gs.version>16.0.0</gs.version>
+        <gs.version>16.2.0</gs.version>
     </properties>
 
     <repositories>
@@ -56,7 +56,7 @@
         <dependency>
             <groupId>org.gigaspaces</groupId>
             <artifactId>xap-datagrid</artifactId>
-            <version>16.0.0</version>
+            <version>${gs.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
