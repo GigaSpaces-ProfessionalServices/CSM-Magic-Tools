@@ -26,6 +26,7 @@ check_manager_cluster() {
 # 2. Check manager cluster
 odsx_check_manager_cluster() {
   echo -e "\n==================== Check if manager cluster is functioning correctly"
+  [[ ! -d $MANAGER_CONTROLLER ]] && { echo "$(date) CHECK_MANAGER_SYNC: Skipping cluster check because ADMIN API does not exist" | tee -a $_REST_LOG $_LOG ; return 1 ; }
   check_manager_cluster
   if [[ $_ADMINAPI_EXIT_CODE -eq 0 ]] ; then
     echo "Cluster intact - ${_ACTIVE_MANAGER}"
@@ -39,6 +40,7 @@ check_query_and_state() {
   local bll_server=${1}
   [[ "${1}" == "${_ODSGS}" ]] && bll_http=https || bll_http=http
   _BLL_STATE=$(curl -u ${_USER}:${_PASS} -skX GET --header "Accept: application/json" "${bll_http}://${bll_server}:8090/v2/pus" 2>/dev/null | awk -F'"status":' '{print $2}'|awk -F',' '{print $1}' | tr -d '"' | tr "[a-z]" "[A-Z]")
+  [[ ! "$(curl -u ${_USER}:${_PASS} -skI http://${1}:8090/v2/spaces/bllspace/query?typeName=JOTBMF01_TN_MATI|grep HTTP)" =~ "200 OK" ]] && { _BLL_QUERY_RESPONSE=1 ; return 1 ; }
   _BLL_QUERY=$(curl -u ${_USER}:${_PASS} -skX GET --header "Accept: application/json" "${bll_http}://${bll_server}:8090/v2/spaces/bllspace/query?typeName=JOTBMF01_TN_MATI&filter=JOMF01_SNIF%3C%3E0&maxResults=1")
   echo $_BLL_QUERY | grep -E '[0-9]*\|[0-9]*\|[0-9]*\|[0-9]*\|[0-9]*' >/dev/null 2>&1
   _BLL_QUERY_RESPONSE=$?
