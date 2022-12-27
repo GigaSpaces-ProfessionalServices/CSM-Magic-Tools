@@ -1,5 +1,6 @@
 # Bash script for querying odsx file host.yaml
 Allows for environment without linux yp util having to be installed
+Remove ^M characters before copying to Linux machine (dos2unix)
 ## Parameters:
 Provide only one parameter which is the role name
 ## Output:
