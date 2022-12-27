@@ -6,3 +6,14 @@
 ### Following can be installed using "yum install jq"
 jq
 
+## USAGE:
+
+  Check if P/B pair of containers are on the same space server.
+    Usage: /usr/local/bin/pb-same-server
+
+    PARAMETERS:
+      -d | --debug - Display each pair of containers in service (bllservice)
+      -s | --service - Specify a service name --- TBD ---
+
+    DEFAULT VALUES:
+    -s     - bllservice
