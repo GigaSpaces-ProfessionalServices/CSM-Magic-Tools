@@ -9,12 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/policy")
@@ -32,10 +33,11 @@ public class ApiController {
     //fullMemberName= twinkal will call rest and pass in api
     // typeName, critria = go over Criteria Tab file
     @PostMapping("/update")
-    String updateType(String typeName, String fullMemberName, String spaceName) {
+    String updateType(@RequestParam("fullMemberName") String fullMemberName, @RequestParam("spaceName") String spaceName) {
         try {
-            List<TieredStorageTableConfig> tableConfigList = CommonUtil.setTableConfigCriteria(tierCriteriaFilename);
-            for (TieredStorageTableConfig tableConfig : tableConfigList) {
+            Map<String, TieredStorageTableConfig> tableConfigMap = CommonUtil.setTableConfigCriteria(tierCriteriaFilename);
+            for (String typeName : tableConfigMap.keySet()) {
+                TieredStorageTableConfig tableConfig = tableConfigMap.get(typeName);
                 logger.info("Updating type " + tableConfig);
                 Path work = Paths.get(workLocation).toAbsolutePath();
                 ConnectionManager connectionManager = new ConnectionManager(work, spaceName, fullMemberName);

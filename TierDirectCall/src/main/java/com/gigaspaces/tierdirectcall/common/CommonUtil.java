@@ -8,18 +8,17 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class CommonUtil {
     private static Logger logger = LoggerFactory.getLogger(CommonUtil.class);
 
-    public static List<TieredStorageTableConfig> setTableConfigCriteria(String tierCriteriaFilename) {
-        Map<String, String[]> typesWithCriteriaArray = getTierCriteriaConfig(tierCriteriaFilename);
-        List<TieredStorageTableConfig> tieredStorageTableConfigList = new ArrayList<>();
-        for (String[] criteriaArray : typesWithCriteriaArray.values()) {
+    public static Map<String, TieredStorageTableConfig> setTableConfigCriteria(String tierCriteriaFilename) {
+        Map<String, String[]> typesWithCriteriaArrayMap = getTierCriteriaConfig(tierCriteriaFilename);
+        Map<String, TieredStorageTableConfig> tieredStorageTableConfigMap = new HashMap<>();
+        for (String typeName : typesWithCriteriaArrayMap.keySet()) {
+            String[] criteriaArray = typesWithCriteriaArrayMap.get(typeName);
             TieredStorageTableConfig tableConfig = new TieredStorageTableConfig();
             if (criteriaArray != null) {
                 if (criteriaArray[0].equalsIgnoreCase("C")) {
@@ -44,9 +43,9 @@ public class CommonUtil {
                             .setTransient(true);
                 }
             }
-            tieredStorageTableConfigList.add(tableConfig);
+            tieredStorageTableConfigMap.put(typeName, tableConfig);
         }
-        return tieredStorageTableConfigList;
+        return tieredStorageTableConfigMap;
     }
 
     public static Map<String, String[]> getTierCriteriaConfig(String strTierCriteriaFile) {
