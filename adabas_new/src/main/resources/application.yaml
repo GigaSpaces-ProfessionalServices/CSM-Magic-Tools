@@ -1,0 +1,54 @@
+config:
+  zookeeper:
+    address: foo
+    port: 2181
+    connectionStr: foo:2181
+    path: /publisher/adabase
+  kafka:
+    topic: $tableName$
+    schemaTopic: $tableName$_Schema
+    bootstrapAddress: foo:9092
+    replicationFactor: 2
+  retryTimeOut: 10000
+  schemasPath: /data/adabas/schemas
+
+mq:
+  hostname: h
+  channel: c
+  qManager: q
+  queueName: qn
+  sslChipherSuite: s
+  port: 2222
+  maxEvents: 1111
+
+test:
+  path: /Users/yoramweinreb/work/bankleumi/kafka/adabasMessages.xml
+
+server:
+  port: 8071
+
+management:
+  server:
+    port: 8071
+  metrics:
+    export:
+      influx:
+        enabled: false
+      statsd:
+        enabled: false
+        flavor: telegraf
+        port: 8125
+  endpoints:
+    web:
+      port: 8071
+      expose: "*"
+
+logging:
+  level:
+    org.springframework: ERROR
+    com.gs.leumi: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"
+    file: "%d %p %c{1.} [%t] %m%n"
+  file:
+    name: /dbagigalogs/Adabas/adabasPublisher.log
