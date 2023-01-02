@@ -88,7 +88,7 @@ public class TypeUpdater {
             statement.close();
             return true;
         } catch (Throwable t) {
-            System.out.println("update failed for type " + typeName + " failed:" + t);
+            logger.error("update failed for type " + typeName + " failed:", t);
             t.printStackTrace();
             return false;
         }

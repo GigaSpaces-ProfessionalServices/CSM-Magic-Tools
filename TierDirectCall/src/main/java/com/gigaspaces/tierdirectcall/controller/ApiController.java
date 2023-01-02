@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.util.List;
 
 @RestController
 @RequestMapping("/policy")
@@ -31,15 +32,19 @@ public class ApiController {
     //fullMemberName= twinkal will call rest and pass in api
     // typeName, critria = go over Criteria Tab file
     @PostMapping("/update")
-    String updateType(String typeName, String fullMemberName) {
+    String updateType(String typeName, String fullMemberName, String spaceName) {
         try {
-            TieredStorageTableConfig tableConfig = CommonUtil.setTableConfigCriteria(tierCriteriaFilename);
-            Path work = Paths.get(workLocation).toAbsolutePath();
-            ConnectionManager connectionManager = new ConnectionManager(work, spaceName, fullMemberName);
-            Connection connection = connectionManager.connectToDB();
-            TypeUpdater typeUpdater = new TypeUpdater(connection, typeName, tableConfig);
-            typeUpdater.update();
-            connectionManager.shutDown();
+            List<TieredStorageTableConfig> tableConfigList = CommonUtil.setTableConfigCriteria(tierCriteriaFilename);
+            for (TieredStorageTableConfig tableConfig : tableConfigList) {
+                logger.info("Updating type " + tableConfig);
+                Path work = Paths.get(workLocation).toAbsolutePath();
+                ConnectionManager connectionManager = new ConnectionManager(work, spaceName, fullMemberName);
+                Connection connection = connectionManager.connectToDB();
+                TypeUpdater typeUpdater = new TypeUpdater(connection, typeName, tableConfig);
+                typeUpdater.update();
+                connectionManager.shutDown();
+                logger.info("Done updating type " + tableConfig);
+            }
             return "SUCCESS";
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
