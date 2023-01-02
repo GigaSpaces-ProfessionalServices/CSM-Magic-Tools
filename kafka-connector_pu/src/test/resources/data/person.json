@@ -1,0 +1,19 @@
+[
+  {
+    "key": null,
+    "value": {
+      "ID": 1,
+      "Name": "Alice",
+      "Birthdate": "1990-01-01",
+      "Address": {
+        "AddressLine1": "Address line 1",
+        "AddressLine2": "Address line 1"
+      },
+      "Intlist": [1,2,3],
+      "Objlist": [
+        {"A": 1, "B": "B value 1"},
+        {"A": 2, "B": "B value 2"}
+      ]
+    }
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "key": null,
+    "value": {
+      "skuNum": "025140007",
+      "variantNum": "2514007",
+      "variantDesc": "EASEL_BOX_BLACK",
+      "styleNum": "000000000011186380",
+      "styleDesc": "EASEL_BOX_BLACK",
+      "colorCode": "1424",
+      "colorDesc": "BLACK",
+      "sizeCode": "00001",
+      "sizeDesc1": "NA",
+      "sizeDesc2": "",
+      "upc": "168785442689",
+      "webOverride": "0",
+      "itemStatus": "S",
+      "bbwdHierarchy": {
+        "skuNumber": "154245",
+        "subDepartmentName": "sd",
+        "subDepartmentDesc": "subDeptDesc",
+        "className": "cls",
+        "classDesc": "classDesc",
+        "subclassName": "sci",
+        "subclassDesc": "subClassDesc",
+        "brandCode": "brandCode",
+        "brandDesc": "brandDesc"
+      }
+    }
+  }
+]

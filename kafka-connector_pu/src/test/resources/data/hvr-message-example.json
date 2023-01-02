@@ -1,0 +1,44 @@
+[
+  {
+    "key": null,
+    "value": {
+      "schema": {
+        "type": "struct",
+        "name": "customers",
+        "fields": [
+          {
+            "field": "id",
+            "type": "int64"
+          },
+          {
+            "field": "name",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "field": "hvr_capture_tstamp",
+            "type": "int64",
+            "name": "org.apache.kafka.connect.data.Timestamp",
+            "version": 1
+          },
+          {
+            "field": "hvr_integration_key",
+            "type": "string"
+          },
+          {
+            "field": "hvr_operation_type",
+            "type": "int32"
+          }
+        ]
+      },
+      "payload": {
+        "id": 1,
+        "name": "Alice",
+        "hvr_capture_tstamp": 1636641675000,
+        "hvr_integration_key": "618D2B8B00000001",
+        "hvr_operation_type": 1
+      }
+    }
+  }
+]
+

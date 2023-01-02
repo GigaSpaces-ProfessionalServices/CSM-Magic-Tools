@@ -1,0 +1,28 @@
+[
+  {
+    "key": null,
+    "value": {
+      "payload": {
+        "id": 1,
+        "name": "Alice",
+        "job": "Design",
+        "hvr_capture_tstamp": 1636641675000,
+        "hvr_integration_key": "618D2B8B00000001",
+        "hvr_operation_type": 1
+      }
+    }
+  },
+  {
+    "key": null,
+    "value": {
+      "payload": {
+        "id": 1,
+        "name": "Alice (2)",
+        "hvr_capture_tstamp": 1636641675000,
+        "hvr_integration_key": "618D2B8B00000001",
+        "hvr_operation_type": 1
+      }
+    }
+  }
+]
+

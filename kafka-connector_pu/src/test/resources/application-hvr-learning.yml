@@ -1,0 +1,15 @@
+spring.profiles: learning
+
+dataFormat: JSON
+
+metadata-provider:
+  method: based-on-data
+  parser: HVR
+  topics: [customers]
+  types-mapping:
+    use-string-for-unlisted-types: true
+    map:
+      - source-type: int64
+        dih-type: Long
+      - source-type: int32
+        dih-type: Integer

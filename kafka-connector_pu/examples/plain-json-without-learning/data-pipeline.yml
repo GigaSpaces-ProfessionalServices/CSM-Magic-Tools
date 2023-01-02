@@ -1,0 +1,52 @@
+---
+dataFormat: "JSON"
+spaceTypes:
+  - name: Person
+
+    dataSource:
+      topic: persons
+
+    properties:
+      - name: ID
+        type: Long
+        attributes: [spaceid, routingkey]
+        selector: $.ID
+
+      - name: Name
+        type: String
+        selector: $.Name
+
+      - name: Birthdate
+        type: Date
+        selector: $.Birthdate
+
+      - name: PropWithDefaultValue
+        type: String
+        defaultValue: TheDefaultValue
+        selector: $.PropWithDefaultValue
+
+        # nested fields example
+      - name: Address
+        properties:
+          - name: AddressLine1
+            type: String
+            selector: $.Address.AddressLine1
+          - name: AddressLine2
+            type: String
+            selector: $.Address.AddressLine2
+
+      - name: Intlist
+        attributes: [list]
+        type: Integer
+        selector: $.Intlist
+
+      - name: Objlist
+        attributes: [list]
+        selector: $.Objlist
+        properties:
+          - name: A
+            type: Integer
+            selector: $.Objlist[*].A
+          - name: B
+            type: String
+            selector: $.Objlist[*].B

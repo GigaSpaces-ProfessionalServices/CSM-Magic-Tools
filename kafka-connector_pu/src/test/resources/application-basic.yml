@@ -1,0 +1,44 @@
+spring.profiles: connector
+
+dataFormat: JSON
+
+spaceTypes:
+  - name: Person
+
+    dataSource:
+      topic: Person
+
+    properties:
+      - name: ID
+        type: Long
+        attributes: [spaceid, routingkey]
+        selector: $.ID
+
+      - name: Name
+        type: String
+        selector: $.Name
+
+      - name: Birthdate
+        type: Date
+        selector: $.Birthdate
+
+      - name: PropWithDefaultValue
+        type: String
+        defaultValue: TheDefaultValue
+        selector: $.PropWithDefaultValue
+
+        # nested fields example
+      - name: Address
+        selector: $.Address
+        properties:
+          - name: AddressLine1
+            type: String
+            selector: .AddressLine1
+          - name: AddressLine2
+            type: String
+            selector: .AddressLine2
+
+    indexes:
+      - properties: [Birthdate]
+        type: ORDERED
+        unique: false

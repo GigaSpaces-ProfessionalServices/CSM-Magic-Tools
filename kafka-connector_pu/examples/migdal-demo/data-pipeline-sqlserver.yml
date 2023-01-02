@@ -1,0 +1,77 @@
+---
+dataFormat: "JSON"
+cdc:
+  operations:
+    insert:
+      defaultOperation: true
+      propertiesSelectorPrefix: "$.payload.after."
+      ifExists: "update"
+    update:
+      conditions:
+      - selector: "$.payload.op"
+        value: "u"
+      propertiesSelectorPrefix: "$.payload.after."
+      ifNotExists: "insert"
+    delete:
+      conditions:
+      - selector: "$.payload.op"
+        value: "d"
+      propertiesSelectorPrefix: "$.payload.before."
+spaceTypes:
+- name: "testDB.dbo.customers"
+  dataSource:
+    topic: "server1.dbo.customers"
+  properties:
+  - name: "id"
+    type: "Integer"
+    selector: "id"
+    attributes:
+    - "spaceid"
+  - name: "first_name"
+    type: "String"
+    selector: "first_name"
+  - name: "last_name"
+    type: "String"
+    selector: "last_name"
+  - name: "email"
+    type: "String"
+    selector: "email"
+- name: "testDB.dbo.orders"
+  dataSource:
+    topic: "server1.dbo.orders"
+  properties:
+  - name: "id"
+    type: "Integer"
+    selector: "id"
+    attributes:
+    - "spaceid"
+  - name: "order_date"
+    type: "String"
+    selector: "order_date"
+  - name: "purchaser"
+    type: "String"
+    selector: "purchaser"
+  - name: "quantity"
+    type: "String"
+    selector: "quantity"
+  - name: "product_id"
+    type: "String"
+    selector: "product_id"
+- name: "testDB.dbo.products"
+  dataSource:
+    topic: "server1.dbo.products"
+  properties:
+  - name: "id"
+    type: "Integer"
+    selector: "id"
+    attributes:
+    - "spaceid"
+  - name: "name"
+    type: "String"
+    selector: "name"
+  - name: "description"
+    type: "String"
+    selector: "description"
+  - name: "weight"
+    type: "String"
+    selector: "weight"

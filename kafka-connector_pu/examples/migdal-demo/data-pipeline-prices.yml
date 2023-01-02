@@ -1,0 +1,24 @@
+---
+dataFormat: "JSON"
+spaceTypes:
+- name: "prices"
+  dataSource:
+    topic: "prices"
+  properties:
+  - name: "ID"
+    type: "java.lang.Integer"
+    selector: "$.ID"
+    attributes:
+    - "spaceid"
+  - name: "Product_ID"
+    type: "java.lang.Integer"
+    selector: "$.Product_ID"
+  - name: "Country_Code"
+    type: "java.lang.String"
+    selector: "$.Country_Code"
+  - name: "Currency"
+    type: "java.lang.String"
+    selector: "$.Currency"
+  - name: "Price"
+    type: "java.lang.Double"
+    selector: "$.Price"

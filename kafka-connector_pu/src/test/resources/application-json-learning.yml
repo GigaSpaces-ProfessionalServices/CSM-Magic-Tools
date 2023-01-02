@@ -1,0 +1,12 @@
+spring.profiles: learning
+
+dataFormat: JSON
+
+metadata-provider:
+  method: based-on-data
+  schemaless-json-metadata-parser:
+    data-root: "$"
+    name-pattern: "{topic-name}"
+  topics: [person,prices,advanced]
+  types-mapping:
+    use-string-for-unlisted-types: true

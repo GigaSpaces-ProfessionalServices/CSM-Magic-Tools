@@ -1,0 +1,15 @@
+spring.profiles: learning
+
+dataFormat: JSON
+
+metadata-provider:
+  method: based-on-data
+  parser: AdabasSoftwareAG
+  topics: [LFPM_TNUOT_HAYOM_schema]
+  types-mapping:
+    use-string-for-unlisted-types: true
+    map:
+      - source-type: "integer"
+        dih-type: Integer
+      - source_type: "string"
+        dih-type: String

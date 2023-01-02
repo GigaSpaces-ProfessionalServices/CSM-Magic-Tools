@@ -1,0 +1,31 @@
+spring.profiles: connector
+
+dataFormat: JSON
+
+spaceTypes:
+  - name: Person
+
+    dataSource:
+      topic: Person
+
+    properties:
+      - name: ID
+        type: Long
+        attributes: [spaceid, routingkey]
+        selector: $.ID
+
+      - name: Intlist
+        attributes: [list]
+        type: Integer
+        selector: $.Intlist
+
+      - name: Objlist
+        attributes: [list]
+        selector: $.Objlist[*]
+        properties:
+          - name: A
+            type: Integer
+            selector: .A
+          - name: B
+            type: String
+            selector: .B

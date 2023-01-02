@@ -1,0 +1,36 @@
+---
+# common configuration
+spring.kafka.bootstrap-servers: localhost:9092
+
+logging.level:
+  root: WARN
+  com.gigaspaces.connector: DEBUG
+
+---
+# configuration for learning mode
+spring.profiles: learning
+spring.kafka.consumer-group: DIH-learning
+
+metadata-provider:
+  method: based-on-data
+  parser: Debezium
+  topics: [ server1 ]
+  types-mapping:
+    use-string-for-unlisted-types: true
+    map:
+      - source-type: "int identity"
+        dih-type: Integer
+      - source-type: date
+        dih-type: Integer
+      - source-type: int
+        dih-type: Integer
+      - source-type: float
+        dih-type: Double
+
+
+---
+# configuration for connector mode
+spring.profiles: connector
+spring.kafka.consumer-group: DIH
+
+space.name: demo

@@ -1,0 +1,11 @@
+{
+  "ID": 1,
+  "Name": "Alice",
+  "EmptyList": [],
+  "ListMixedTypes": [1, "a", null],
+  "ListInList": [1, [2, 3]],
+  "ListDocsWithVaryingPropsList": [{"a": 1, "b": true}, {"a": 2, "b": 3, "c": "text"}],
+  "ListDocsAndSimpleTypes": [1, "a", {"foo": "bar"}],
+  "DocWithArrayProp": {"a": "b", "c": [1, 2, 3]},
+  "CrazyMix": {"a": "b", "c":  [1, {"d": "e", "f": [2, 3], "g": null}]}
+}

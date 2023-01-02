@@ -1,0 +1,29 @@
+---
+dataFormat: "JSON"
+spaceTypes:
+- name: "sample"
+  dataSource:
+    topic: "sample"
+  properties:
+  - name: "empno"
+    type: "java.lang.Integer"
+    selector: "$.empno"
+    attributes: ["spaceid"]
+  - name: "ename"
+    type: "java.lang.String"
+    selector: "$.ename"
+  - name: "job"
+    type: "java.lang.String"
+    selector: "$.job"
+  - name: "mgr"
+    type: "java.lang.Integer"
+    selector: "$.mgr"
+  - name: "hiredate"
+    type: "Date"
+    selector: "$.hiredate"
+  - name: "sal"
+    type: "java.lang.Integer"
+    selector: "$.sal"
+  - name: "deptno"
+    type: "java.lang.Integer"
+    selector: "$.deptno"

@@ -1,0 +1,1 @@
+{"skuNum":"025140007","dimensions":{"length":1.22,"width":2.05,"height":4.75,"lwhUom":"IN","weight":0.25,"weightUom":"LB"},"prices":[{"price":30,"type":"MSRP","currencyCode":"USD"},{"price":35.5,"type":"RETAIL","currencyCode":"USD"}]}

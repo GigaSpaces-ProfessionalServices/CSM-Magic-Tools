@@ -1,0 +1,45 @@
+---
+dataFormat: "JSON"
+cdc:
+  operations:
+    insert:
+      defaultOperation: true
+      ifExists: "update"
+    update:
+      conditions:
+      - selector: "$.payload.hvr_operation_type"
+        value: 2
+      ifNotExists: "insert"
+    delete:
+      conditions:
+      - selector: "$.payload.hvr_operation_type"
+        value: 0
+spaceTypes:
+- name: "customers"
+  dataSource:
+    topic: "customers"
+  properties:
+  - name: "id"
+    type: "String"
+    attributes: [spaceid]
+    selector: "$.payload.id"
+  - name: "name"
+    type: "String"
+    selector: "$.payload.name"
+- name: "cars"
+  dataSource:
+    topic: "cars"
+  properties:
+  - name: "ID"
+    type: "String"
+    attributes: [spaceid]
+    selector: "$.payload.ID"
+  - name: "Make"
+    type: "String"
+    selector: "$.payload.Make"
+  - name: "Model"
+    type: "String"
+    selector: "$.payload.Model"
+  - name: "Year"
+    type: "String"
+    selector: "$.payload.Year"

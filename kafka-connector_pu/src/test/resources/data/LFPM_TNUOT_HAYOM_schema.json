@@ -1,0 +1,7 @@
+[
+  { "key":null,
+    "value":{"type":"LFPM_TNUOT_HAYOM","operation":"CREATE","payload":{"artdocument":
+    {"method":"create","fields":{"field":[{"pre":0,"name":"ISN","length":30,"type":"integer"},{"pre":0,"name":"BANK","length":4,"type":"decimal"},{"pre":0,"name":"SNIF","length":4,"type":"decimal"},{"pre":0,"name":"CHESBON","length":10,"type":"decimal"},{"pre":0,"name":"SUG-CHESBON","length":4,"type":"decimal"},{"pre":0,"name":"SUG-MATBEA","length":4,"type":"decimal"},{"pre":0,"name":"SHEM-LAKOACH","length":50,"type":"string"},{"pre":2,"name":"ITRA-PTICHA-STF","length":16,"type":"decimal"},{"pre":2,"name":"ITRA-PTICHA-PIK","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-PTICHA-BLI-ATD-STF","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-PTICHA-BLI-ATD-PIK","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-MECHUSH-STF","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-MECHUSH-PIK","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-MECHUSH-BLI-ATD-STF","length":16,"type":"decimal"},{"pre":2,"name":"PMOL-ITRA-MECHUSH-BLI-ATD-PIK","length":16,"type":"decimal"},{"pre":0,"name":"PMOL-MIS-TNUOT-BE-DAF","length":4,"type":"decimal"},{"pre":0,"name":"PMOL-TAARICH-NECHONUT",
+      "length":10,"type":"decimal"}]},"version":1,"tableName":"LFPM_TNUOT_HAYOM"}}}
+  }
+]

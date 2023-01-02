@@ -1,0 +1,54 @@
+spring.profiles: connector
+
+dataFormat: JSON
+
+cdc:
+  operations:
+    insert:
+      defaultOperation: true
+    update:
+      conditions:
+        - selector: "$.payload.hvr_operation_type"
+          value: 2
+    delete:
+      conditions:
+        - selector: "$.payload.hvr_operation_type"
+          value: 0
+
+spaceTypes:
+  - name: "customers"
+    dataSource:
+      topic: "customers"
+    properties:
+      - name: "id"
+        type: "Long"
+        attributes: [ spaceid, routingkey ]
+        selector: "$.payload.id"
+        defaultValue: null
+      - name: "name"
+        type: "String"
+        selector: "$.payload.name"
+        defaultValue: null
+      - name: "job"
+        type: "String"
+        selector: "$.payload.job"
+        defaultValue: null
+
+  # second type getting data from the same topic
+  - name: "customers2"
+    dataSource:
+      topic: "customers"
+    properties:
+      - name: "id2"
+        type: "Long"
+        attributes: [ spaceid, routingkey ]
+        selector: "$.payload.id"
+        defaultValue: null
+      - name: "name2"
+        type: "String"
+        selector: "$.payload.name"
+        defaultValue: null
+      - name: "job2"
+        type: "String"
+        selector: "$.payload.job"
+        defaultValue: null

@@ -1,0 +1,37 @@
+spring.profiles: connector
+
+dataFormat: JSON
+
+spaceTypes:
+  - name: "customers"
+    dataSource:
+      topic: "mixed-topic"
+      conditions:
+        - selector: "$.schema.name"
+          value: "customers"
+    properties:
+      - name: "id"
+        type: "Long"
+        attributes: [ spaceid, routingkey ]
+        selector: "$.payload.id"
+      - name: "name"
+        type: "String"
+        selector: "$.payload.name"
+
+  - name: "orders"
+    dataSource:
+      topic: "mixed-topic"
+      conditions:
+        - selector: "$.schema.name"
+          value: "orders"
+    properties:
+      - name: "id"
+        type: "Long"
+        attributes: [ spaceid, routingkey ]
+        selector: "$.payload.id"
+      - name: "description"
+        type: "String"
+        selector: "$.payload.description"
+      - name: "customer_id"
+        type: "Long"
+        selector: "$.payload.customer_id"

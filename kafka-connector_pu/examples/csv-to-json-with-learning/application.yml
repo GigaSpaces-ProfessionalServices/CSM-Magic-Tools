@@ -1,0 +1,27 @@
+---
+# common configuration
+spring.kafka.bootstrap-servers: localhost:9092
+
+logging.level:
+  root: WARN
+  com.gigaspaces.connector: DEBUG
+
+---
+spring.profiles: learning
+spring.kafka.consumer-group: DIH-learning
+
+metadata-provider:
+  method: based-on-data
+  schemaless-json-metadata-parser:
+    data-root: "$"
+    name-pattern: "{topic-name}"
+  topics: [sample]
+  types-mapping:
+    use-string-for-unlisted-types: true
+
+---
+# configuration for connector mode
+spring.profiles: connector
+spring.kafka.consumer-group: DIH
+
+space.name: demo

@@ -1,0 +1,13 @@
+spring.profiles: learning
+
+dataFormat: JSON
+
+metadata-provider:
+  method: based-on-data
+  parser: Debezium
+  topics: [server1]
+  types-mapping:
+    use-string-for-unlisted-types: true
+    map:
+      - source-type: "int identity"
+        dih-type: Integer

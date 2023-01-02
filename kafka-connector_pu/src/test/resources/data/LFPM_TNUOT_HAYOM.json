@@ -1,0 +1,122 @@
+[
+  {
+    "key": null,
+    "value": {
+      "type": "LFPM_TNUOT_HAYOM",
+      "operation": "UPDATE",
+      "payload": {
+        "artdocument": {
+          "method": "update",
+          "fields": {
+            "field": [
+              {
+                "name": "ISN",
+                "value": 15
+              },
+              {
+                "name": "BANK",
+                "value": 10
+              },
+              {
+                "name": "SNIF",
+                "value": 602
+              },
+              {
+                "name": "CHESBON",
+                "value": 159140
+              },
+              {
+                "name": "SUG-CHESBON",
+                "value": 457
+              },
+              {
+                "name": "SUG-MATBEA",
+                "value": 1
+              },
+              {
+                "name": "SHEM-LAKOACH",
+                "value": "TEST REPLICATOR - MASSIVE STORE 159140"
+              },
+              {
+                "name": "ITRA-PTICHA-STF",
+                "value": -8049268.15
+              }
+            ]
+          },
+          "version": 1,
+          "tableName": "LFPM_TNUOT_HAYOM"
+        }
+      }
+    }
+  },
+  {
+    "key": null,
+    "value": {
+      "type": "LFPM_TNUOT_HAYOM",
+      "operation": "UPDATE",
+      "payload": {
+        "artdocument": {
+          "method": "update",
+          "fields": {
+            "field": [
+              {
+                "name": "ISN",
+                "value": 16
+              },
+              {
+                "name": "BANK",
+                "value": 10
+              },
+              {
+                "name": "SNIF",
+                "value": 602
+              },
+              {
+                "name": "CHESBON",
+                "value": 159141
+              },
+              {
+                "name": "SUG-CHESBON",
+                "value": 935
+              },
+              {
+                "name": "SUG-MATBEA",
+                "value": 1
+              },
+              {
+                "name": "SHEM-LAKOACH",
+                "value": "TEST REPLICATOR - MASSIVE STORE 159141"
+              },
+              {
+                "name": "ITRA-PTICHA-STF",
+                "value": -617104.75
+              },
+              {
+                "name": "PMOL-ITRA-PTICHA-BLI-ATD-PIK",
+                "value": 350000
+              },
+              {
+                "name": "PMOL-ITRA-MECHUSH-STF",
+                "value": -967104.75
+              },
+              {
+                "name": "PMOL-ITRA-MECHUSH-PIK",
+                "value": 350000
+              },
+              {
+                "name": "PMOL-ITRA-MECHUSH-BLI-ATD-PIK",
+                "value": 350000
+              },
+              {
+                "name": "PMOL-MIS-TNUOT-BE-DAF",
+                "value": 2
+              }
+            ]
+          },
+          "version": 1,
+          "tableName": "LFPM_TNUOT_HAYOM"
+        }
+      }
+    }
+  }
+]
