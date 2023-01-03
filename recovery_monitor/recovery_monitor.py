@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf8 -*-
 
+import os
+import sys
+import re
+import uuid
 import requests
 import json
 import yaml
@@ -8,60 +12,53 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import subprocess
 import argparse
 import time
+import logging
+from datetime import datetime
 from colorama import Fore, Back, Style
-import random
 import pyfiglet
+import random
 from math import floor
-import os
-import re
-
+import itertools
+import threading
 
 def argument_parser():
 
     parser = argparse.ArgumentParser(
-        description='description: monitor recovery process',
-        epilog='* please report any issue to alon.segal2@bankleumi.co.il'
+        description='description: \n   monitor the recovery process of space partitions',
+        formatter_class=argparse.RawTextHelpFormatter
     )
-    parser = argparse.ArgumentParser()
     required = parser.add_argument_group('required arguments')
     required.add_argument(
         'space_name',
         action="store",
-        help="The name of the space"
-    )
-    required.add_argument(
-        '-t', '--type',
-        action="store",
-        dest="type",
-        help="Query a specific type"
-    )
-    required.add_argument(
+        help="The name of the space\n\n")
+    parser.add_argument(
         '-l', '--list',
         action="store_true",
-        help="List all registered types"
-    )
-    required.add_argument(
+        help="List all registered types")
+    parser.add_argument(
         '-u', '--unattended',
         action="store_true",
-        help="Show table only - minimal output"
-    )
-    required.add_argument(
+        help="Print table snapshot once - minimal output")
+    parser.add_argument(
+        '-i',
+        action="store",
+        dest="interval",
+        help="Set polling interval in seconds (default = 5s)")
+    parser.add_argument(
         '--debug',
         action="store_true",
-        help="Print additional info"
-    )
+        help="Print additional info")
     parser.add_argument(
         '-v', '--version',
-        action='version',
-        version='%(prog)s v1.0'
-    )
+        action='version', version='%(prog)s v2.0.2')
 
     the_arguments = {}
     ns = parser.parse_args()
     if ns.space_name:
         the_arguments['space_name'] = ns.space_name
-    if ns.type:
-        the_arguments['type'] = ns.type
+    if ns.interval:
+        the_arguments['interval'] = ns.interval
     if ns.list:
         the_arguments['list'] = True
     if ns.unattended:
@@ -119,7 +116,7 @@ def is_restful_ok(the_url):
         return False
 
  
-def get_cur_percent():
+def _test_get_cur_percent():
     the_file = "/tmp/testfile.txt"
     target_rows = 123
     count = 0
@@ -129,18 +126,6 @@ def get_cur_percent():
         return 100
     else:
         return int(count / target_rows * 100)
-
-
-def get_sqlite_object_count(the_host, instance_id, otype=None):
-    sqlite_cmd = f"sqlite3 /dbagigadata/tiered-storage/bllspace/sqlite_db_{space_name}_container{instance_id}:{space_name}"
-    if 'type' in arguments:
-        select_cmd = 'select count(*) from \\"' + obj_type + '\\"'
-    else:
-        select_cmd = f"'{build_sqlite_query(list_types())}'"
-    remote_cmd = f'"{sqlite_cmd} {select_cmd}"'
-    sh_cmd = f"ssh {the_host} {remote_cmd}"
-    the_response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-    return int(the_response)
 
 
 def check_space_exists(space):
@@ -154,74 +139,82 @@ def check_space_exists(space):
             return False
 
 
-def check_type_exists(otype):
-    uri=f"{space_name}~1_1/query?typeName={otype}"
-    url = f"http://{manager}:{defualt_port}/v2/spaces/{space_name}/instances/{uri}"
-    response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
-    if response_data.status_code == 200:
-        return True
-    else:
-        return False
+def is_primary(instance_id):
+    """
+    check if instance mode is primary
+    """
+
+    url = f"http://{manager}:{defualt_port}/v2/spaces/{space_name}/instances"
+    headers = {'Accept': 'application/json'}
+    response = requests.get(
+        url,
+        auth=(auth['user'], auth['pass']),
+        headers=headers,
+        verify=False
+    )
+    for item in response.json():
+        if instance_id == item['id']:
+            return item['mode'] == 'PRIMARY'
 
 
-def list_types():
-    url = f"http://{manager}:{defualt_port}/v2/spaces/{space_name}/instances/{space_name}~1_1/statistics/types"
-    response_data = requests.get(url, auth=(auth['user'], auth['pass']), verify=False)
+def check_type_exists():
     types = []
-    excluded = ['java.lang.Object']
-    for _t in response_data.json():
-        if _t in excluded:
-            continue
-        types.append(_t)
-    return types
+    for h in space_hosts:
+        sh_cmd = f"ssh {h} 'for l in $(ls /dbagigadata/tiered-storage/{space_name}/*{space_name}); \
+        do for t in $(sqlite3 $l \".tables\" | grep -v \"com.gs\");do echo $t ; done ; done'"
+        the_response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+        data = the_response.replace('\n', ' ').split(' ')
+        types.extend(data)
+    _otypes = [t for t in list(set(types)) if t != '']
+    return _otypes
 
 
-def print_types(types):
-    counter = 0
-    for t in types:
-        print(t)
-        counter += 1
-    total_str = f"Total number of types available: {counter}"
-    print("=" * (len(total_str) + 1) + f"\n{total_str}\n")
-
-
-def check_sqlite_exists(the_host, instance_id):
-    sqlite_file = f"/dbagigadata/tiered-storage/bllspace/sqlite_db_{space_name}_container{instance_id}:{space_name}"
-    remote_cmd = f'[[ -e {sqlite_file} ]] && echo 0 || echo 1'
-    sh_cmd = f"ssh {the_host} {remote_cmd}"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    return int(the_response.strip("\\n'").strip("b'"))
-
-
-def build_sqlite_query(types):
-    query = "select ("
-    for t in types:
-        query += 'select count(*) from \\"' + t + '\\") + ('
-    return query.rstrip(' + (')
+def create_session_file(_file):
+    lines = [
+        '#!/bin/bash',
+        'str=""',
+        f'for db in $(ls /dbagigadata/tiered-storage/{space_name}/*{space_name}); do',
+            'query=\'select (\'',
+            'for t in $(sqlite3 $db "SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'com.gs%\';"); do',
+                '[[ $t == "" ]] && continue',
+                'query+="select count(*) from \"${t}\") + ("',
+            'done',
+            'if [[ $query != \'select (\' ]]; then',
+                'query="$(echo $query | sed \'s/ + ($//g\')"',
+                'c=$(sqlite3 $db "$query")',
+            'else',
+                 'c=0',
+            'fi',
+            'p=$(echo $db | grep -o "[0-9].*:" | cut -d: -f1)', 
+            'str+="$(hostname):$p:$c "',
+            'done',
+        'echo $str',
+        '',
+    ]
+    with open(_file, 'w', encoding='utf8') as tmp:
+        tmp.writelines('\n'.join(lines))
 
 
 def print_table_row(type, dl=[]):
-    table_width = 118
+    table_width = 116
     h_border = "=" * table_width
     r_border = "-" * table_width
     h1 = [
-        'Partition #',
+        'Part. #',
         'Expected Records',
         'Current Records',
         'Progress %',
         'Record Gap',
         'Status'
     ]
-    P = f"{Back.BLUE}{Fore.BLACK}P{Style.RESET_ALL}"
-    B = f"{Back.LIGHTWHITE_EX}{Fore.BLACK}B{Style.RESET_ALL}"
-    h2 = ['Host', '# Records', f"{P}/{B}"]
+    h2 = ['Host', '# Records', 'Mode']
     if type == 'header':
-        row = f"{h_border}\n|{h1[0]:^13}|" + \
-            f"{h1[1]:^30}|{h1[2]:^30}|" + \
+        row = f"{h_border}\n|{h1[0]:^9}|" + \
+            f"{h1[1]:^31}|{h1[2]:^31}|" + \
             f"{h1[3]:^12}|{h1[4]:^12}|{h1[5]:^14}|\n{h_border}\n"
-        row += f"|{' ':^13}|" + \
-            f"{h2[0]:^16}|{h2[1]:^9}|{h2[2]:^3}|" + \
-            f"{h2[0]:^16}|{h2[1]:^9}|{h2[2]:^3}|" + \
+        row += f"|{' ':^9}|" + \
+            f"{h2[0]:^16}|{h2[1]:^9}|{h2[2]:^4}|" + \
+            f"{h2[0]:^16}|{h2[1]:^9}|{h2[2]:^4}|" + \
             f"{'':^12}|{'':^12}|{'':^14}|\n{h_border}"
     if type == 'seperator':
         row = f"{h_border}"
@@ -231,33 +224,197 @@ def print_table_row(type, dl=[]):
         else:
             dl1 = dl[1]
         if len(dl[4]) > 13:
-            dl4 = f'{dl[4][0:13]}...'
+            dl4 = f'{dl[1][0:13]}...'
         else:
             dl4 = dl[4]
-        row = f"|{dl[0]:^13}|" + \
-            f"{dl1:^16}|{dl[2]:^9}|{dl[3]:^3}|" + \
-            f"{dl4:^16}|{dl[5]:^9}|{dl[6]:^3}|" + \
+        row = f"|{dl[0]:^9}|" + \
+            f"{dl1:^16}|{dl[2]:^9}|{dl[3]:^4}|" + \
+            f"{dl4:^16}|{dl[5]:^9}|{dl[6]:^4}|" + \
             f"{dl[7]:^12}|{dl[8]:^12}|{dl[9]:<14}|"
         if debug:
-            row += f"{dl[10]} ; {dl[11]}"
-    print(row)
-    
+            row += f"{dl[10]} ; {dl[11]} ; {dl[12]}"
+    return row
 
-def get_sqlite_id(item_id):
-    if item_id == f"{space_name}~{num}_1":
-        return f"{num}"
-    if item['id'] == f"{space_name}~{num}_2":
-        return f"{num}_1"
+
+def get_partition_counts(_partition_number, row_print=True):
+    global table
+    P = Back.BLUE + Fore.BLACK + " P  " + Style.RESET_ALL
+    B = Back.LIGHTWHITE_EX + Fore.BLACK + " B  " + Style.RESET_ALL
+    # primary instance
+    _p_id = f"{space_name}~{_partition_number}_1"
+    if str(_partition_number) not in partition_map:
+        _p_count = 0
+        _p_host_id = "NONE"
+    else:
+        _p_count = int(partition_map[str(_partition_number)][1])
+        _p_host_id = partition_map[str(_partition_number)][0]
+    # backup instance
+    _b_id = f"{space_name}~{_partition_number}_2"
+    if f"{str(_partition_number)}_1" not in partition_map.keys():
+        _b_count = 0
+        _b_host_id = "NONE"
+    else: 
+        _b_count = int(partition_map[f"{str(_partition_number)}_1"][1])
+        _b_host_id = partition_map[f"{str(_partition_number)}_1"][0]
+    
+    if (_p_count < _b_count) or (_p_count == _b_count and is_primary(_b_id)):
+        # if backup is the new primary we switch them
+        _temp_id, _temp_count, _temp_host_id = _p_id, _p_count, _p_host_id
+        _p_id, _p_count, _p_host_id = _b_id, _b_count, _b_host_id
+        _b_id, _b_count, _b_host_id = _temp_id, _temp_count, _temp_host_id
+    if _p_host_id == "NONE" or _b_host_id == "NONE":
+        status = Fore.RED + "compromised   " + Style.RESET_ALL
+    elif _p_count != _b_count:
+        status = Fore.LIGHTYELLOW_EX + "in progress..." + Style.RESET_ALL
+    elif _p_count == 0 and _b_count == 0:
+        status = Fore.RED + "no data       " + Style.RESET_ALL
+    else:
+        status = Fore.GREEN + "synchronized  " + Style.RESET_ALL
+    if row_print:
+        if _p_host_id == "NONE" or _b_host_id == "NONE":
+            progress_prct = "0%"
+        elif _p_count > 0:
+            progress_prct = f"{floor(_b_count / _p_count * 100)}%"
+        else:
+            progress_prct = "0%"
+        progress_gap = _p_count - _b_count
+        rdata = [
+            _partition_number,
+            _p_host_id,
+            _p_count,
+            P,
+            _b_host_id,
+            _b_count,
+            B,
+            progress_prct,
+            progress_gap,
+            status
+        ]
+        if debug:
+            if _p_host_id == _b_host_id:
+                ha_status = 'HA=broken'
+            else:
+                ha_status = ''
+            if is_primary(_p_id):
+                _p_id_str = f"P_ID:{_p_id.replace(f'{space_name}~',' ')}"
+                _b_id_str = f"B_ID:{_b_id.replace(f'{space_name}~',' ')}"
+            else:
+                _p_id_str = f"P_ID:{_b_id.replace(f'{space_name}~',' ')}"
+                _b_id_str = f"B_ID:{_p_id.replace(f'{space_name}~',' ')}"
+            rdata.extend([_p_id_str, _b_id_str, ha_status])
+        table += print_table_row('row', rdata) + '\n'
+        rdata.clear()
+    return (_p_count, _b_count)
+
+
+class Spinner:
+
+    def __init__(self, message, delay=0.1):
+        self.spinner = itertools.cycle(['\\', '|', '-', '/'])
+        self.delay = delay
+        self.busy = False
+        self.spinner_visible = False
+        sys.stdout.write(message)
+
+    def write_next(self):
+        with self._screen_lock:
+            if not self.spinner_visible:
+                sys.stdout.write(next(self.spinner))
+                self.spinner_visible = True
+                sys.stdout.flush()
+
+    def remove_spinner(self, cleanup=False):
+        with self._screen_lock:
+            if self.spinner_visible:
+                sys.stdout.write('\b')
+                self.spinner_visible = False
+                if cleanup:
+                    sys.stdout.write(' ')       # overwrite spinner with blank
+                    sys.stdout.write('\r')      # move to next line
+                sys.stdout.flush()
+
+    def spinner_task(self):
+        while self.busy:
+            self.write_next()
+            time.sleep(self.delay)
+            self.remove_spinner()
+
+    def __enter__(self):
+        if sys.stdout.isatty():
+            self._screen_lock = threading.Lock()
+            self.busy = True
+            self.thread = threading.Thread(target=self.spinner_task)
+            self.thread.start()
+
+    def __exit__(self, exception, value, tb):
+        if sys.stdout.isatty():
+            self.busy = False
+            self.remove_spinner(cleanup=True)
+        else:
+            sys.stdout.write('\r')
+
+
+def collect_data():
+    global partition_map
+    global table
+    global p_count
+    global b_count
+    global p_total_count
+    global b_total_count
+    global exit_event
+    table = ""
+    partition_map = {}
+    
+    def get_sqlite_object_count(_lock, the_host,):
+        if not exit_event:
+            global partition_map
+            sh_cmd = f'cat {temp_file} | ssh {the_host} bash -'
+            the_response = subprocess.run(
+                [sh_cmd],
+                shell=True,
+                stdout=subprocess.PIPE
+            ).stdout.decode()
+            data = the_response.replace('\n', '').split(' ')
+            partitions = {}
+            time.sleep(interval)
+            with _lock:
+                if data != ['']:
+                    for item in data:
+                        params = item.split(':')    # params = [HOST, PARTITION, COUNT]
+                        partition_map[params[1]] = [params[0], int(params[2])]
+    
+    if not exit_event:
+        threads = [
+            threading.Thread(
+                target=get_sqlite_object_count,
+                args=(lock, h)
+                ) for h in space_hosts
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        # get number of partitions in space
+        num_partitions = int(len(partition_map) / 2) + (len(partition_map) % 2)
+        
+        table += print_table_row('header', "") + '\n'
+        p_total_count, b_total_count = 0, 0
+        for p_num in range(1, num_partitions + 1):
+            p_count, b_count = get_partition_counts(p_num)
+            p_total_count += p_count
+            b_total_count += b_count
+        table += print_table_row('seperator', "")
+        return True
+    return False
 
 
 # globals
 gs_root = "/dbagiga"
 hosts_config = f"{os.environ['ENV_CONFIG']}/host.yaml"
 app_config = f"{os.environ['ENV_CONFIG']}/app.config"
-utils_dir = gs_root + "/utils"
-runall_exe = utils_dir + "/runall/runall.sh"
-runall_conf = utils_dir + "/runall/runall.conf"
 defualt_port = 8090
+partition_map = {}
+temp_file = f'/tmp/recmon-{uuid.uuid4()}'
 
 if __name__ == '__main__':
     # disable insecure request warning
@@ -290,117 +447,90 @@ if __name__ == '__main__':
             else:
                 # we use 1st host from rest_ok_hosts
                 manager = rest_ok_hosts[0]
-            if 'unattended' in arguments:
-                unattended = True
-            else:
-                unattended = False
-                subprocess.run(['clear'])
-                print(pyfiglet.figlet_format("Recovery Monitor"))
+            
             # check if space name is ok
             if not check_space_exists(space_name):
                 print(f"ERROR: space name '{space_name}' could not be found.")
                 exit(1)
+            
+            # get space hosts
+            with open(hosts_config, 'r', encoding='utf8') as _hy:
+                data = yaml.safe_load(_hy)
+            space_hosts = [ h for h in data['servers']['space'].values()]
+
+            # instatiate spinner
+            spinner = Spinner
+            
+            # parse arguments
             if 'list' in arguments:
-                print_types(list_types())
+                with spinner("querying object types... ", delay=0.05):
+                    otypes = check_type_exists()
+                    total_str = f"Available types in space:"
+                    subprocess.run(['clear'])
+                    print(pyfiglet.figlet_format("Recovery Monitor"))
+                    if len(otypes) > 0:
+                        print(f"\n{total_str}\n" + "=" * (len(total_str) + 1))
+                        for o in sorted(otypes):
+                            print(o)
+                    else:
+                        print("No types found!")
                 exit(0)
-            if 'type' in arguments:
-                obj_type = arguments['type']
-                # check if type is ok
-                if not check_type_exists(obj_type):
-                    print(f"[ ERROR ]\nselected type '{obj_type}' does exist. Please choose one of the following available types:\n")
-                    print_types(list_types())
-                    exit(0)
-                else:
-                    print(f"Genarating report for type: {obj_type}")
-            if 'debug' in arguments:
-                debug = True
+            
+            # unattended flag
+            unattended = 'unattended' in arguments
+            
+            if 'interval' in arguments:
+                interval = float(arguments['interval'])
             else:
-                debug = False
+                interval = 5
+            if interval < 0.1:
+                print("interval cannot be less than 0.1")
+                exit()
+            
+            # creating logger
+            log_format = "%(asctime)s %(levelname)s %(message)s"
+            log_file = "/dbagigalogs/sanity/ods_sanity.log"
+            logging.basicConfig(filename=log_file,
+                                filemode="a",
+                                format=log_format,
+                                datefmt='%Y-%m-%d %H:%M:%S',
+                                level=logging.INFO)
+            logger = logging.getLogger()
 
-            # print table header
-            print_table_row('header', "")
+            # debug flag
+            debug = 'debug' in arguments
 
-            # get number of partitions in space
-            headers = {'Accept': 'application/json'}
-            url = f"http://{manager}:{defualt_port}/v2/spaces"
-            response_data = requests.get(url, auth=(auth['user'], auth['pass']), headers=headers, verify=False)
-            for space in response_data.json():
-                if space['name'] == space_name:
-                    num_partitions = space['topology']['partitions']
-            url = f"http://{manager}:{defualt_port}/v2/spaces/{space_name}/instances"
-            response = requests.get(url, auth=(auth['user'], auth['pass']), headers=headers, verify=False)
-            p_total_count, b_total_count = 0, 0
-            for num in range(1,num_partitions + 1):
-                # get instances params
-                primary, backup = False, False
-                P = Back.BLUE + Fore.BLACK + " P " + Style.RESET_ALL
-                B = Back.LIGHTWHITE_EX + Fore.BLACK + " B " + Style.RESET_ALL
-                for item in response.json():
-                    if f"{space_name}~{num}_" in item['id']:
-                        if item['mode'] == 'PRIMARY':
-                            p_id = item['id']
-                            p_host_id = item['hostId']
-                            p_sqlite_id = get_sqlite_id(item['id'])
-                            if 'obj_type' in locals():
-                                p_count = get_sqlite_object_count(p_host_id, p_sqlite_id, obj_type)
-                                p_total_count += p_count
-                            else:
-                                p_count = get_sqlite_object_count(p_host_id, p_sqlite_id)
-                                p_total_count += p_count
-                            primary = True
-                        if item['mode'] == 'BACKUP':
-                            b_id = item['id']
-                            b_host_id = item['hostId']
-                            b_sqlite_id = get_sqlite_id(item['id'])
-                            if 'obj_type' in locals():
-                                b_count = get_sqlite_object_count(b_host_id, b_sqlite_id, obj_type)
-                                b_total_count += b_count
-                            else:
-                                b_count = get_sqlite_object_count(b_host_id, b_sqlite_id)
-                                b_total_count += b_count
-                            backup = True
-                    if primary and backup:
-                        break
-                if not primary:
-                    p_id = 'NONE'
-                if not backup:
-                    b_id = 'NONE'
-                if p_count < b_count:
-                    progress_prct = f"{floor(p_count / b_count * 100)}%"
-                    progress_gap = b_count - p_count
-                    status = Fore.LIGHTYELLOW_EX + "In Progress..." + Style.RESET_ALL
-                    if debug:
-                        rdata = [num, b_host_id, b_count, B, p_host_id, p_count, P, progress_prct, progress_gap,status, f"B_ID:{b_id}", f"P_ID:{p_id}"]
-                    else:
-                        rdata = [num, b_host_id, b_count, B, p_host_id, p_count, P, progress_prct, progress_gap, status]
-                else:
-                    if p_count > 0:
-                        progress_prct = f"{floor(b_count / p_count * 100)}%"
-                        progress_gap = p_count - b_count
-                        if floor(b_count / p_count * 100) < 100:
-                            status = Fore.YELLOW + "In Progress..." + Style.RESET_ALL
-                        else:
-                            status = Fore.GREEN + "Synchronized  " + Style.RESET_ALL
-                    else:
-                        progress_prct = "100%"
-                        progress_gap = 0
-                        status = Fore.GREEN + "Synchronized  " + Style.RESET_ALL
-                    if debug:
-                        rdata = [num, p_host_id, p_count, P, b_host_id, b_count, B, progress_prct, progress_gap, status, f"P_ID:{p_id}", f"B_ID:{b_id}"]
-                    else:
-                        rdata = [num, p_host_id, p_count, P, b_host_id, b_count, B, progress_prct, progress_gap, status]
-                print_table_row('row', rdata)
-                rdata.clear()
-            print_table_row('seperator', "")
-            p_total_display = f"{Fore.MAGENTA}{p_total_count:,}{Style.RESET_ALL}"
-            b_total_display = f"{Fore.MAGENTA}{b_total_count:,}{Style.RESET_ALL}"
-            if 'obj_type' in locals():
-                print(f"{'Total number of records in PRIMARY instances:':<46}{p_total_display:<10} (for type: '{obj_type}')")
-                print(f"{'Total number of records in BACKUP instances:':<46}{b_total_display:<10} (for type: '{obj_type}')")
+            # MAIN
+            #
+            create_session_file(temp_file)
+            lock = threading.Lock()
+            exit_event = False
+            if not unattended:
+                subprocess.run(['clear'])
+                with spinner("collecting recovery data... ", delay=0.1):
+                    if not collect_data():
+                        os.system('rm -f /tmp/recmon-*')
+                        exit()
             else:
-                print(f"{'Total number of records in PRIMARY instances:':<46}{p_total_display:<10}")
-                print(f"{'Total number of records in BACKUP instances:':<46}{b_total_display:<10}")
+                if not collect_data():
+                    os.system('rm -f /tmp/recmon-*')
+                    exit()
+            while True:
+                for _ in range(2): subprocess.run(['clear'])
+                for line in table.split('\n'):
+                    if unattended:
+                        logger.info(line)
+                    print(line)
+                p_total_display = f"{Fore.MAGENTA}{p_total_count:,}{Style.RESET_ALL}"
+                b_total_display = f"{Fore.MAGENTA}{b_total_count:,}{Style.RESET_ALL}"
+                print(f"Total number of records: PRIMARY = {p_total_display} | BACKUP = {b_total_display}")
+                if unattended:
+                    logging.shutdown()
+                    break
+                if not collect_data():
+                    os.system('rm -f /tmp/recmon-*')
+                    exit()
         except (KeyboardInterrupt, SystemExit):
+            exit_event = True
+            os.system('rm -f /tmp/recmon-*')
             print('\n')
-exit(0)
-
