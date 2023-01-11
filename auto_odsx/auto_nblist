@@ -1,0 +1,9 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers northbound list all
+
+expect eof

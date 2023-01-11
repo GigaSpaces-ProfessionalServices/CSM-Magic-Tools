@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py object objectmanagement registration unregistertype
+# Enter for all servers
+expect "for exit"
+sleep 1
+send -- "\n"
+# Verify
+expect "Are you sure want to stop all servers"
+sleep 1
+send -- "y"
+sleep 1
+send -- "\n"
+
+expect eof

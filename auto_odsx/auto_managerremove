@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers manager remove
+expect "for exit"
+sleep 1
+send -- "\n"
+# Remove java?
+expect "Do you want to remove Java"
+sleep 1
+send -- "n"
+sleep 1
+send -- "\n"
+# Remove unzip?
+expect "Do you want to remove Unzip"
+sleep 1
+send -- "n"
+sleep 1
+send -- "\n"
+# Verify
+expect "Are you sure want to remove all servers"
+sleep 1
+send -- "y"
+sleep 1
+send -- "\n"
+
+expect eof

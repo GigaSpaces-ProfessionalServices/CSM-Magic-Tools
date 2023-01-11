@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers grafana install
+# Confirm
+expect "Are you sure want to install Grafana servers"
+sleep 1
+send -- "y"
+sleep 1
+send -- "\n"
+
+expect eof

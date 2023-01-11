@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd /dbagiga/utils/auto_odsx
+#_SHOB_SR_NUM=$(./auto_objectlist | grep D2TBD201_SHOB_ODS | sed 's/.*([0-9]*).*bllspace.*/\1/p')
+#_SHOB_SR_NUM=$(./auto_objectlist 2>&1 | grep D2TBD201_SHOB_ODS | awk -F'|' '{print $2}' | tr -d '[[:space:]]')
+./auto_objectlist 2>&1 | grep D2TBD201_SHOB_ODS | awk -F'|' '{print $2}' | sed -E 's/[[:space:]]// ; s/\x1b\[32m// ; s/\x1b\[39m// ; s/ //'
+#./auto_objectlist | grep NTTBBZ00_HBMAIN | 
+#echo -n $_SHOB_SR_NUM

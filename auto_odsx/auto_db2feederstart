@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py dataengine db2-feeder start
+# Start all
+expect "For exit"
+sleep 1
+send -- "\n"
+
+expect eof

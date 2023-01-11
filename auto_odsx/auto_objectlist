@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py object objectmanagement registration list
+expect "or exit"
+sleep 1
+send -- "99"
+sleep 1
+send -- "\r"
+
+expect eof
