@@ -1,4 +1,0 @@
-#!/bin/bash
-
-cd /dbagiga/gs-odsx
-./odsx.py servers list-all
