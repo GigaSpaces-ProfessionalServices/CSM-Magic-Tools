@@ -7,7 +7,6 @@ import org.sqlite.SQLiteConfig;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.Properties;
 
 public class ConnectionManager {
@@ -22,11 +21,12 @@ public class ConnectionManager {
 
     public ConnectionManager(Path workFolder, String spaceName, String fullMemberName) {
         this.path = workFolder.resolve("tiered-storage/" + spaceName);
-        this.dbName = "sqlite_db" + "_" + fullMemberName;
+        //this.dbName = "sqlite_db" + "_" + fullMemberName;
+        this.dbName = fullMemberName;
 
     }
 
-    public Connection connectToDB() throws ClassNotFoundException, SQLException {
+    public Connection connectToDB() {
         try {
             SQLiteConfig config = new SQLiteConfig();
             String dbUrl = "jdbc:sqlite:" + path + "/" + dbName;
@@ -35,9 +35,8 @@ public class ConnectionManager {
             properties.setProperty("user", USER);
             properties.setProperty("password", PASS);
             connection = DriverManager.getConnection(dbUrl, properties);
-            if (logger.isTraceEnabled()) {
-                logger.trace("Successfully created connection to db {} in path {}", dbName, path);
-            }
+
+            logger.info("Successfully created connection to db {} in path {}", dbName, path);
             return connection;
         } catch (Throwable t) {
             logger.error("Failed to create connection to db {} in path {}", dbName, path);

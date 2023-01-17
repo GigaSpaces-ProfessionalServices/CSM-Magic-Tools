@@ -1,15 +1,20 @@
 package com.gigaspaces.tierdirectcall.common;
 
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableConfig;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileReader;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class CommonUtil {
     private static Logger logger = LoggerFactory.getLogger(CommonUtil.class);
@@ -91,4 +96,16 @@ public class CommonUtil {
         }
         return typesWithCriteria;
     }
+
+    public static List<String> getFileNamesWithPattern(String baseDir, String fileNameWithPattern) {
+        File dir = new File(baseDir);
+        FileFilter fileFilter = new WildcardFileFilter(fileNameWithPattern);
+        File[] files = dir.listFiles(fileFilter);
+        List<String> fileNames = new ArrayList<>();
+        for (int i = 0; i < Objects.requireNonNull(files).length; i++) {
+            fileNames.add(files[i].getName());
+        }
+        return fileNames;
+    }
+
 }

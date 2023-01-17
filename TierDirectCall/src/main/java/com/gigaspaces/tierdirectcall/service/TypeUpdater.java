@@ -14,8 +14,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class TypeUpdater {
     Connection connection;
@@ -46,6 +48,9 @@ public class TypeUpdater {
 
     TypeDesc createNewTypeDesc() throws Exception {
         String sqlQuery = "SELECT typeDesc FROM '" + Constants.TieredStorage.TIERED_STORAGE_TYPES_TABLE + "' where name='" + typeName + "'";
+        logger.info("createNewTypeDesc -> sqlQuery : " + sqlQuery);
+        logger.info("tableExists : " + tableExists(connection, Constants.TieredStorage.TIERED_STORAGE_TYPES_TABLE));
+
         PreparedStatement statement = connection.prepareStatement(sqlQuery);
         ResultSet resultSet = statement.executeQuery();
         if (resultSet != null && resultSet.next()) {
@@ -82,6 +87,9 @@ public class TypeUpdater {
             }
             byte[] serializedType = serializeType(newType.cloneWithoutObjectClass(EntryType.DOCUMENT_JAVA));
             String sqlQuery = "update '" + Constants.TieredStorage.TIERED_STORAGE_TYPES_TABLE + "' set typeDesc=?" + " where name='" + typeName + "'";
+            logger.info("update -> sqlQuery : " + sqlQuery);
+            logger.info("tableExists : " + tableExists(connection, Constants.TieredStorage.TIERED_STORAGE_TYPES_TABLE));
+
             PreparedStatement statement = connection.prepareStatement(sqlQuery);
             statement.setBytes(1, serializedType);
             statement.execute();
@@ -92,6 +100,17 @@ public class TypeUpdater {
             t.printStackTrace();
             return false;
         }
+    }
+
+    boolean tableExists(Connection connection, String tableName) {
+        try {
+            DatabaseMetaData meta = connection.getMetaData();
+            ResultSet resultSet = meta.getTables(null, null, tableName, new String[]{"TABLE"});
+            return resultSet.next();
+        } catch (SQLException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return false;
     }
 
 
