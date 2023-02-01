@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<!--    <meta http-equiv = "refresh" content = "10; url = " />-->
+    <title>Title</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+
+    <script>
+        $.ajax({
+        type: "POST",
+        url: "services",
+        data: loginData,
+        success: function (result) {
+            // do something.
+        },
+        error: function (result) {
+            // do something.
+        }
+    });
+
+    </script>
+</head>
+<body>
+    <div>
+        <h3>Cluster creation is in progress...........</h3>
+        <h5>Please wait for few minutes</h5>
+        <form>
+        <h5><a href="/services">Click here to view services</a></h5>
+        </form>
+    </div>
+</body>
+</html>

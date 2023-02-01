@@ -1,0 +1,8 @@
+---
+cloudProvider: "AWS"
+region: "us-west"
+accessKey: ""
+secretKey: ""
+size: "16"
+noOfPartitions: "2"
+cpu: "P3"

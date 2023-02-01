@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="https://thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <!--    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" >-->
+    <script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
+
+<script type="text/javascript" language="javascript" th:src="@{/js/jquery-3.3.1.js}"></script>
+<script type="text/javascript" language="javascript" th:src="@{/js/jquery.dataTables.min.js}"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+<table th:if="${error==null}" id="datatype" style="" class="w3-table-all w3-card-4">
+    <thead class="" style="">
+    <tr class="w3-green">
+        <th style="">Service Name</th>
+        <th style="">EndPoint</th>
+    </tr>
+    </thead>
+    <tbody>
+        <tr th:each="entry : ${services}">
+            <td th:text="${entry.key}"></td>
+            <td th:text="${entry.value}"></td>
+            <!--            <td th:text="" style="text-align:center"></td>-->
+            <!--            <td th:text="${#maps.containsKey(endPoint.indexes, entry.key) ? ${endPoint.indexes.get(entry.key)}: ''}"></td>-->
+            <!--            <td th:text="${entry.key == endPoint.spaceRouting ? 'Yes' : ''}" style="text-align:center"></td>-->
+            <!--            <td th:text="${entry.key == endPoint.spaceId ? 'Yes' : ''}" style="text-align:center"></td>-->
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>
