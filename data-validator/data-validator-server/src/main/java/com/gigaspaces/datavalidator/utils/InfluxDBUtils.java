@@ -1,0 +1,38 @@
+package com.gigaspaces.datavalidator.utils;
+
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+import org.influxdb.dto.Point;
+import org.influxdb.dto.Pong;
+
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+public class InfluxDBUtils {
+
+    private static Logger logger = Logger.getLogger(InfluxDBUtils.class.getName());
+
+    private static InfluxDB influxDB;
+
+    public static void doConnect(String databaseURL, String userName,String password){
+        influxDB = InfluxDBFactory.connect(databaseURL, userName, password);
+    }
+    public static void write(String database, String measurement, String tabEnv, String tagObjType, String state){
+        Pong response = influxDB.ping();
+        if (response.getVersion().equalsIgnoreCase("unknown")) {
+            logger.info("Error pinging InfluxDB server.");
+        }else{
+            logger.info("InfluxDB connected successfully");
+        }
+        influxDB.createDatabase(database);
+        Point point = Point.measurement(measurement)
+                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                .tag("env", tabEnv)
+                .tag("obj_type",tagObjType)
+                .addField("state",state)
+                .build();
+
+        influxDB.write("dvresults","",point);
+        influxDB.close();
+    }
+}

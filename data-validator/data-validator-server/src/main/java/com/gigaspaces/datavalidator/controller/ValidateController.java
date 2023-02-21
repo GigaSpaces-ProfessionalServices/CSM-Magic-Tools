@@ -3,6 +3,7 @@ package com.gigaspaces.datavalidator.controller;
 import com.gigaspaces.datavalidator.TaskProcessor.CompleteTaskQueue;
 import com.gigaspaces.datavalidator.TaskProcessor.TaskQueue;
 import com.gigaspaces.datavalidator.db.HibernateProxyTypeAdapter;
+import com.gigaspaces.datavalidator.db.InfluxDbProperties;
 import com.gigaspaces.datavalidator.db.service.*;
 import com.gigaspaces.datavalidator.model.*;
 import com.google.gson.Gson;
@@ -32,13 +33,16 @@ public class ValidateController {
     private DataSourceService dataSourceService;
     @Autowired
     private AgentService agentService;
+    @Autowired
+    private InfluxDbProperties influxDbProperties;
     
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
     @GetMapping("/measurement/compare/{measurementId1}/{measurementId2}")
     public Map<String,String> compareMeasurement(@PathVariable String measurementId1
             ,@PathVariable String measurementId2
-            ,@RequestParam(defaultValue="0") int executionTime) {
+            ,@RequestParam(defaultValue="0") int executionTime
+            ,@RequestParam(defaultValue="false") boolean influxdbResultStore) {
 
         Map<String,String> response = new HashMap<>();
 
@@ -55,7 +59,7 @@ public class ValidateController {
             if(executionTime == 0){
 
                 task = new TestTask(odsxTaskService.getUniqueId(), System.currentTimeMillis()
-                        ,"Compare", measurementList);
+                        ,"Compare", measurementList,influxdbResultStore,influxDbProperties);
                 String result = task.executeTask();
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -70,7 +74,7 @@ public class ValidateController {
                 Calendar calScheduledTime = Calendar.getInstance();
                 calScheduledTime.add(Calendar.MINUTE, executionTime);
                 task =new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
-                        ,"Compare", measurementList);
+                        ,"Compare", measurementList,influxdbResultStore,influxDbProperties);
                 TaskQueue.setTask(task);
                 logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -128,7 +132,7 @@ public class ValidateController {
             if(executionTime == 0){
 
                 task = new TestTask(odsxTaskService.getUniqueId(), System.currentTimeMillis()
-                        ,"Measure",measurementList);
+                        ,"Measure",measurementList,false,influxDbProperties);
                 task.executeTask();
 
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -142,7 +146,7 @@ public class ValidateController {
                 Calendar calScheduledTime = Calendar.getInstance();
                 calScheduledTime.add(Calendar.MINUTE, executionTime);
                 task = new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
-                        ,"Measure", measurementList);
+                        ,"Measure", measurementList,false,influxDbProperties);
                 logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -208,7 +212,7 @@ public class ValidateController {
             return response.toString();
         }
 
-        Map<String, String> map = compareMeasurement(String.valueOf(id1),String.valueOf(id2), 0);
+        Map<String, String> map = compareMeasurement(String.valueOf(id1),String.valueOf(id2), 0,true);
         logger.info("========RUN TEST END");
         TestTask testTask = gson.fromJson(map.get("response"),TestTask.class);
         logger.info("Test Task: "+testTask);
@@ -362,7 +366,7 @@ public class ValidateController {
         if(executionTime == 0){
 
             task = new TestTask(odsxTaskService.getUniqueId(), System.currentTimeMillis()
-                    ,testType, measurementList);
+                    ,testType, measurementList,false,influxDbProperties);
             String result = task.executeTask();
             response.put("response", result);
 
@@ -371,7 +375,7 @@ public class ValidateController {
             Calendar calScheduledTime = Calendar.getInstance();
             calScheduledTime.add(Calendar.MINUTE, executionTime);
             task=new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
-                    ,testType, measurementList);
+                    ,testType, measurementList,false,influxDbProperties);
             TaskQueue.setTask(task);
             logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
             response.put("response", "scheduled");

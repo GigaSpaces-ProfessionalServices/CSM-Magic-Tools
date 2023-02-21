@@ -1,7 +1,9 @@
 package com.gigaspaces.datavalidator.model;
 
 
+import com.gigaspaces.datavalidator.db.InfluxDbProperties;
 import com.gigaspaces.datavalidator.utils.EncryptionDecryptionUtils;
+import com.gigaspaces.datavalidator.utils.InfluxDBUtils;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
 import com.gigaspaces.datavalidator.utils.NetClientPost;
 import com.google.gson.Gson;
@@ -33,17 +35,22 @@ public class TestTask  implements Serializable  {
 	private String summary;
 	private String query;
 	private List<Measurement> measurementList;
+	private boolean influxdbResultStore;
+	private InfluxDbProperties influxDbProperties;
 
 	public TestTask() {
 	}
 
-	public TestTask(String uuid, long time, String type, List<Measurement> measurementList) {
+	public TestTask(String uuid, long time, String type, List<Measurement> measurementList
+			,boolean influxdbResultStore,InfluxDbProperties influxDbProperties) {
 
 		this.uuid = uuid;
 		this.time = time;
 		this.type = type;
 		this.measurementList = measurementList;
 		this.result = "pending";
+		this.influxdbResultStore = influxdbResultStore;
+		this.influxDbProperties = influxDbProperties;
 
 		String measurementIds = null;
 
@@ -255,6 +262,11 @@ public class TestTask  implements Serializable  {
 						this.result = "FAIL";
 					}
 
+					if(this.influxdbResultStore) {
+						// Add Compare Results to InfluxDB
+						InfluxDBUtils.doConnect(influxDbProperties.getInfluxDBUrl(), influxDbProperties.getInfluxDBUsername(), influxDbProperties.getInfluxDBPassword());  // TODO: Call this once when application loads or first compare test executes
+						InfluxDBUtils.write("dvresults", "dvState", "garage", measurement1.getTableName(), this.result);
+					}
 				}
 			} else {
 
@@ -472,5 +484,21 @@ public class TestTask  implements Serializable  {
 
 	public void setSummary(String summary) {
 		this.summary = summary;
+	}
+
+	public InfluxDbProperties getInfluxDbProperties() {
+		return influxDbProperties;
+	}
+
+	public void setInfluxDbProperties(InfluxDbProperties influxDbProperties) {
+		this.influxDbProperties = influxDbProperties;
+	}
+
+	public boolean isInfluxdbResultStore() {
+		return influxdbResultStore;
+	}
+
+	public void setInfluxdbResultStore(boolean influxdbResultStore) {
+		this.influxdbResultStore = influxdbResultStore;
 	}
 }
