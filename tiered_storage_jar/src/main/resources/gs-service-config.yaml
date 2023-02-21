@@ -1,3 +1,6 @@
 space:
   name: space
   propertyFilePath: spaceproperty.properties
+tieredCriteriaConfig:
+  filePath: TieredCriteria.tab
+  dirtyBitFile: TSDirtyBit
