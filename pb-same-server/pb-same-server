@@ -3,7 +3,7 @@
 [[ $(rpm -q jq >/dev/null 2>&1 ; echo $?) -ne 0 ]] && { echo -e "\nFile jq reqired by script\n" ; exit 1 ; }
 
 show_usage() {
-cat << EOF 
+cat << EOF
 
   Check if P/B pair of containers are on the same space server.
     Usage: $0
@@ -35,29 +35,21 @@ env_config() {
 source ~/.bash_profile
 [[ -z $_DEBUG_MODE ]] && _DEBUG_MODE=0
 [[ -z $_SERVICE_NAME ]] && _SERVICE_NAME=bllservice
-ENV_CONFIG=/dbagigashare/current/odsx
 _LOG="/var/log/chaos_monkey.log"
-_PIVOT_HOST=$(hostname | tr '[a-z]' '[A-Z]')
 _ALL_ODS_MNG=( $(/dbagiga/utils/host-yaml.sh manager) )
 _ODSGS="http://${_ALL_ODS_MNG}"
- 
-if [[ "${_PIVOT_HOST}" = "comp" || "${_PIVOT_HOST}" = "comp" || "${_PIVOT_HOST}" = "comp" ]] ; then
-  _CREDS=( $(/dbagiga/getUser.sh) )
-else
-  _CREDS=( user pass )
-fi
-_USER=${_CREDS[0]}
-_PASS=${_CREDS[1]}
- 
+
+[[ -x /dbagiga/getUser.sh ]] && _CREDS=( $(/dbagiga/getUser.sh) ) || _CREDS=( user pass ) ; _USER=${_CREDS[0]} ; _PASS=${_CREDS[1]}
+
 _SPACE=$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq '[.[]|select(.name=="bllservice")][0]')
 _STATE=$(echo $_SPACE | jq '."status"'|tr 'a-z' 'A-Z'|tr -d '"')
-[[ "${_STATE}" != "INTACT" && "${_STATE}" !=  "SCHEDULED" && "${_STATE}" !=  "COMPROMISED" ]] && { echo -e "\nExiting because bllservice STATE not INTACT/SCHEDULED/COMPROMISED.\n" ; exit 1 ; }
- 
+[[ "${_STATE}" != "INTACT" && "${_STATE}" !=  "SCHEDULED" && "${_STATE}" != "COMPROMISED" ]] && { echo -e "\nExiting because bllservice STATE not INTACT/SCHEDULED/COMPROMISED.\n" ; exit 1 ; }
+
 _SPACE_SERVERS=( $(/dbagiga/utils/host-yaml.sh space) )
 _SPACE_SERVERS_NUM=${#_SPACE_SERVERS[@]}
 _BLL_GSC_PER_SPACE_SERVER=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
 _BLL_EXPECTED_CONTAINERS=$(( $_SPACE_SERVERS_NUM * $_BLL_GSC_PER_SPACE_SERVER ))
-_PARTITIONS_NUM=$(echo $_SPACE | jq '."topology"."partitions"')
+_NUM_OF_PARTIONS=$(echo $_SPACE | jq '."topology"."partitions"')
 _PRIMARY=/tmp/GSC_PRIMARY$$
 _BACKUP=/tmp/GSC_BACKUP$$
 }
@@ -76,13 +68,13 @@ echo -e "Number of Partitions: $(echo $_SPACE | jq '."topology"."partitions"')"
 echo -e "Number of Primary GSCs found:\t$(wc -l < $_PRIMARY)"
 echo -e "Number of Backup GSCs found:\t$(wc -l < $_BACKUP) \n"
 
-for (( i=1 ; i<=$_PARTITIONS_NUM ; i++ )) ; do
-  num_of_gscs=$(grep -hE "bllspace~${i}_[12]" $_PRIMARY $_BACKUP  | wc -l)
-  space_name=$(grep -hE "bllspace~${i}_[12] " $_PRIMARY | sed 's/^[^ ]*\b// ; s/~.*// ; s/ //')
-  num_of_gscs_on_same_space=$(grep -E "bllspace~${i}_[12]" $_PRIMARY $_BACKUP  | grep $space_name  | wc -l)
+for (( i=1 ; i<=$_NUM_OF_PARTIONS ; i++ )) ; do
+  num_of_gscs=$(grep -shE "bllspace~${i}_[12]" $_PRIMARY $_BACKUP  | wc -l)
+  space_server_name=$(grep -shE "bllspace~${i}_[12] " $_PRIMARY | sed 's/^[^ ]*\b// ; s/~.*// ; s/ //')
+  num_of_gscs_on_same_space=$(grep -E "bllspace~${i}_[12]" $_PRIMARY $_BACKUP  | grep $space_server_name  | wc -l)
   if [[ num_of_gscs_on_same_space -gt 1 || num_of_gscs -ne 2 || $_DEBUG_MODE -eq 1 ]] ; then
     echo -e "== DISPLAY FOR: bllspace~${i}"
-    #echo ======== num_of_gscs=$num_of_gscs num_of_gscs_on_same_space=$num_of_gscs_on_same_space primary space_name=$space_name
+    #echo ======== num_of_gscs=$num_of_gscs num_of_gscs_on_same_space=$num_of_gscs_on_same_space primary space_server_name=$space_server_name
     grep -hE "bllspace~${i}_[12] " $_PRIMARY | while read line ; do echo -e "${line} \tPRIMARY" ; done
     grep -hE "bllspace~${i}_[12] " $_BACKUP  | while read line ; do echo -e "${line} \tBACKUP" ; done
     echo
@@ -96,8 +88,9 @@ rm -f $_PRIMARY $_BACKUP
 }
 
 ## bllspace~5_2 comp~15650
- 
+
 #################### MAIN
+
 pb_menu "$@"
 env_config
-find_pb 
+find_pb
