@@ -9,4 +9,4 @@ if [[ $role_found -ne 0 && $(echo "${line}" | grep -w '^ *host[0-9]* *:' >/dev/n
 else
   role_found=0
 fi
-done < <(cat ${ENV_COFIG}/host.yaml | sed '/^ *$/d')
+done < <(cat ${ENV_CONFIG}/host.yaml | sed '/^ *$/d')
