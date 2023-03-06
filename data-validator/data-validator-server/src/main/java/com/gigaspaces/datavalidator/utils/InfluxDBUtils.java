@@ -32,7 +32,7 @@ public class InfluxDBUtils {
                 .addField("state",state)
                 .build();
 
-        influxDB.write("dvresults","",point);
+        influxDB.write(database,"",point);
         influxDB.close();
     }
 }

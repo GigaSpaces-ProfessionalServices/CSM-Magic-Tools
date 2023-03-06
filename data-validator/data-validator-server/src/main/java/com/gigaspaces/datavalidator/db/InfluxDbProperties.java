@@ -11,6 +11,10 @@ public class InfluxDbProperties {
 	private String influxDBUsername;
 	@Value("${influxDBPassword}")
 	private String influxDBPassword;
+	@Value("${influxDBName}")
+	private String influxDBName;
+	@Value("${envName}")
+	private String envName;
 
 	public String getInfluxDBUrl() {
 		return influxDBUrl;
@@ -22,5 +26,13 @@ public class InfluxDbProperties {
 
 	public String getInfluxDBPassword() {
 		return influxDBPassword;
+	}
+
+	public String getInfluxDBName() {
+		return influxDBName;
+	}
+
+	public String getEnvName() {
+		return envName;
 	}
 }
