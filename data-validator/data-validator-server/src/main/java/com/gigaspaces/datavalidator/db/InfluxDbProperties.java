@@ -15,6 +15,8 @@ public class InfluxDbProperties {
 	private String influxDBName;
 	@Value("${envName}")
 	private String envName;
+	@Value("${host}")
+	private String host;
 
 	public String getInfluxDBUrl() {
 		return influxDBUrl;
@@ -34,5 +36,9 @@ public class InfluxDbProperties {
 
 	public String getEnvName() {
 		return envName;
+	}
+
+	public String getHost() {
+		return host;
 	}
 }

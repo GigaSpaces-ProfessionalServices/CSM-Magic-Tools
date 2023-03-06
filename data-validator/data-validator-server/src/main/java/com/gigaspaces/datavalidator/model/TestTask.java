@@ -265,7 +265,9 @@ public class TestTask  implements Serializable  {
 					if(this.influxdbResultStore) {
 						// Add Compare Results to InfluxDB
 						InfluxDBUtils.doConnect(influxDbProperties.getInfluxDBUrl(), influxDbProperties.getInfluxDBUsername(), influxDbProperties.getInfluxDBPassword());  // TODO: Call this once when application loads or first compare test executes
-						InfluxDBUtils.write(influxDbProperties.getInfluxDBName(), "dvState", influxDbProperties.getEnvName(), measurement1.getTableName(), this.result);
+						InfluxDBUtils.write(influxDbProperties.getInfluxDBName(), "dvState"
+								, influxDbProperties.getEnvName(), measurement1.getTableName()
+								, this.result,influxDbProperties.getHost());
 					}
 				}
 			} else {
