@@ -100,6 +100,8 @@ def is_env_secured():
                     if secure_flag == '""':
                         return False
                     return True
+    else:
+        return False
 
 
 def is_restful_ok(the_url):
