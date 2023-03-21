@@ -1,6 +1,7 @@
 package com.gigaspaces.objectManagement.service;
 
 import com.gigaspaces.client.CountModifiers;
+import com.gigaspaces.client.ReadModifiers;
 import com.gigaspaces.document.SpaceDocument;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageConfig;
 import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableConfig;
@@ -13,26 +14,16 @@ import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.SpaceObjectDto;
 import com.gigaspaces.objectManagement.model.TableOutcome;
 import com.gigaspaces.objectManagement.utils.CommonUtil;
+import static com.gigaspaces.objectManagement.utils.DataGeneratorUtils.getPropertyValue;
 import com.gigaspaces.objectManagement.utils.ReportWriter;
 import com.gigaspaces.query.IdQuery;
+import com.gigaspaces.query.aggregators.AggregationResult;
+import com.gigaspaces.query.aggregators.AggregationSet;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.j_spaces.core.IJSpace;
 import com.j_spaces.core.admin.IRemoteJSpaceAdmin;
-import com.j_spaces.core.client.ReadModifiers;
 import com.j_spaces.core.client.SQLQuery;
-import org.openspaces.admin.Admin;
-import org.openspaces.admin.gsm.GridServiceManager;
-import org.openspaces.admin.pu.ProcessingUnit;
-import org.openspaces.admin.space.SpaceDeployment;
-import org.openspaces.core.GigaSpace;
-import org.openspaces.core.GigaSpaceTypeManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataAccessException;
-import org.springframework.stereotype.Service;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,11 +38,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
-
-import static com.gigaspaces.objectManagement.utils.DataGeneratorUtils.getPropertyValue;
+import org.openspaces.admin.Admin;
+import org.openspaces.admin.gsm.GridServiceManager;
+import org.openspaces.admin.pu.ProcessingUnit;
+import org.openspaces.admin.space.SpaceDeployment;
+import org.openspaces.core.GigaSpace;
+import org.openspaces.core.GigaSpaceTypeManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ObjectService {
+
     private static final int NUMBER_OF_RECORDS = 10;
     private static final String TYPE_DISTINGUISHER_SUFFIX = "_C";
     @Value("${safe.appid}")
@@ -121,7 +123,8 @@ public class ObjectService {
             return "error";
         }
         if (result != null) {
-            logger.info("gigaSpace.getTypeManager().getTypeDescriptor(tableName) : " + gigaSpace.getTypeManager().getTypeDescriptor(tableName));
+            logger.info("gigaSpace.getTypeManager().getTypeDescriptor(tableName) : " + gigaSpace.getTypeManager()
+                    .getTypeDescriptor(tableName));
             if (gigaSpace.getTypeManager().getTypeDescriptor(tableName) != null) {
                 return "duplicate";
             }
@@ -155,10 +158,13 @@ public class ObjectService {
 
         List<String> classList = remoteAdmin.getRuntimeInfo().m_ClassNames;
       /*  List<Integer> countTypesInMemory = remoteAdmin.getRuntimeInfo().m_RamNumOFEntries;
-        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries " + remoteAdmin.getRuntimeInfo().m_RamNumOFEntries);
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_RamNumOFEntries " + remoteAdmin.getRuntimeInfo()
+        .m_RamNumOFEntries);
         logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFEntries " + remoteAdmin.getRuntimeInfo().m_NumOFEntries);
-        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFTemplates " + remoteAdmin.getRuntimeInfo().m_NumOFTemplates);
-        logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo());*/
+        logger.info(">>>> remoteAdmin.getRuntimeInfo().m_NumOFTemplates " + remoteAdmin.getRuntimeInfo()
+        .m_NumOFTemplates);
+        logger.info(">>>> remoteAdmin.getSpaceInstanceRemoteClassLoaderInfo " + remoteAdmin
+        .getSpaceInstanceRemoteClassLoaderInfo());*/
         TieredStorageConfig tieredStorageConfig = remoteAdmin.getRuntimeInfo().getTieredStorageConfig();
         logger.info(">>>> tieredStorageConfig : " + tieredStorageConfig);
         List<SpaceObjectDto> spaceObjectDto = new ArrayList<>();
@@ -171,8 +177,10 @@ public class ObjectService {
         for (int a = 0; a < classList.size(); a++) {
             //for (Object obj : classList) {
             String objectType = classList.get(a);
-          //  int objectCount = countTypesInMemory.get(a);
-            if (objectType.equals("java.lang.Object")) continue;
+            //  int objectCount = countTypesInMemory.get(a);
+            if (objectType.equals("java.lang.Object")) {
+                continue;
+            }
             JsonArray jsonArray2 = new JsonArray();
             jsonObject3 = new JsonObject();
             jsonObject3.addProperty("tablename", objectType);
@@ -198,19 +206,20 @@ public class ObjectService {
             //not required we can take from runtimeinfo
           /*  try {
                 SQLQuery<SpaceDocument> query = new SQLQuery<>(objectType,"");
-                logger.info(">>>>>>>>>>>objectType + count "+ gigaSpace.count(query, CountModifiers.MEMORY_ONLY_SEARCH));
+                logger.info(">>>>>>>>>>>objectType + count "+ gigaSpace.count(query, CountModifiers
+                .MEMORY_ONLY_SEARCH));
             } catch (Exception e){
                 logger.info(">>>>>objectType "+objectType+"======="+e.getLocalizedMessage(),e);
             }*/
-          //  logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
-          //  jsonObject3.addProperty("objectInMemory", objectCount);
+            //  logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
+            //  jsonObject3.addProperty("objectInMemory", objectCount);
             jsonObject3.addProperty("routing", routing);
             jsonObject3.addProperty("index", index);
             //jsonObject3.addProperty("criteria", criteria != null && criteria.trim() != "" ? criteria : "");
 
-
             logger.info("####################");
-            logger.info(">>>> tieredStorageConfig objectType : " + objectType + ", tieredStorageConfig" + tieredStorageConfig.getTable(objectType));
+            logger.info(">>>> tieredStorageConfig objectType : " + objectType + ", tieredStorageConfig"
+                    + tieredStorageConfig.getTable(objectType));
 
             SpaceTypeDescriptor spaceTypeDescriptor = gigaSpaceTypeManager.getTypeDescriptor(objectType);
 
@@ -225,7 +234,8 @@ public class ObjectService {
             Map<String, SpaceIndex> indexesMap = spaceTypeDescriptor.getIndexes();
             String tiercriteria = "";
             String criteriaFieldname = "";
-            logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :" + spaceTypeDescriptor.getTieredStorageTableConfig());
+            logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :"
+                    + spaceTypeDescriptor.getTieredStorageTableConfig());
             if (tieredStorageConfig.getTable(objectType) != null) {
                 tiercriteria = tieredStorageConfig.getTable(objectType).getCriteria();
                 criteriaFieldname = tieredStorageConfig.getTable(objectType).getName();
@@ -242,13 +252,13 @@ public class ObjectService {
                     }
                 }
 
-
             }
             for (int i = 0; i < propertiesName.length; i++) {
                 String prop = propertiesName[i];
                 //SpacePropertyDescriptor propertyDescriptor = spaceTypeDescriptor.getFixedProperty(prop);
                 //spaceTypeDescriptor
-                //System.out.println("  Name:" + propertyDescriptor.getName() + " Type:" + propertyDescriptor.getTypeName() + " Storage Type:"
+                //System.out.println("  Name:" + propertyDescriptor.getName() + " Type:" + propertyDescriptor
+                // .getTypeName() + " Storage Type:"
                 //       + propertyDescriptor.getStorageType());
                 JsonObject jsonObject2 = new JsonObject();
                 //     SpaceObjectDto spaceObject = new SpaceObjectDto();
@@ -258,9 +268,15 @@ public class ObjectService {
 
                 jsonObject2.addProperty("spaceId", idPropsList.contains(propertiesName[i]) ? "Yes" : "");
                 jsonObject2.addProperty("spaceRouting", propertiesName[i].equals(routingPropertyName) ? "Yes" : "");
-                jsonObject2.addProperty("spaceIndex", indexesMap.containsKey(propertiesName[i]) ? indexesMap.get(propertiesName[i]).getIndexType().name() : "");
-                jsonObject2.addProperty("tierCriteria", propertiesName[i].equals(criteriaFieldname) ? tiercriteria : "");
-//                jsonObject2.addProperty("isSpacePrimitive", idPropsList.toString());
+                jsonObject2.addProperty(
+                        "spaceIndex",
+                        indexesMap.containsKey(propertiesName[i]) ? indexesMap.get(propertiesName[i])
+                                .getIndexType()
+                                .name() : "");
+                jsonObject2.addProperty(
+                        "tierCriteria",
+                        propertiesName[i].equals(criteriaFieldname) ? tiercriteria : "");
+                //                jsonObject2.addProperty("isSpacePrimitive", idPropsList.toString());
 
               /*  spaceObject.setObjName(propertyDescriptor.getName());
                 spaceObject.setObjtype(String.valueOf(propertyDescriptor.getTypeName()));
@@ -271,13 +287,11 @@ public class ObjectService {
                 jsonArray2.add(jsonObject2);
             }
 
-
             jsonObject3.add("columns", jsonArray2);
             jsonArray3.add(jsonObject3);
         }
         jsonObject.add("objects", jsonArray3);
         jsonArray.add(jsonObject);
-
 
         logger.info("end -- list ");
         return jsonArray;
@@ -375,11 +389,20 @@ public class ObjectService {
         logger.info("end -- unregistertype");
     }
 
-    public void registerAndValidateInSandbox(String tableName, String sandboxSpace,
-                                             String reportFilePath) throws Exception {
+    public void registerAndValidateInSandbox(
+            String tableName, String sandboxSpace,
+            String reportFilePath) throws Exception {
         logger.info("Entering into -> registerInSandbox");
         logger.info("params:  tableName -> " + tableName + " & sandboxSpace -> " + sandboxSpace);
-        Admin admin = CommonUtil.getAdmin(lookupLocator, lookupGroup, odsxProfile, gsUsername, gsPassword, appId, safeId, objectId);
+        Admin admin = CommonUtil.getAdmin(
+                lookupLocator,
+                lookupGroup,
+                odsxProfile,
+                gsUsername,
+                gsPassword,
+                appId,
+                safeId,
+                objectId);
         //Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
         //com.j_spaces.core.admin.JSpaceAdminProxy a;
 
@@ -389,7 +412,8 @@ public class ObjectService {
                 .waitForAtLeastOne();
         logger.info("mgr: " + mgr);
         /*GridServiceAgent gsa=  mgr.getGridServiceAgent();
-        GridServiceContainer gsc1 = gsa.startGridServiceAndWait(new GridServiceContainerOptions().vmInputArgument("-Dcom.gs.zones=aaa"));
+        GridServiceContainer gsc1 = gsa.startGridServiceAndWait(new GridServiceContainerOptions().vmInputArgument
+        ("-Dcom.gs.zones=aaa"));
         gsc1.getId();*/
         SpaceDeployment spaceDeployment = new SpaceDeployment(sandboxSpace);
         spaceDeployment.partitioned(1, 1);
@@ -421,7 +445,6 @@ public class ObjectService {
         Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap = new TreeMap<>();
         Map<String, SpaceTypeDescriptor> suffixedTypeDescriptorMap = new TreeMap<>();
 
-
         result = parser.parse(Paths.get(ddlAndPropertiesBasePath + tableName + ".ddl"));
         //typeDescriptorBuildersCached = parser.parse(Paths.get(ddlAndPropertiesBasePath + tableName + ".ddl"), "_C");
 
@@ -443,7 +466,8 @@ public class ObjectService {
 
                 logger.info("Registered object");
             }
-            String ddl = CommonUtil.readDDLFromfile(Paths.get(ddlAndPropertiesBasePath + tableName + ".ddl").toString());
+            String ddl = CommonUtil.readDDLFromfile(Paths.get(ddlAndPropertiesBasePath + tableName + ".ddl")
+                    .toString());
             typeDescriptorBuildersCached = parser.parse(ddl, TYPE_DISTINGUISHER_SUFFIX);
 
             for (SpaceTypeDescriptorBuilder builder : typeDescriptorBuildersCached) {
@@ -460,7 +484,6 @@ public class ObjectService {
                         , gigaSpace
                         , baseTypeDescriptorMap
                         , suffixedTypeDescriptorMap);*/
-
 
                 builder.supportsDynamicProperties(false);
                 builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
@@ -515,7 +538,8 @@ public class ObjectService {
         logger.info("Exiting from -> registerInSandbox");
     }
 
-    private void writeRecords(GigaSpace gigaSpace
+    private void writeRecords(
+            GigaSpace gigaSpace
             , Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap) {
        /* Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
         GridServiceManager mgr = admin.getGridServiceManagers()
@@ -533,7 +557,6 @@ public class ObjectService {
             String[] propertyNames = typeDescriptor.getPropertiesNames();
             SpaceDocument doc1 = new SpaceDocument(typeDescriptor.getTypeName());
             SpaceDocument doc2 = new SpaceDocument(typeDescriptor.getTypeName() + TYPE_DISTINGUISHER_SUFFIX);
-
 
             //Reporting
             TableOutcome tableForDoc1 = new TableOutcome(typeDescriptor.getTypeName());
@@ -554,7 +577,6 @@ public class ObjectService {
             for (int i = 1; i <= NUMBER_OF_RECORDS; i++) {
                 recordForDoc1 = new RecordOutcome();
                 recordForDoc2 = new RecordOutcome();
-
 
                 for (String propertyName : propertyNames) {
 
@@ -603,7 +625,8 @@ public class ObjectService {
 
     }
 
-    private void readRecords(GigaSpace gigaSpace
+    private void readRecords(
+            GigaSpace gigaSpace
             , Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap) {
 
         System.out.println("Reading back entries written just now.");
@@ -632,7 +655,8 @@ public class ObjectService {
                 logger.error("Exception reading from Cache : ", th);
             }
 
-            System.out.println("Comparing records for type " + typeDescriptor.getTypeName() + " and " + typeDescriptor.getTypeName() + TYPE_DISTINGUISHER_SUFFIX);
+            System.out.println("Comparing records for type " + typeDescriptor.getTypeName() + " and "
+                    + typeDescriptor.getTypeName() + TYPE_DISTINGUISHER_SUFFIX);
 
             System.out.println("Differing records will be printed out");
             for (int i = 0; i < result1.length; i++) {
@@ -643,27 +667,36 @@ public class ObjectService {
                     logger.debug("Could not read records for id property " + result1[i].getProperty(idPropertyName));
                     String info = " Id property : " + idPropertyName;
                     info += " Value : " + result1[i].getProperty(idPropertyName);
-                    csResults.additionalInfo.put("Could not retrieve record for Id value  " + info, result1[i].getProperty(idPropertyName));
+                    csResults.additionalInfo.put(
+                            "Could not retrieve record for Id value  " + info,
+                            result1[i].getProperty(idPropertyName));
                 } else {
                     recordOutcome1.recordRead = true;
                 }
-
 
                 RecordOutcome recordOutcome2 = getRecordOutcome(tsResults, result1[i].getProperty(idPropertyName));
                 if (recordOutcome2 == null) {
                     //recordOutcome2.recordRead = false;
                     String info = " Id property : " + idPropertyName;
                     info += " Value : " + result1[i].getProperty(idPropertyName);
-                    tsResults.additionalInfo.put("Could not retrieve record for Id value  " + info, result1[i].getProperty(idPropertyName));
+                    tsResults.additionalInfo.put(
+                            "Could not retrieve record for Id value  " + info,
+                            result1[i].getProperty(idPropertyName));
 
                 } else {
-                    IdQuery<SpaceDocument> spaceDocumentIdQuery = new IdQuery<SpaceDocument>(typeDescriptor.getTypeName(), result1[i].getProperty(idPropertyName));
+                    IdQuery<SpaceDocument>
+                            spaceDocumentIdQuery
+                            = new IdQuery<SpaceDocument>(
+                            typeDescriptor.getTypeName(),
+                            result1[i].getProperty(idPropertyName));
                     SpaceDocument spaceDocument = null;
                     try {
                         spaceDocument = gigaSpace.readById(spaceDocumentIdQuery);
                     } catch (Throwable th) {
                         recordOutcome2.recordRead = false;
-                        logger.debug("Exception reading  from TS for table, property " + typeDescriptor.getTypeName() + " , " + result1[i].getProperty(idPropertyName));
+                        logger.debug(
+                                "Exception reading  from TS for table, property " + typeDescriptor.getTypeName() + " , "
+                                        + result1[i].getProperty(idPropertyName));
                         logger.error("Exception details : ", th);
                         recordOutcome2.additionalInfo.put("Exception reading record from TS ", th);
                     }
@@ -681,7 +714,12 @@ public class ObjectService {
         }
     }
 
-    private void compare(SpaceDocument doc1, SpaceDocument doc2, RecordOutcome recordOutcome1, RecordOutcome recordOutcome2, GigaSpace gigaSpace) {
+    private void compare(
+            SpaceDocument doc1,
+            SpaceDocument doc2,
+            RecordOutcome recordOutcome1,
+            RecordOutcome recordOutcome2,
+            GigaSpace gigaSpace) {
         /*Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
         GridServiceManager mgr = admin.getGridServiceManagers()
                 .waitForAtLeastOne();
@@ -750,7 +788,10 @@ public class ObjectService {
         return null;
     }
 
-    private void registerTypes(Collection<SpaceTypeDescriptorBuilder> typeDescriptorBuilders, GigaSpace gigaSpace, Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap) {
+    private void registerTypes(
+            Collection<SpaceTypeDescriptorBuilder> typeDescriptorBuilders,
+            GigaSpace gigaSpace,
+            Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap) {
        /*  Admin admin = new AdminFactory().addLocator(lookupLocator).addGroups(lookupGroup).createAdmin();
        GridServiceManager mgr = admin.getGridServiceManagers()
                 .waitForAtLeastOne();
@@ -767,11 +808,13 @@ public class ObjectService {
             baseTypeDescriptorMap.put(spaceTypeDescriptor.getTypeName(), spaceTypeDescriptor);
 
             gigaSpace.getTypeManager().registerTypeDescriptor(spaceTypeDescriptor);
-            System.out.println("######## Successfully Register type - " + spaceTypeDescriptor.getTypeName() + " ########");
+            System.out.println(
+                    "######## Successfully Register type - " + spaceTypeDescriptor.getTypeName() + " ########");
         }
     }
 
-    private void registerTypesWithTieredStorageCriteria(Collection<SpaceTypeDescriptorBuilder> typeDescriptorBuilders
+    private void registerTypesWithTieredStorageCriteria(
+            Collection<SpaceTypeDescriptorBuilder> typeDescriptorBuilders
             , GigaSpace gigaSpace
             , Map<String, SpaceTypeDescriptor> baseTypeDescriptorMap
             , Map<String, SpaceTypeDescriptor> suffixedTypeDescriptorMap) {
@@ -799,7 +842,8 @@ public class ObjectService {
                         .setCriteria("all")
                 );
             } else {
-                System.out.println("Warning: could not find typedescriptor name - problem setting tiered storage config.");
+                System.out.println(
+                        "Warning: could not find typedescriptor name - problem setting tiered storage config.");
                 SpaceTypeDescriptor tempDescriptor = builder.create();
                 builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                         .setName(tempDescriptor.getTypeName() + TYPE_DISTINGUISHER_SUFFIX)
@@ -808,7 +852,51 @@ public class ObjectService {
             SpaceTypeDescriptor spaceTypeDescriptor = builder.create();
             suffixedTypeDescriptorMap.put(spaceTypeDescriptor.getTypeName(), spaceTypeDescriptor);
             gigaSpace.getTypeManager().registerTypeDescriptor(spaceTypeDescriptor);
-            System.out.println("######## Successfully Register type - " + spaceTypeDescriptor.getTypeName() + " ########");
+            System.out.println(
+                    "######## Successfully Register type - " + spaceTypeDescriptor.getTypeName() + " ########");
         }
+    }
+
+    public int objectCountInMemory(String objectType, String condition) {
+        SQLQuery<SpaceDocument> query;
+        if (objectType == null || objectType.equals("")) {
+            query = new SQLQuery<>();
+        } else if (condition == null || condition.equals("")) {
+            query = new SQLQuery<>(objectType, "");
+        } else {
+            query = new SQLQuery<>(objectType, condition);
+        }
+        logger.info(">>>>>>>>>>>objectType + count " + query);
+        int queryCount = gigaSpace.count(query, CountModifiers.MEMORY_ONLY_SEARCH);
+        return queryCount;
+    }
+
+    public SpaceDocument objectMaxMinInMemory(String objectType, String minColName, String maxColName) {
+        IJSpace space = gigaSpace.getSpace();
+        space.setReadModifiers(16777216);
+        SQLQuery<SpaceDocument> query;
+        query = new SQLQuery<>(objectType, "min(" + minColName + "), max(" + maxColName + ")");
+        SQLQuery<Object> query1;
+        query1 = new SQLQuery<>(objectType, "").setProjections("max(" + minColName + ")");
+
+        logger.info(">>>>>>>>>>>objectType + count " + query);
+        //https://docs.gigaspaces.com/latest/dev-java/aggregators.html
+        //        QueryExtension.max()
+        AggregationResult aggregationResult = gigaSpace.aggregate(
+                new SQLQuery<>(objectType, ""),
+                new AggregationSet().minValue(minColName).maxValue(maxColName));
+        logger.info(">>>>>>>>>>>aggregationResult + count " + aggregationResult);
+
+        //retrieve result by index
+        Integer minVal = (Integer) aggregationResult.get(0);
+        Integer maxVal = (Integer) aggregationResult.get(1);
+        logger.info(">>>>>>>>>>>minVal " + minVal);
+        logger.info(">>>>>>>>>>>maxVal " + maxVal);
+        logger.info(">>>>>>>>>>>query1 " + query1);
+        Object queryCount1 = gigaSpace.read(query1, 0, ReadModifiers.MEMORY_ONLY_SEARCH);
+        logger.info("queryCount1 : " + queryCount1);
+        SpaceDocument queryCount = gigaSpace.read(query, 1000l, ReadModifiers.MEMORY_ONLY_SEARCH);
+
+        return queryCount;
     }
 }
