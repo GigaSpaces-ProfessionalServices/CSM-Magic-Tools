@@ -53,7 +53,7 @@ host_menu() {
   while [[ $# -gt 0 ]] ; do
     case $1 in
       "-h" | "" ) show_usage ;;
-      "-r" | "-l" ) tail -n +2 ${ENV_CONFIG}/host.yaml | sed '/^ *$/d' | sed -n '/: *$/p' | sed 's/ *: *$//' ;;
+      "-r" | "-l" ) tail -n +2 ${ENV_CONFIG}/host.yaml | grep -v 'host[0-9]*.*:' | sed '/^ *$/d' | sed -n '/: *$/p' | sed 's/ *: *$//' ;;
       "-A" ) sed -En 's/(.*host.*: *)(.*)$/\2/p' ${ENV_CONFIG}/host.yaml | tr -d ' ' | sort -u ;;
       * ) display_hosts_per_role $1 ;;
     esac
