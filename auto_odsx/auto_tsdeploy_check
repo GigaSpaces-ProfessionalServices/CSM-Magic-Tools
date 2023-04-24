@@ -12,5 +12,4 @@ while (( $containers < $expected_containers )); do
 done
 echo containers=$containers
 cd /dbagiga/utils/auto_odsx
-read -p "press enter"
 auto_tsdeploy
