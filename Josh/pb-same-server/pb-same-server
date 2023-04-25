@@ -17,7 +17,7 @@ cat << EOF
       --service bllservice
       --space bllspace
       
-    Example: pb-same-server --service dih-tau-service --dih-tau-space
+    Example: pb-same-server --service dih-tau-service --space dih-tau-space
 
 EOF
 exit 0
