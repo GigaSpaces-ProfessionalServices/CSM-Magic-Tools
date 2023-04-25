@@ -16,6 +16,8 @@ cat << EOF
     DEFAULT VALUES:
       --service bllservice
       --space bllspace
+      
+    Example: pb-same-server --service dih-tau-service --dih-tau-space
 
 EOF
 exit 0
