@@ -1,4 +1,6 @@
 #!/bin/bash
+# version 2.00
+# build 2023-05-01
 
 role_found=0
 _ROLE=""
