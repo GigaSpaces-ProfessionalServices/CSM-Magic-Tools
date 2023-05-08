@@ -1,0 +1,5 @@
+alias h='history'
+alias vitt='vi /var/log/messages'
+alias tailf='tail -f /var/log/messages'
+alias lt='ls -ltr'
+alias psg='ps -ef|grep -v grep|grep'
