@@ -1,0 +1,55 @@
+---
+#
+# id:           the menu element/position name
+# type:         menu (show list of choices) / exec (execute the target script/command)
+# target:       the name of the script/module/function to execute
+# description:  general description of the element
+#
+
+id: 'Main'
+type: 'menu'
+description: ''
+1:
+    id: 'Utilities'
+    type: 'menu'
+    description: 'short description here...'
+    1:
+        id: 'Flush'
+        type: 'exec'
+        target: 'flush.py'
+        description: 'short description here...'
+    2:
+        id: 'Scheduled Task'
+        type: 'exec'
+        target: 'scheduled_task.py'
+        description: 'short description here...'
+2:
+    id: 'Recovery'
+    type: 'menu'
+    description: 'short description here...'
+    1:
+        id: '(Step 1) Copy Redo Log Files '
+        type: 'exec'
+        target: ''
+        description: 'short description here...'
+    2:
+        id: '(Step 2) Run Deserialized Script '
+        type: 'exec'
+        target: ''
+        description: 'short description here...'
+    3:
+        id: '(Step 3) Copy Deserialized Files '
+        type: 'exec'
+        target: ''
+        description: 'short description here...'
+    4:
+        id: '(Step 4) Check Target Space '
+        type: 'exec'
+        target: ''
+        description: 'short description here...'
+    5:
+        id: '(Step 5) Run Replay Script '
+        type: 'exec'
+        target: ''
+        description: 'short description here...'
+...
