@@ -1,8 +1,8 @@
 
-# Piper Recovery Manager
+# Recovery Assistant
 
 ## Description
-Piper Recovery Manager
+Recovery Assistant is ...
 > - description
 > - description
 > - description
