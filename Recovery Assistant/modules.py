@@ -20,6 +20,10 @@ import socket
 import yaml
 
 
+### set debug flag 0/1 ###
+DEBUG = 0
+
+
 class Spinner:
     """
     spinner class to show spinner while executing something
@@ -186,110 +190,6 @@ def write_to_influx(_dbname, _measurement, **data):
         json_body['fields'] = data['fields']    # the fields
         json_body = [json_body]                 # wrapping as a list
         client.write_points(json_body)
-
-
-def check_settings(config_yaml):
-    """
-    check settings of cockpit upon initialization
-    """
-
-    db_set_required = False
-    env_set_required = False
-     
-    # load config yaml
-    with open(config_yaml, 'r', encoding="utf-8") as yml:
-        data = yaml.safe_load(yml)
-
-    COCKPIT_DB_HOME = data['params']['cockpit']['db_home']
-    COCKPIT_DB_NAME = data['params']['cockpit']['db_name']
-    COCKPIT_DB = f"{COCKPIT_DB_HOME}/{COCKPIT_DB_NAME}"
-
-    try:
-        # check if environments are set in config.yaml
-        for env_name in data['params']:
-            if 'SET_ENV_NAME' in env_name:
-                pretty_print('@:: cockpit configuration settings'.upper(), 'green', 'bright')
-                pretty_print('\nERROR: environments are not set in config.yaml. Aborting!', 'red')
-                sys.exit(0)
-        # check cockpit database settings
-        if COCKPIT_DB_HOME == '' or COCKPIT_DB_HOME is None \
-            or COCKPIT_DB_NAME == '' or COCKPIT_DB_NAME is None:
-            pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-            pretty_print('\nERROR: cockpit.db is not set in configuration file. Aborting!', 'red')
-            sys.exit(1)
-        if not os.path.exists(COCKPIT_DB):
-            db_set_required = True
-            pretty_print("@:: cockpit db settings".upper(), 'green', 'bright')
-            pretty_print('\nERROR: Cockpit database was not found!', 'red')
-            if get_user_ok("Would you like to create the cockpit database?"):
-                try:
-                    subprocess.run(
-                    [f"{os.environ['COCKPIT_HOME']}/scripts/create_db.py"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=True
-                    )
-                except subprocess.SubprocessError as err:
-                    print(err)
-                if not os.path.exists(COCKPIT_DB):
-                    sys.exit(1)
-                print('\n')
-            else:
-                pretty_print('\nERROR: a cockpit database is required in order to run. '
-                'Aborting!', 'red')
-                sys.exit(1)
-
-        # check cockpit enviroment settings
-        for env_name in data['params']:
-            if env_name != 'cockpit':
-                pivot = data['params'][env_name]['endpoints']['pivot']
-                if pivot == '' or pivot is None:
-                    env_set_required = True
-                    config_ok = False
-                    break
-        if env_set_required:
-            pretty_print('@:: cockpit environment settings'.upper(), 'green', 'bright')
-            while not config_ok:
-                pretty_print("\nERROR: required parameters are not in configuration file!", 'red')
-                if get_user_ok("Would you like cockpit to setup parameters automatically?"):
-                    script = f"{os.environ['COCKPIT_HOME']}/scripts/get_params.py"
-                    subprocess.call([script], shell=True)
-                    
-                    # reload cockpit configuration after changes
-                    with open(config_yaml, 'r', encoding="utf-8") as yml:
-                        data = yaml.safe_load(yml)
-                else:
-                    print(f"\nplease set required parameters in: '{config_yaml}'\n")
-                    sys.exit(1)
-                config_ok = True
-                for env_name in data['params']:
-                    if env_name != 'cockpit':
-                        pivot = data['params'][env_name]['endpoints']['pivot']
-                        if pivot == '' or pivot is None:
-                            config_ok = False
-                            break
-        if db_set_required or env_set_required:
-            pretty_print("\nCockpit setup and verification completed successfully!", 'green')
-            press_any_key()
-            print_header()
-
-        spinner = Spinner
-        object_loader = f"{os.environ['COCKPIT_HOME']}/assets/cockpit/load_objects.py"
-        with spinner('Loading cockpit data... ', delay=0.1):            
-            # add to cron if not exists
-            if not crontab_ops('test', 'assets/cockpit/load_objects.py'):
-                cron_comment = "# cockpit: update ods space objects every 60s"
-                cron_line = f"{cron_comment}\n* * * * * /bin/bash -i -c '{object_loader}'\n"
-                crontab_ops('add', cron_line)
-
-            # run initial load
-            return subprocess.run(
-                [object_loader], 
-                check=True,
-                stdout=subprocess.PIPE
-            ).stdout.decode()
-    except (KeyboardInterrupt, SystemExit):
-        os.system("stty sane ; stty erase ^H ; stty erase ^?")
 
 
 def press_any_key():
@@ -464,35 +364,6 @@ def validate_option_select(_items_dict, _title, _esc_to='Go Back'):
         os.system("stty sane ; stty erase ^H ; stty erase ^?")
 
 
-def validate_type_select(_items_dict):
-    """
-    get object type selection from user
-    :param _items_dict: menu dictionary object
-    :return: int of user choice
-    """
-
-    # print submenu
-    _title = "What type of task do you want to create?"
-    print(_title + "\n" + '-' * len(_title))
-    for key, val in _items_dict.items():
-        index = f"[{key}]"
-        print(f'{index:<4} - {val["name"]:<24} {val["description"]:<34}')
-    print(f'\n{"Esc":<4} - to Go Back')
-    print('-' * 32)
-    try:
-        while True:
-            k = get_keypress()
-            if k == 'esc':
-                return -1
-            if not k.isdigit() or int(k) not in _items_dict.keys():
-                print(f'{Fore.RED}ERROR: Input must be a menu index!{Style.RESET_ALL}')
-            else:
-                return int(k)
-    except (KeyboardInterrupt, SystemExit):
-        os.system("stty sane ; stty erase ^H ; stty erase ^?")
-        return None
-
-
 def update_selections(_the_choice, _choices_list):
     """
     update user selections list
@@ -526,9 +397,6 @@ def get_user_ok(_question):
         os.system("stty sane ; stty erase ^H ; stty erase ^?")
         return False
 
-
-### set debug flag ###
-DEBUG = 0
 
 def print_header():
     """ print menu header - figlet and VERSION """
@@ -615,7 +483,7 @@ def check_connection(_server, _port):
     :return: True / False
     """
 
-    CONN_TIMEOUT = 1    # adjust value for connection test
+    CONN_TIMEOUT = 1    # adjust value for connection timeout
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_socket.settimeout(CONN_TIMEOUT)
     check_port = a_socket.connect_ex((_server, _port))
@@ -679,89 +547,6 @@ def execute_command(_cmd, _title, indent=None):
                 print("successful\n")
             else:
                 print("failed\n")
-
-
-def generate_counter_job_file(_job_type, _env_name, _obj_type, _yaml_data):
-    """
-    create a counter job file
-    :param _job_type: type of job
-    :param _env_name: name of environment
-    :param _obj_type: null or name of target object
-    :param _yaml_data: data from config yaml
-    :return:
-    """
-
-    env_name_low = _env_name.lower()
-    pivot = f"PIVOT_{_env_name}"
-    jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
-    if _obj_type != '':
-        job_file_name = f"{_job_type}_{_env_name}_{_obj_type}.py".lower()
-    else:
-        job_file_name = f"{_job_type}_{_env_name}.py".lower()
-    job_file = f"{jobs_home}/{job_file_name}"
-    pivot = _yaml_data['params'][env_name_low]['endpoints']['pivot']
-    cmd = "cat {exec_script} | ssh " + pivot + " python3 -"
-    sp_exec = 'subprocess.run([cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()'
-    lines = [
-        '#!/usr/bin/python3\n\n',
-        'import subprocess\n',
-        f'exec_script = "{os.environ["COCKPIT_HOME"]}/scripts/get_space_objects.py"',
-        f'cmd = f"{cmd}"',
-        f'response = {sp_exec}',
-        'print(response)\n\n'
-    ]
-    # create jobs home folder if not exists
-    if not os.path.exists(jobs_home):
-        try:
-            os.makedirs(jobs_home)
-        except OSError as err:
-            print(err)
-    with open(job_file, 'w', encoding="utf-8") as j:
-        j.writelines('\n'.join(lines))
-    # set execution bit for job file
-    subprocess.run([f"chmod +x {job_file}"], shell=True, check=True)
-
-
-def generate_feeder_job_file(_env_name, _feeder_type, _feeder_option):
-    """
-    create a feeder job file
-    :param _env_name: name of environment
-    :param _feeder_type: type of feeder
-    :param _feeder_option: the option of feeder operation (start/stop/deploy)
-    :return:
-    """
-    jobs_home = f"{os.environ['COCKPIT_HOME']}/jobs"
-    cp_assets_dir = f"{os.environ['COCKPIT_HOME']}/assets/cockpit"
-    cp_feeder_template = f"{cp_assets_dir}/feeder_template.py"
-    feeder_job_file_name = f"feeder_{_env_name}_{_feeder_type}_{_feeder_option}.py".lower()
-    feeder_job_file = f"{jobs_home}/{feeder_job_file_name}"
-    # generate feeder job from template 
-    cmd = f"cp {cp_feeder_template} {jobs_home}/{feeder_job_file_name}".split(' ')
-    try:
-        response = subprocess.run(cmd, check=True)
-    except subprocess.SubprocessError as err:
-        print(err)
-    else:
-        # setting execution bit for job file
-        cmd = f"chmod +x {feeder_job_file}".split(' ')
-        response = subprocess.run(cmd, check=True)
-
-        # populating values according to feeder type and env
-        if response.returncode == 0:
-            with open(feeder_job_file, 'r', encoding="utf-8") as fjf:
-                lines = fjf.readlines()
-            with open(feeder_job_file, 'w', encoding="utf-8") as fjf:
-                for line in lines:
-                    if 'ENV_NAME =' in line:
-                        fjf.write(f"ENV_NAME = '{_env_name}'\n")
-                        continue
-                    if 'FEEDER_TYPE = ' in line:
-                        fjf.write(f"FEEDER_TYPE = '{_feeder_type}'\n")
-                        continue
-                    if 'FEEDER_OPTION = ' in line:
-                        fjf.write(f"FEEDER_OPTION = '{_feeder_option}'\n")
-                        continue
-                    fjf.write(line)
 
 
 def crontab_ops(_ops_type, _str):
