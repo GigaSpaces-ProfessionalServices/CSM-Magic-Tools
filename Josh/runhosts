@@ -1,0 +1,147 @@
+#!/bin/bash
+
+_NEW=/tmp/new_hosts$$
+_HOSTS_NUM=$(tail -n +3 /etc/hosts | wc -l)
+_PUBLIC_NUM=$(tail -n +3 /etc/hosts | sed -n '/#[[:space:]]*[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}[[:space:]]*$/p' | wc -l )
+
+add_public() {
+  sed -i 's/[[:space:]]*#.*$//' /etc/hosts
+  local private_ips=( $(tail -n +3 /etc/hosts | awk '{print $1}') )
+  for (( i=0 ; i < $_HOSTS_NUM ; i++ )) ; do
+    if [[ $(ping -c1 -w2 ${private_ips[$i]} >/dev/null 2>&1 ; echo $?) -eq 0 ]] ; then
+      public_ips=( ${public_ips[@]} $(ssh ${private_ips[$i]} curl http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null) )
+      sed -i "$(( $i + 3 )) s/$/ \t# ${public_ips[$i]}/" /etc/hosts
+    fi
+  done
+}
+
+verify_public() {
+  [[ $_PUBLIC_NUM -ne $_HOSTS_NUM ]] && add_public
+}
+
+force_add_public() {
+  add_public
+}
+
+remote_hosts() {
+  shift
+  if [[ "$1" = "-m" || "$1" = "-s" || "$1" = "-n" || "$1" = "-nm" || "$1" = "-na" || "$1" = "-d" || "$1" = "-a" ]] ; then
+    local hosts=$( (runall2 $1) )
+    shift
+    for h in ${hosts[@]} ; do
+      my_cmd="ssh $h ${@}"
+      eval $my_cmd
+    done 
+  else
+    echo -e "\n 2nd param must be one of the following: -m, -s, -n, -na, -nm, -d, -a\n" ; exit 1
+  fi 
+}
+
+usage() {
+  cat << EOF
+        
+  Usage: $(basename $0) option
+
+    -h    Display this help
+    -piv  Show pivot local ip
+    -pv   Public address Verification in /etc/hosts
+    -pf   Public address Force in /etc/hosts
+    -m    Show ODS Manager IP's
+    -mn   Show ODS Manager NAMES
+    -mf   Show ODS Manager full
+    -s    Show ODS Space IP's
+    -sn   Show ODS Space NAMES
+    -sf   Show ODS Space full
+    -n    Show ODS spc, NB app, and NB mng local IP'S
+    -nm   Show NB Manager local IP'S
+    -na   Show NB Application local IP'S
+    -d    Show DIH local IP'S
+    -a    Show all local IP'S
+    -A    Show full details of all hosts
+    -r    Remote execute (2nd param must be one of: -m, -s, -na, -nm, -d, -a)
+
+EOF
+exit 0
+}
+
+do_main2() {
+  case $1 in
+    "-m") H=$(awk '/mng[0-9]/ {print $1}' /etc/hosts)
+      ;;
+    *) echo -e "\nBad option\n" ; exit
+      ;;
+  esac 
+}
+
+do_main() {
+  case $1 in
+    "-h"|"") 
+        usage
+        ;;
+    "-piv")
+        H=$(awk '/piv[0-9]/ {print $1}' /etc/hosts)
+        ;;
+    "-pv")
+        verify_public ; exit
+        ;;
+    "-pf")
+        force_add_public
+        grep mng1 /etc/hosts |sed 's/$/:8090/'
+        grep mng1 /etc/hosts |sed 's/$/:8099/'
+        exit
+        ;;
+    "-s")
+        H=$( awk '/spc[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-sn")
+        H=$( awk '/spc[0-9]/ {print $2}' /etc/hosts )
+        ;;
+    "-sf")
+        grep 'spc[0-9]' /etc/hosts ; exit
+        ;;
+    "-m")
+        H=$( awk '/mng[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-mn")
+        H=$( awk '/mng[0-9]/ {print $2}' /etc/hosts )
+        ;;
+    "-mf")
+        grep 'mng[0-9]' /etc/hosts ; exit
+        ;;
+    "-n")
+        H=$( awk '/nbm[0-9]|nba[0-9]|spc[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-nm")
+        H=$( awk '/nbm[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-na")
+        H=$( awk '/nba[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-d")
+        H=$( awk '/dih[0-9]/ {print $1}' /etc/hosts )
+        ;;
+    "-a")
+        H=$(tail -n +3 /etc/hosts | awk '{print $1}')
+        ;;
+    "-A")
+        echo -e "===== pivot" ; awk '/piv[0-9]/ {print}' /etc/hosts
+        echo -e "===== managers" ; awk '/mng[0-9]/ {print}' /etc/hosts
+        echo -e "===== spaces" ; awk '/spc[0-9]/ {print}' /etc/hosts
+        echo -e "===== northbound managers" ; awk '/nbm[0-9]/ {print}' /etc/hosts
+        echo -e "===== northbound applications" ; awk '/nba[0-9]/ {print}' /etc/hosts
+        echo -e "===== data integration" ; awk '/dih[0-9]/ {print}' /etc/hosts
+        exit
+        ;;
+    *) 
+        echo -e "\n Unknown parameter passed: ${1}\n" ; exit 1 
+        ;;
+  esac 
+} 
+
+############## MAIN ###############
+
+#do_main $*
+do_main "$@"
+shift
+[[ -z $1 ]] && { echo $H | tr ' ' '\n' ; exit ; } || for h in $H ; do ssh $h "$@" ; done
+
