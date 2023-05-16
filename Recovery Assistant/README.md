@@ -12,7 +12,7 @@ Recovery Assistant is ...
 ## Requirements
 
 ### OS and System Tiers
-* ...
+* required assets are located on s3 at https://jay-dalal.s3.us-west-2.amazonaws.com/piper/recoveryAssistant-resources.zip
 
 <br>
 
