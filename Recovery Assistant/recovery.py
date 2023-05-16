@@ -2,7 +2,7 @@
 # *-* coding: utf-8 *-*
 
 """
-runme: main script
+recovery.py: main script
 """
 
 if __name__ == '__main__':
@@ -25,6 +25,27 @@ if __name__ == '__main__':
     CONFIG_YAML = f"{BASE_DIR}/config/config.yaml"
     user_selections = []
     
+
+    def exec_target_ok(_target):
+        """
+        check target script
+        :param target: a dictionary of available choices
+        :return: True/False
+        """
+        # checking that target key is set
+        if _target == '':
+            _err_msg = f"CONFIG ERROR: missing 'target' value for '{_dict['id']}' option"
+            pretty_print(_err_msg, 'red')
+            return False
+        # checking that target script exists
+        _script = f"{BASE_DIR}/scripts/{_target}"
+        if not os.path.exists(_script):
+            _err_msg = f"EXEC ERROR: target 'scripts/{os.path.basename(_script)}' not found"
+            pretty_print(_err_msg, 'red')
+            return False
+        return True
+
+
     # load menu yaml
     with open(MENU_YAML, 'r', encoding="utf-8") as yml:
         data = yaml.safe_load(yml)
@@ -39,14 +60,13 @@ if __name__ == '__main__':
                 _dict = data
             print_locations(user_selections, data)
             if _dict['type'] == 'exec':
-                # checking that target key is set
-                if _dict['target'] == '':
-                    pretty_print(f"YAML ERROR: missing 'target' value "
-                    f"in command '{_dict['id']}'", 'red')
+                # check target script
+                if not exec_target_ok(_dict['target']):
                     press_any_key()
                     user_selections.pop()
                     continue
-                script = f"'{BASE_DIR}/scripts/{_dict['target']}'"
+                # execute target script
+                script = f"{BASE_DIR}/scripts/{_dict['target']}"
                 subprocess.call([script], shell=True)
                 user_selections.pop()
                 continue
