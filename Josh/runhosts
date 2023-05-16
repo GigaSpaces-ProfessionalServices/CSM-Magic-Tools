@@ -31,15 +31,15 @@ remote_hosts() {
     for h in ${hosts[@]} ; do
       my_cmd="ssh $h ${@}"
       eval $my_cmd
-    done 
+    done
   else
     echo -e "\n 2nd param must be one of the following: -m, -s, -n, -na, -nm, -d, -a\n" ; exit 1
-  fi 
+  fi
 }
 
 usage() {
   cat << EOF
-        
+
   Usage: $(basename $0) option
 
     -h    Display this help
@@ -70,78 +70,42 @@ do_main2() {
       ;;
     *) echo -e "\nBad option\n" ; exit
       ;;
-  esac 
+  esac
 }
 
 do_main() {
   case $1 in
-    "-h"|"") 
-        usage
-        ;;
-    "-piv")
-        H=$(awk '/piv[0-9]/ {print $1}' /etc/hosts)
-        ;;
-    "-pv")
-        verify_public ; exit
-        ;;
-    "-pf")
-        force_add_public
-        grep mng1 /etc/hosts |sed 's/$/:8090/'
-        grep mng1 /etc/hosts |sed 's/$/:8099/'
+    "-h"|"h"|"") usage ;;
+    "-piv"|"-p"|"p") H=$(host-yaml.sh p) ;;
+    "-pv") verify_public ; exit ;;
+    "-pf") force_add_public ; grep mng1 /etc/hosts |sed 's/$/:8090/' ; grep mng1 /etc/hosts |sed 's/$/:8099/' ; exit ;;
+    "-s") H=$( host-yaml.sh s ) ;;
+    "-m") H=$( host-yaml.sh m ) ;;
+    "-n") H=$( host-yaml.sh nm ; host-yaml.sh na ; host-yaml.sh s ) ;;
+    "-nm") H=$( host-yaml.sh nm ) ;;
+    "-na") H=$( host-yaml.sh na ) ;;
+    "-d"|"d") H=$(host-yaml.sh d) ;;
+    "-a"|"a") H=$(host-yaml.sh -A) ;;
+    "-A"|"A")
+        echo -e "===== pivot" ; host-yaml.sh p
+        echo -e "===== managers" ; host-yaml.sh m
+        echo -e "===== spaces" ; host-yaml.sh s
+        echo -e "===== northbound managers" ;host-yaml.sh nm
+        echo -e "===== northbound applications" ; host-yaml.sh na
+        echo -e "===== data integration" ; host-yaml.sh d
         exit
         ;;
-    "-s")
-        H=$( awk '/spc[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-sn")
-        H=$( awk '/spc[0-9]/ {print $2}' /etc/hosts )
-        ;;
-    "-sf")
-        grep 'spc[0-9]' /etc/hosts ; exit
-        ;;
-    "-m")
-        H=$( awk '/mng[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-mn")
-        H=$( awk '/mng[0-9]/ {print $2}' /etc/hosts )
-        ;;
-    "-mf")
-        grep 'mng[0-9]' /etc/hosts ; exit
-        ;;
-    "-n")
-        H=$( awk '/nbm[0-9]|nba[0-9]|spc[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-nm")
-        H=$( awk '/nbm[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-na")
-        H=$( awk '/nba[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-d")
-        H=$( awk '/dih[0-9]/ {print $1}' /etc/hosts )
-        ;;
-    "-a")
-        H=$(tail -n +3 /etc/hosts | awk '{print $1}')
-        ;;
-    "-A")
-        echo -e "===== pivot" ; awk '/piv[0-9]/ {print}' /etc/hosts
-        echo -e "===== managers" ; awk '/mng[0-9]/ {print}' /etc/hosts
-        echo -e "===== spaces" ; awk '/spc[0-9]/ {print}' /etc/hosts
-        echo -e "===== northbound managers" ; awk '/nbm[0-9]/ {print}' /etc/hosts
-        echo -e "===== northbound applications" ; awk '/nba[0-9]/ {print}' /etc/hosts
-        echo -e "===== data integration" ; awk '/dih[0-9]/ {print}' /etc/hosts
-        exit
-        ;;
-    *) 
-        echo -e "\n Unknown parameter passed: ${1}\n" ; exit 1 
-        ;;
-  esac 
-} 
+    *) echo -e "\n Unknown parameter passed: ${1}\n" ; exit 1 ;;
+  esac
+}
 
 ############## MAIN ###############
 
 #do_main $*
 do_main "$@"
 shift
-[[ -z $1 ]] && { echo $H | tr ' ' '\n' ; exit ; } || for h in $H ; do ssh $h "$@" ; done
-
+if [[ -z $1 ]] ; then
+  [[ -n $H ]] && echo $H | tr ' ' '\n' || echo -e "\nThis ROLE has no hosts assigned\n"
+else
+  for h in $H ; do ssh $h "$@" ; done
+fi
