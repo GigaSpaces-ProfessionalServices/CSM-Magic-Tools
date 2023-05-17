@@ -7,9 +7,6 @@ import sys
 import threading
 import itertools
 import time, datetime
-import sqlite3
-from influxdb import InfluxDBClient
-from sqlite3 import Error
 import tty
 import termios
 from colorama import Fore, Style
@@ -17,7 +14,6 @@ import pyfiglet
 from random import randint
 import subprocess
 import socket
-import yaml
 
 
 ### set debug flag 0/1 ###
