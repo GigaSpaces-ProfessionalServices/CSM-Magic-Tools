@@ -1,0 +1,5 @@
+# exclude file / folders from source archive
+
+.gitignore export-ignore
+.gitattributes export-ignore
+tests export-ignore
