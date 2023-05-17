@@ -5,16 +5,16 @@ _ROLE=""
 
 shortcuts() {
   case $1 in
-    "m"|"manager" ) _ROLE=manager ;;
-    "s"|"space" ) _ROLE=space ;;
-    "d"|"c"|"dataIntegration" ) _ROLE=dataIntegration ;;
-    "g"|"grafana" ) _ROLE=grafana ;;
-    "i"}"influxdb" ) _ROLE=influxdb ;;
-    "na"|"nb_applicative" ) _ROLE=nb_applicative ;;
-    "nm"|"nb_management" ) _ROLE=nb_management ;;
-    "dvs"|"data_validator_server" ) _ROLE=data_validator_server ;;
-    "dva"|"data_validator_agent" ) _ROLE=data_validator_agent ;;
-    "p"|"pivot" ) _ROLE=pivot ;;
+    "-m"|"-manager" ) _ROLE=manager ;;
+    "-s"|"-space" ) _ROLE=space ;;
+    "-p"|"-pivot" ) _ROLE=pivot ;;
+    "-i"|"-influxdb" ) _ROLE=influxdb ;;
+    "-g"|"-grafana" ) _ROLE=grafana ;;
+    "-d"|"-c"|"-dataIntegration" ) _ROLE=dataIntegration ;;
+    "-na"|"-nb_applicative" ) _ROLE=nb_applicative ;;
+    "-nm"|"-nb_management" ) _ROLE=nb_management ;;
+    "-dvs"|"-data_validator_server" ) _ROLE=data_validator_server ;;
+    "-dva"|"-data_validator_agent" ) _ROLE=data_validator_agent ;;
     * ) _ROLE=""
   esac
 }
@@ -23,29 +23,29 @@ show_usage() {
 cat << EOF
 
   Display DIH hostnames
-    Usage: $0
+    Usage: $(basename $0) [<parameter>]
 
     PARAMETERS:
-      -h          - Show usage
-      -r          - Display all roles
-      -A          - Display all hosts
-      -l          - Display all roles and hosts
-      <role_name> - Display hostnames of type <role_name>
+      -h            Show usage
+      -r            Display all roles
+      -A            Display all hosts
+      -l            Display all roles and hosts
+      <role_name>   Display hostnames of type <role_name>
 
     DEFAULT:
-      Show usage
+      -h            Show usage
 
     A <role_name> can be one of the following:
-      m | manager
-      s | space
-      d | c | dataIntegration
-      g | grafana
-      i | influxdb
-      na | nb_applicative
-      nm | nb_management
-      dvs | data_validator_server
-      dva | data_validator_agent
-      p | pivot
+      -m | -manager
+      -s | -space
+      -d | -c | -dataIntegration
+      -g | -grafana
+      -i | -influxdb
+      -na | -nb_applicative
+      -nm | -nb_management
+      -dvs | -data_validator_server
+      -dva | -data_validator_agent
+      -p | -pivot
 
 EOF
 }
@@ -71,7 +71,7 @@ show_no_dups() {
       [[ "${h}" == "${all_hosts[${i}]}" ]] && { found=1 ; break ; }
     done
     [[ $found -ne 1 ]] && { echo $h ; all_hosts=( ${all_hosts[@]} $h ) ; }
-  done < <( sed -En 's/ //g ; /x\.x\./d ; s/(.*host.*: *)(.*)$/\2/p' ${ENV_CONFIG}/host.yaml )
+  done < <( sed -En 's/ //g ; /x\.x\.x\.x/d ; s/(.*host.*: *)(.*)$/\2/p' ${ENV_CONFIG}/host.yaml )
 }
 
 # Check for parameters
