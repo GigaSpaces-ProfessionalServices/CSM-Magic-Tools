@@ -258,10 +258,10 @@ def validate_navigation_select(_items_dict, _the_selections):
             index = f"[{key}]"
             item = f"{val['id']}"
             if val['description'] != '':
-                description = val['description']
+                description = f" - {val['description']}"
             else:
                 description = ""
-            print(f'{index:<4} - {item:<{max_item_len}} - {description}')
+            print(f'{index:<4} - {item:<{max_item_len}}{description}')
     print('\n' + '-' * 32)
     if is_main_menu:
         print(f'{"Esc":<4} - to Exit')
