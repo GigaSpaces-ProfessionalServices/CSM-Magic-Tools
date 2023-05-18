@@ -7,14 +7,29 @@ recovery.py: main script
 
 if __name__ == '__main__':
     
-    import os
     import subprocess
+    import re
+    
+    def module_exist(_module_name):
+        r = subprocess.run(
+            "pip list".split(), 
+            stdout=subprocess.PIPE).stdout.decode().lower()
+        if re.search(_module_name.lower(), r):
+            return True
+        return False
+    
+    modules = ['pyyaml','colorama','pyfiglet']
+    for module in modules:
+        if not module_exist(module):
+            subprocess.run([f'pip install {module}'], shell=True)
+
+    from platform import system
+    import os
     import yaml
 
     # import custom modules
     from modules import (
         print_locations,
-        print_header,
         pretty_print,
         press_any_key,
         validate_navigation_select
@@ -50,7 +65,7 @@ if __name__ == '__main__':
     with open(MENU_YAML, 'r', encoding="utf-8") as yml:
         data = yaml.safe_load(yml)
     try:
-        print_header()
+        #print_header()
         while True:
             if len(user_selections) != 0:
                 # building dynamic dictionary according to menu choices
@@ -72,5 +87,6 @@ if __name__ == '__main__':
                 continue
             validate_navigation_select(_dict, user_selections)
     except (KeyboardInterrupt, SystemExit):
-        os.system("stty sane ; stty erase ^H ; stty erase ^?")
+        if system() == 'Linux':
+            os.system("stty sane ; stty erase ^H ; stty erase ^?")
         print('\nAborted!')
