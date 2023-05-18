@@ -7,14 +7,21 @@ import sys
 import threading
 import itertools
 import time, datetime
-import tty
-import termios
-from colorama import Fore, Style
+from colorama import init, Fore, Style
 import pyfiglet
 from random import randint
 import subprocess
 import socket
 
+# OS dependant prerequisites
+from platform import system
+if system() == 'Linux':
+    import tty
+    import termios
+    CLRSCR = "clear"
+if system() == 'Windows':
+    import msvcrt
+    CLRSCR = "cls"
 
 ### set debug flag 0/1 ###
 DEBUG = 0
@@ -202,17 +209,26 @@ def press_any_key():
 
 def get_keypress():
     """ catch keypress"""
-
-    old_settings = termios.tcgetattr(sys.stdin)
-    tty.setcbreak(sys.stdin.fileno())
-    key_mapping = {
-        10: 'return',
-        27: 'esc',
-        127: 'backspace'
-        }
+    if system() == 'Linux':
+        old_settings = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin.fileno())
+        key_mapping = {
+            10: 'return',
+            27: 'esc',
+            127: 'backspace'
+            }       
+    if system() == 'Windows':
+        key_mapping = {
+            13: 'return',
+            27: 'esc',
+            8: 'backspace'
+            }   
     user_input = []
     while True:
-        _b = os.read(sys.stdin.fileno(), 3).decode()
+        if system() == 'Linux':
+            _b = os.read(sys.stdin.fileno(), 3).decode()
+        if system() == 'Windows':
+            _b = msvcrt.getch()
         if len(_b) == 3:
             k = ord(_b[2])
         else:
@@ -231,7 +247,8 @@ def get_keypress():
         else:
             user_input.append(this_key)
         print(''.join(user_input), end='\r')
-    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+    if system() == 'Linux':
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
     return ''.join(user_input)
 
 
@@ -401,7 +418,7 @@ def print_header():
     VERSION = "v1.0.0"
     VERLINE = f"{NAME} 2023, {VERSION} | Copyright Gigaspaces Ltd"
     if DEBUG != 1:
-        os.system("clear")
+        os.system(CLRSCR)
     print(pyfiglet.figlet_format(f"{NAME}", font='slant', width=100))
     #print(pyfiglet.FigletFont.getFonts())
     print(f"{SPC}{VERLINE}\n\n")
@@ -414,7 +431,10 @@ def pretty_print(string, color, style=None):
     :param color: the color to print
     :param style: the style to apply
     """
-
+    
+    # initialize colorama
+    init()
+    
     color = eval('Fore.' + f'{color}'.upper())
     if style is None:
         print(f"{color}{string}{Style.RESET_ALL}")
