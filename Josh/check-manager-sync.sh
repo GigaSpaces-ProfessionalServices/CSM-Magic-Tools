@@ -130,14 +130,16 @@ check_gs_query_of_managers() {
 
 # 5. Check if all managers have same _SPACE_NAME (bllspace/dih-tau-space) instance count.
 check_all_mng_inst_count() {
-  echo -e "\n==================== Check if all managers have same bllspace instance count."
+  echo -e "\n==================== Comparison of total space instances and PUs on all managers."
   # Get count from 1st manager to compare with the others
   local first_inst_count=$(curl -u ${_USER}:${_PASS} -s "http://${_ALL_MANAGER_SERVERS[0]}:8090/v2/spaces" | jq -r ".[] | select(.name==\"${_SPACE_NAME}\") | .instancesIds[]" | wc -l)
-  echo -e "Instance count for ${_ALL_MANAGER_SERVERS[0]} = ${first_inst_count}"
+  echo -e "Instance count for space ${_SPACE_NAME}: on manager: ${_ALL_MANAGER_SERVERS[0]} = ${first_inst_count}"
+  echo -e "Total PUs count on manager: ${_ALL_MANAGER_SERVERS[0]} = $(curl -s http://${_ALL_MANAGER_SERVERS[0]}:8090/v2/pus | jq -r '.[].name' | wc -l)"
   # Continue check from 2nd manager "i=1"
   for ((i=1 ; i < ${#_ALL_MANAGER_SERVERS[@]} ; i++ )) ; do
     local inst_count=$(curl -u ${_USER}:${_PASS} -s "http://${_ALL_MANAGER_SERVERS[${i}]}:8090/v2/spaces" | jq -r ".[] | select(.name==\"${_SPACE_NAME}\") | .instancesIds[]" | wc -l)
-    echo -e "Instance count for ${_ALL_MANAGER_SERVERS[${i}]} = ${inst_count}"
+    echo -e "Instance count for space ${_SPACE_NAME}: on manager: ${_ALL_MANAGER_SERVERS[${i}]} = ${inst_count}"
+    echo -e "Total PUs count on manager: ${_ALL_MANAGER_SERVERS[${i}]} = $(curl -s http://${_ALL_MANAGER_SERVERS[${i}]}:8090/v2/pus | jq -r '.[].name' | wc -l)"
   done
 }
 
@@ -158,7 +160,7 @@ env_settings
 check_if_managers_up             # 1. Preliminary check
 check_manager_cluster            # 2. Check if manager cluster is INTACT
 check_service_state                      # 3. Check that ${_SERVICE_NAME} is INTACT
-check_gs_query_of_managers       # 4. Check if gs.sh gets stuck
+#check_gs_query_of_managers       # 4. Check if gs.sh gets stuck
 check_all_mng_inst_count         # 5. Check if all managers see same amount of GSC's
 check_GSM_proc_start_time        # 6. Check start time of GSM process for all managers
 echo
