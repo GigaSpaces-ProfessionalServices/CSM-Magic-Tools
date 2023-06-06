@@ -2,7 +2,7 @@
 #
 # id:           the menu element/position name
 # type:         menu (show list of choices) / exec (execute the target script/command)
-# target:       the name of the script/module/function to execute
+# target:       the name of the script to execute
 # description:  general description of the element
 #
 
@@ -16,13 +16,13 @@ description: ''
     1:
         id: 'Flush'
         type: 'exec'
-        target: 'flushScript.bat'
+        target: 'flushScript.py'
         description: 'Flush redolog to disk after having typical flow'
     2:
         id: 'Scheduled Task'
         type: 'exec'
-        target: ''
-        description: 'add description here...'
+        target: 'scheduleTask.py'
+        description: 'create a scheduled redolog flush task'
 2:
     id: 'Recovery'
     type: 'menu'
@@ -30,26 +30,26 @@ description: ''
     1:
         id: 'Step #1 - Copy Redo Log Files '
         type: 'exec'
-        target: 'copyRedoLogScriptMultipleHost.bat'
+        target: 'copyRedoLogScriptMultipleHost.py'
         description: 'Copy redolog files to backup folder, once cluster is down'
     2:
         id: 'Step #2 - Run Deserialized Script '
         type: 'exec'
-        target: 'deserializeMultipleHost.bat'
+        target: 'deserializeMultipleHost.py'
         description: 'Deserilze primaries redologs'
     3:
         id: 'Step #3 - Copy Deserialized Files '
         type: 'exec'
-        target: 'collectAllDeserializeFilesToPivot.bat'
+        target: 'collectAllDeserializeFilesToPivot.py'
         description: 'Gather all deserialized redolog files to one target'
     4:
         id: 'Step #4 - Check Target Space '
         type: 'exec'
-        target: ''
+        target: 'checkTargetSpace.py'
         description: 'add description here...'
     5:
         id: 'Step #5 - Run Replay Script '
         type: 'exec'
-        target: 'spaceReplay.bat'
+        target: 'spaceReplay.py'
         description: 'Go over all deserialized redologs and apply them to the new space'
 ...
