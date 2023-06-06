@@ -9,6 +9,7 @@ if __name__ == '__main__':
     
     import subprocess
     import re
+    import pathlib
     
     def module_exist(_module_name):
         r = subprocess.run(
@@ -81,7 +82,7 @@ if __name__ == '__main__':
                     user_selections.pop()
                     continue
                 # execute target script
-                script = f"{BASE_DIR}/scripts/{_dict['target']}"
+                script = str(pathlib.PurePath(BASE_DIR).joinpath('scripts', _dict['target']))
                 subprocess.call([script], shell=True)
                 user_selections.pop()
                 continue
