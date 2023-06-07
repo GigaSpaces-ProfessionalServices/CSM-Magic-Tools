@@ -23,39 +23,68 @@ EOF
 exit 0
 }
 
+# Check if space exists
+verify_space_exists() {
+  local response=1 space=""
+  while read space ; do 
+    [[ "${_SPACE_NAME}" == "${space}" ]] && response=0
+  done < <(curl -s http://$(host-yaml.sh -m|head -1):8090/v2/spaces | jq -r '.[].name')
+  [[ $response -ne 0 ]] && { echo -e "\n Space $_SPACE_NAME does not exist.\n" ; exit 1 ; }
+}
+# Check if service exists
+verify_service_exists() {
+  local response=1 service=""
+  while read service ; do 
+    [[ "${_SERVICE_NAME}" == "${service}" ]] && response=0
+  done < <(curl -s http://$(host-yaml.sh -m|head -1):8090/v2/spaces | jq -r '.[].processingUnitName')
+  [[ $response -ne 0 ]] && { echo -e "\n Service $_SERVICE_NAME does not exist.\n" ; exit 1 ; }
+}
+
 # Check for parameters
 pb_menu() {
 while [[ $# -gt 0 ]] ; do
-case $1 in
-  "-d"|"--debug") _DEBUG_MODE=1 ; shift ;;
-  "-h"|"--help") show_usage ;;
-  "--service") _SERVICE_NAME=$2 ; shift ; shift ;;
-  "--space") _SPACE_NAME=$2 ; shift ; shift ;;
-  *) echo -e "\nUnknow parameter ${1}\n" ; exit 1 ;;
-esac
+  case $1 in
+    "-d"|"--debug") _DEBUG_MODE=1 ; shift ;;
+    "-h"|"--help") show_usage ;;
+    "--service") 
+      _SERVICE_NAME=$2 ; shift ; shift 
+      verify_service_exists
+      ;;
+    "--space") 
+      _SPACE_NAME=$2 ; shift ; shift
+      verify_space_exists
+      ;;
+    *) echo -e "\nUnknow parameter ${1}\n" ; exit 1 ;;
+  esac
 done
 }
 
 env_config() {
-#source ~/.bash_profile
+source ~/.bashrc
 [[ -z $_DEBUG_MODE ]] && _DEBUG_MODE=0
-[[ -z $_SERVICE_NAME ]] && _SERVICE_NAME=bllservice
-[[ -z $_SPACE_NAME ]] && _SPACE_NAME=bllspace
+if [[ -z $_SPACE_NAME || -z $_SERVICE_NAME ]] ; then
+  if [[ "${ENV_NAME}" == "TAUG" || "${ENV_NAME}" == "TAUS" || "${ENV_NAME}" == "TAUP" ]] ; then
+    _SPACE_NAME=dih-tau-space
+    _SERVICE_NAME=dih-tau-service
+  else
+    _SPACE_NAME=bllspace
+    _SERVICE_NAME=bllservice
+  fi
+fi
 _LOG="/var/log/chaos_monkey.log"
-_ALL_ODS_MNG=( $(/dbagiga/utils/host-yaml.sh manager) )
-_ODSGS="http://${_ALL_ODS_MNG}"
-
+_ALL_MANAGERS=( $(/dbagiga/utils/host-yaml.sh -m) )
+_ODSGS="http://${_ALL_MANAGERS}"
 [[ -x /dbagiga/getUser.sh ]] && _CREDS=( $(/dbagiga/getUser.sh) ) || _CREDS=( user pass ) ; _USER=${_CREDS[0]} ; _PASS=${_CREDS[1]}
 
-_SPACE=$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]")
-_STATE=$(echo $_SPACE | jq '."status"'|tr 'a-z' 'A-Z'|tr -d '"')
-[[ "${_STATE}" != "INTACT" && "${_STATE}" !=  "SCHEDULED" && "${_STATE}" != "COMPROMISED" ]] && { echo -e "\nExiting because ${_SERVICE_NAME} STATE not INTACT/SCHEDULED/COMPROMISED.\n" ; exit 1 ; }
+###_SPACE=$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]")
+_STATE=$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]" | jq -r '."status"' | tr [a-z] [A-Z] )
+[[ "${_STATE}" == "INTACT" || "${_STATE}" ==  "SCHEDULED" || "${_STATE}" == "COMPROMISED" ]] || { echo -e "\nExiting because ${_SERVICE_NAME} STATE not INTACT/SCHEDULED/COMPROMISED.\n" ; exit 1 ; }
 
-_SPACE_SERVERS=( $(/dbagiga/utils/host-yaml.sh space) )
+_SPACE_SERVERS=( $(/dbagiga/utils/host-yaml.sh -s) )
 _SPACE_SERVERS_NUM=${#_SPACE_SERVERS[@]}
-_BLL_GSC_PER_SPACE_SERVER=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
-_BLL_EXPECTED_CONTAINERS=$(( $_SPACE_SERVERS_NUM * $_BLL_GSC_PER_SPACE_SERVER ))
-_NUM_OF_PARTIONS=$(echo $_SPACE | jq '."topology"."partitions"')
+_GSC_PER_SPACE_SERVER=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
+#_BLL_EXPECTED_CONTAINERS=$(( $_SPACE_SERVERS_NUM * $_GSC_PER_SPACE_SERVER ))
+_NUM_OF_PARTIONS=$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]" | jq '."topology"."partitions"')
 _PRIMARY=/tmp/GSC_PRIMARY$$
 _BACKUP=/tmp/GSC_BACKUP$$
 }
@@ -63,16 +92,17 @@ _BACKUP=/tmp/GSC_BACKUP$$
 find_pb() {
 echo -e "\n$(date)######################################## FIND PRIMARY AND BACKUP ON SAME SERVER\n"
 # save PRIMARY containers
-curl -u ${_USER}:${_PASS} -skX GET --header 'Accept: application/json' "${_ODSGS}:8090/v2/spaces/${_SPACE_NAME}/instances" |jq '.[] | select(.mode | contains("PRIMARY")) | .id,.containerId' |sed 'N;s/\n/ /' | tr -d '"' > $_PRIMARY
+curl -u ${_USER}:${_PASS} -skX GET --header 'Accept: application/json' "${_ODSGS}:8090/v2/spaces/${_SPACE_NAME}/instances" |jq -r '.[] | select(.mode | contains("PRIMARY")) | .id,.containerId' |sed 'N;s/\n/ /' > $_PRIMARY
 
 # save BACKUP containers
-curl -u ${_USER}:${_PASS} -skX GET --header 'Accept: application/json' "${_ODSGS}:8090/v2/spaces/${_SPACE_NAME}/instances" |jq '.[] | select(.mode | contains("BACKUP")) | .id,.containerId' |sed 'N;s/\n/ /' | tr -d '"' > $_BACKUP
+curl -u ${_USER}:${_PASS} -skX GET --header 'Accept: application/json' "${_ODSGS}:8090/v2/spaces/${_SPACE_NAME}/instances" |jq -r '.[] | select(.mode | contains("BACKUP")) | .id,.containerId' |sed 'N;s/\n/ /' > $_BACKUP
 
-echo -e "Service name: $(echo $_SPACE | jq '."name"' | tr -d '"')"
-echo -e "State: ${_STATE}"
-echo -e "Number of Partitions: $(echo $_SPACE | jq '."topology"."partitions"')"
-echo -e "Number of Primary GSCs found:\t$(wc -l < $_PRIMARY)"
-echo -e "Number of Backup GSCs found:\t$(wc -l < $_BACKUP) \n"
+#echo -e "Service name: $(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq -r "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]"."name")"
+printf "%-30s %s\n" "Service name:" "${_SERVICE_NAME}"
+printf "%-30s %s\n" "State:" "${_STATE}"
+printf "%-30s %s\n" "Number of Partitions:" "$(curl -sk -u ${_USER}:${_PASS} "${_ODSGS}:8090/v2/pus" | jq "[.[]|select(.name==\"${_SERVICE_NAME}\")][0]" | jq -r '."topology"."partitions"')"
+printf "%-30s %s\t\n" "Number of Primary GSCs found:" "$(wc -l < $_PRIMARY)"
+printf "%-30s %s\t\n" "Number of Backup GSCs found:" "$(wc -l < $_BACKUP)"
 
 for (( i=1 ; i<=$_NUM_OF_PARTIONS ; i++ )) ; do
   num_of_gscs=$(grep -shE "${_SPACE_NAME}~${i}_[12]" $_PRIMARY $_BACKUP  | wc -l)
@@ -92,7 +122,6 @@ rm -f $_PRIMARY $_BACKUP
 ## bllspace~5_2 comp~15650
 
 #################### MAIN
-
 pb_menu "$@"
 env_config
 find_pb
