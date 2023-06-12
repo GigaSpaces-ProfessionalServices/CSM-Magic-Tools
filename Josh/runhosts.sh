@@ -2,41 +2,37 @@
 
 [[ ! -x  /dbagiga/utils/host-yaml.sh ]] && { echo -e "\nFile host-yaml.sh is required by script\n" ; exit 1 ; }
 
-_NEW=/tmp/new_hosts$$
-_HOSTS_NUM=$(tail -n +3 /etc/hosts | wc -l)
-_PUBLIC_NUM=$(tail -n +3 /etc/hosts | sed -n '/#[[:space:]]*[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}[[:space:]]*$/p' | wc -l )
-
-add_public() {
-  sed -i 's/[[:space:]]*#.*$//' /etc/hosts
-  local private_ips=( $(tail -n +3 /etc/hosts | awk '{print $1}') )
-  for (( i=0 ; i < $_HOSTS_NUM ; i++ )) ; do
-    if [[ $(ping -c1 -w2 ${private_ips[$i]} >/dev/null 2>&1 ; echo $?) -eq 0 ]] ; then
-      public_ips=( ${public_ips[@]} $(ssh ${private_ips[$i]} curl http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null) )
-      sed -i "$(( $i + 3 )) s/$/ \t# ${public_ips[$i]}/" /etc/hosts
-    fi
-  done
+check_disk_usage() {
+  perc=$2
+  ssh "$1" 'bash -s' "${perc}" <<-'ENDSSH'
+    perc=$1
+    # Run df -h to get disk usage information, then use awk to process the output
+    df -h | awk -v threshold="${perc}" '(NR > 1) && ($5+0 > threshold) {printf "%-20s %-40s %-10s %-10s\n", "'$(hostname)'", $6, $5, $2}'
+ENDSSH
 }
 
-verify_public() {
-  [[ $_PUBLIC_NUM -ne $_HOSTS_NUM ]] && add_public
-}
+#check_disk_usage() {
+#  ssh "${1}" 'bash -s' <<-'ENDSSH'
+#    usage_threshold="${2}"
+#    # Print the header of the table
+#    printf "%-20s %-40s %-10s %-10s\n" "Hostname" "Partition" "Usage (%)" "Total Size"
+#    # Run df -h to get disk usage information, then use awk to process the output
+#    df -h | awk -v threshold="${usage_threshold}" '(NR > 1) && ($5+0 > threshold) {printf "%-20s %-40s %-10s %-10s\n", "'$(hostname)'", $6, $5, $2}'
+#ENDSSH
+#}
 
-force_add_public() {
-  add_public
-}
-
-remote_hosts() {
-  shift
-  if [[ "$1" = "-m" || "$1" = "-s" || "$1" = "-n" || "$1" = "-nm" || "$1" = "-na" || "$1" = "-d" || "$1" = "-a" ]] ; then
-    local hosts=$( (runhosts $1) )
-    shift
-    for h in ${hosts[@]} ; do
-      my_cmd="ssh $h ${@}"
-      eval $my_cmd
-    done
+disk_usage() {
+  if [[ -z $1 ]] ; then
+    echo -e "\nUsage threshold not specified - setting it to 7%.\n"
+    local usage_threshold=7
   else
-    echo -e "\n 2nd param must be one of the following: -m, -s, -n, -na, -nm, -d, -a\n" ; exit 1
+    usage_threshold=$1
   fi
+  # Print the header of the table
+  printf "%-20s %-40s %-10s %-10s\n" "Hostname" "Partition" "Usage (%)" "Total Size"
+  for h in $(host-yaml.sh -A) ; do
+    check_disk_usage $h "${usage_threshold}" | grep -v 'docker\|container'
+  done
 }
 
 usage() {
@@ -58,12 +54,14 @@ usage() {
     -a      Show manager and space hosts
     -A      Show all hosts
     -l      Show all roles and their hosts
+    -hu     Show hostname and uptime
+    -df x   Show partitions above x percent
 
   DEFAULT:
     -h      Show usage
 
   EXAMPLE: Run 'df -h' on all manager servers
-   $(basename $0) -m 'df -h'
+   $(basename $0) -m 'df -h'     
 
 EOF
 exit 0
@@ -84,6 +82,9 @@ do_main() {
     "-a") H=$(host-yaml.sh -m -s) ;;
     "-A") H=$(host-yaml.sh -A) ;;
     "-l") host-yaml.sh -l ; exit ;;
+    "-hu") runhosts.sh -A 'printf "%-20s %s\n" "$(hostname)" "$(uptime)"' ; exit ;;
+#   "-df") [[ -n $2 ]] && disk_usage "$2" || { echo -e "\nMust give percent as 2nd parameter\n" ; exit ; } ; exit ;;
+    "-df") disk_usage "${2}" ;;
     *) echo -e "\n Unknown parameter passed: ${1}\n" ; exit 1 ;;
   esac
 }
@@ -97,3 +98,4 @@ if [[ -z $1 ]] ; then
 else
   for h in $H ; do ssh $h "$@" ; done
 fi
+
