@@ -415,7 +415,7 @@ def print_header():
     """ print menu header - figlet and VERSION """
     NAME = "Recovery Assistant"
     SPC = ''
-    VERSION = "v2.0.0"
+    VERSION = "v2.1.0"
     VERLINE = f"{NAME} 2023, {VERSION} | Copyright Gigaspaces Ltd"
     if DEBUG != 1:
         os.system(CLRSCR)
