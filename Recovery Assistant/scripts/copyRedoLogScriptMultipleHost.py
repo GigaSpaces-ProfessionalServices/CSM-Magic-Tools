@@ -8,7 +8,7 @@ import json
 import pathlib
 import socket
 
-# load targets
+# load servers
 with open(pathlib.PurePath.joinpath(scriptLocation, spaceHostsFileName), 'r', encoding='utf-8') as jhf:
     jdata = json.load(jhf)
 
@@ -55,5 +55,6 @@ for item in jdata:
     print(" - copying files to target... ", end='')
     subprocess.call(copy_files_cmd, shell=True, stderr=subprocess.DEVNULL)
     print("done")
+
 print()
 subprocess.call('pause', shell=True)
