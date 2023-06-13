@@ -8,5 +8,10 @@
 		"host" : "hostname2",
 		"username" : "username2",
 		"password" : "pass2"
+	},
+	{
+		"host" : "hostname3",
+		"username" : "username3",
+		"password" : "pass3"
 	}
 ]
