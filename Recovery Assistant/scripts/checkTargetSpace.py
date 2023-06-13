@@ -6,4 +6,5 @@ from setenvredolog import *
 
 
 print("\nTBD - checking target space... \n")
+print()
 subprocess.call('pause', shell=True)

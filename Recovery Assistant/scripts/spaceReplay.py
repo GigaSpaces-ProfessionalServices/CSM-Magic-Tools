@@ -14,7 +14,7 @@ cmd_params = '--spaceName={} --lookupLocators={} --lookupGroups={} --redoLogYaml
     )
 cmd = f'"{exec}" {cmd_params}'
 
-#subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL)
 subprocess.run(cmd, shell=True)
 
+print()
 subprocess.call('pause', shell=True)

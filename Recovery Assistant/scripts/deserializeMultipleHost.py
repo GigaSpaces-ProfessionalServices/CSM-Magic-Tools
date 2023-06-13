@@ -19,5 +19,8 @@ jCMD = f'java -jar "{jarFilePath}" RemoteDeserializeRedoLog \
 --targetPathBaseDir="{targetPathBaseDir} " \
 --deserializeFullPath="{deserializeFullPath} "'
 
-subprocess.call(jCMD, shell=True)
-subprocess.call('pause', shell=True)
+
+subprocess.run(jCMD, shell=True)
+
+print()
+subprocess.run('pause', shell=True)
