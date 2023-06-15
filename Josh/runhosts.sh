@@ -55,7 +55,7 @@ usage() {
     -A      Show all hosts
     -l      Show all roles and their hosts
     -hu     Show hostname and uptime
-    -df x   Show partitions above x percent
+    -df x   Show partitions above x percent - default 70
 
   DEFAULT:
     -h      Show usage
@@ -83,7 +83,6 @@ do_main() {
     "-A") H=$(host-yaml.sh -A) ;;
     "-l") host-yaml.sh -l ; exit ;;
     "-hu") runhosts.sh -A 'printf "%-20s %s\n" "$(hostname)" "$(uptime)"' ; exit ;;
-#   "-df") [[ -n $2 ]] && disk_usage "$2" || { echo -e "\nMust give percent as 2nd parameter\n" ; exit ; } ; exit ;;
     "-df") disk_usage "${2}" ;;
     *) echo -e "\n Unknown parameter passed: ${1}\n" ; exit 1 ;;
   esac
