@@ -1,33 +1,38 @@
 #!/bin/bash
+[[ ! -x /dbagiga/utils/host-yaml.sh ]] && { echo -e "Can not find host-yaml.sh - exiting" ; exit 1 ; }
+[[ $(which jq > /dev/null 2>&1 ; echo $?) -ne 0 ]] && { echo "need to install jq" ; exit 1 ; }
 
-_LOG="/dbagigalogs/chaos_monkey_instance.log"
-_NUM_OF_TABLES=0      # No. of db2feeder tables
+#_NUM_OF_TABLES=0      # Number of tables
 _TABLES=""            # List of tables
-_ODS_MNG=( $(/dbagiga/utils/host-yaml.sh manager) )       # List ODS managers
+_ALL_MANAGER_SERVERS=( $(/dbagiga/utils/host-yaml.sh -m) )       # List ODS managers
 # The user and pass used in curl command
 [[ -x /dbagiga/getUser.sh ]] && _CREDS=( $(/dbagiga/getUser.sh) ) || _CREDS=( user pass ) ; _USER=${_CREDS[0]} ; _PASS=${_CREDS[1]}
-# The cap size for db2feeder tables
 
 get_tables() {
-#  _TABLES=($(curl -u ${_USER}:${_PASS} -s http://${_ODS_MNG}:8090/v2/internal/spaces/utilization  | jq '.[]."tieredConfiguration"|keys|.[]'|grep 'JOTB[MP]\|BLL_DKTB' | tr -d '"' |grep -v SEGMENT))
-  _TABLES=($(curl -u ${_USER}:${_PASS} -s http://${_ODS_MNG}:8090/v2/internal/spaces/utilization  | jq '.[]."objectTypes"|keys|.[]' | tr -d '"' ))
-  _NUM_OF_TABLES=$(echo ${_TABLES[@]} |wc -w)
-  echo -e "$(date) CAP: tables = ${_TABLES[@]}"
-  echo -e "$(date) CAP: Number of tables=${_NUM_OF_TABLES}"
+  echo -e "\n$(date) ============== Number of records for all Objects DISK/RAM:\n"
+  _TABLES=($(curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGER_SERVERS}:8090/v2/internal/spaces/utilization  | jq -r '.[]."objectTypes"|keys|.[]' ))
+  [[ -z $_TABLES ]] && { echo -e "No TYPES are loaded\n" ; exit 1 ; }
+  #_NUM_OF_TABLES=$(echo ${_TABLES[@]} |wc -w)
 }
 
 get_table_entries_count() {
-  curl -u ${_USER}:${_PASS} -s http://${_ODS_MNG}:8090/v2/internal/spaces/utilization  | jq -c ".[] |."objectTypes"|.${1} | .entries"
+  curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGER_SERVERS}:8090/v2/internal/spaces/utilization  | jq -c ".[] |.\"objectTypes\" | .\"${1}\" | .\"entries\" "
 }
 
 get_table_tieredEntries_count() {
-  curl -u ${_USER}:${_PASS} -s http://${_ODS_MNG}:8090/v2/internal/spaces/utilization  | jq -c ".[] |."objectTypes"|.${1} | .tieredEntries"
+  curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGER_SERVERS}:8090/v2/internal/spaces/utilization  | jq -c ".[] |.\"objectTypes\" | .\"${1}\" | .\"tieredEntries\""
+}
+
+show_tables() {
+printf "%-30s %12s %12s\n" "TABLE" "DISK" "RAM"
+printf "%-30s %12s %12s\n" "-----" "----" "---"
+for t in ${_TABLES[@]} ; do
+  printf "%-30s %12d %12d\n" "${t}" "$(get_table_entries_count ${t})" "$(get_table_tieredEntries_count ${t})"
+done
+echo
 }
 
 ############## MAIN
 
-echo -e "$(date) Number of records for all Objects DISK/RAM:" >> $_LOG
 get_tables
-for t in ${_TABLES[@]} ; do
-  printf "Table: %-25s Disk/Ram: %12d %12d\n" "${t}" $(get_table_entries_count ${t}) $(get_table_tieredEntries_count ${t}) | tee -a $_LOG
-done
+show_tables
