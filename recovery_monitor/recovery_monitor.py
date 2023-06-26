@@ -51,7 +51,7 @@ def argument_parser():
         help="Print additional info")
     parser.add_argument(
         '-v', '--version',
-        action='version', version='%(prog)s v2.0.2')
+        action='version', version='%(prog)s v2.0.4')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -100,8 +100,6 @@ def is_env_secured():
                     if secure_flag == '""':
                         return False
                     return True
-    else:
-        return False
 
 
 def is_restful_ok(the_url):
@@ -163,7 +161,7 @@ def check_type_exists():
     types = []
     for h in space_hosts:
         sh_cmd = f"ssh {h} 'for l in $(ls /dbagigadata/tiered-storage/{space_name}/*{space_name}); \
-        do for t in $(sqlite3 $l \".tables\" | grep -v \"com.gs\");do echo $t ; done ; done'"
+        do for t in $(sqlite3 $l \".tables\" | grep -v \"com.\");do echo $t ; done ; done'"
         the_response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
         data = the_response.replace('\n', ' ').split(' ')
         types.extend(data)
@@ -177,7 +175,7 @@ def create_session_file(_file):
         'str=""',
         f'for db in $(ls /dbagigadata/tiered-storage/{space_name}/*{space_name}); do',
             'query=\'select (\'',
-            'for t in $(sqlite3 $db "SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'com.gs%\';"); do',
+            'for t in $(sqlite3 $db "SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'com.%\';"); do',
                 '[[ $t == "" ]] && continue',
                 'query+="select count(*) from \"${t}\") + ("',
             'done',
@@ -518,7 +516,8 @@ if __name__ == '__main__':
                     os.system('rm -f /tmp/recmon-*')
                     exit()
             while True:
-                for _ in range(2): subprocess.run(['clear'])
+                if not unattended:
+                    for _ in range(2): os.system('clear')
                 for line in table.split('\n'):
                     if unattended:
                         logger.info(line)
