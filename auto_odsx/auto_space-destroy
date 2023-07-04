@@ -1,0 +1,14 @@
+#!/bin/bash
+source ~/.bashrc
+_LOG=/var/log/auto_odsx.log
+_FULL_LOG=/dbagigalogs/auto_odsx_full.log
+echo -e "$(date) ===Starting space destroy===" | tee -a $_LOG $_FULL_LOG
+
+echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spacestop 2>&1 | tee -a $_FULL_LOG
+
+echo -e "$(date) Cleaning ODS Manager and Space directories" | tee -a $_LOG $_FULL_LOG
+auto_cleandirsspaces 2>&1 | tee -a $_FULL_LOG
+auto_cleandirsmanagers 2>&1 | tee -a $_FULL_LOG
+
+echo -e "$(date) ===Finished destroying space===" | tee -a $_LOG $_FULL_LOG

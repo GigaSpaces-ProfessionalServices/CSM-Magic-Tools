@@ -1,14 +1,13 @@
 #!/bin/bash
 
-space_servers=$(/dbagiga/utils/host-yaml.sh space | wc -w)
-managers=( $(/dbagiga/utils/host-yaml.sh m) )
+space_servers=$(/dbagiga/utils/host-yaml.sh -s | wc -w)
 gsc_per_space_server=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
 expected_containers=$(( $space_servers * $gsc_per_space_server ))
-containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=${managers[0]} container list|grep "Containers"|awk '{print $NF}')
-  echo containers=$containers
+containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m|head -1) container list|grep "Containers"|awk '{print $NF}')
+echo space_servers=$space_servers gsc_per_space_server=$gsc_per_space_server expected_containers=$expected_containers containers=$containers
 while (( $containers < $expected_containers )); do
-  containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=${managers[0]} container list|grep "Containers"|awk '{print $NF}')
-  echo containers=$containers
+	containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m|head -1) container list|grep "Containers"|awk '{print $NF}')
+	echo containers=$containers
 done
 echo containers=$containers
 cd /dbagiga/utils/auto_odsx
