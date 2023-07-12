@@ -1,21 +1,35 @@
 # runall.sh utility script
 
-Execute commands or run health checks on remote servers across all clusters
+## Execute commands or run health checks on remote servers across selected clusters
 
-The function get_targeted_servers() holds the parameters necessary
+<br>
 
-Every cluster of servers has 3 parameters:<br>1. ENV_NAME :: Discriptive cluster name (e.g Spaces / management servers / DI servers etc)<br>2. SERVER_LIST :: space delimited list of host names (as resolved in DNS)<br>3. SERVICES :: every service is constructed of 3 fields delimited by a colon
-  
- 	field 1 ::	the type of check R (=Remote) or L (=Local) <br>
-			*** some services have to be tested remotely (e.g. PING or SSH) to ensure connectivity
-	
-	field 2 ::	the number of the service port
-	
-	field 3 ::	the name of the service<br>
-	*** Example:  to test ssh connectivity one would enter R:22:SSH_SERVER (NOTE: no spaces allowed!)
+### Componenets
+runall utility includes two files:
+* runall.sh - the main utility script
+* runall.conf - configuration file for clusters and services
 
-If a new cluster needs to be added:<br>1.	Add a case to get_targeted_servers() function<br>2.	Add the case to parameter ENV_TYPES
+<br>
 
-For help run:<br>
+### Deployment
+1. get runall.sh and runall.conf files from GIT and deploy them in your directory of choice
+2. make sure runall.sh is executable (chmod +x runall.sh)
+
+<br>
+
+### Configuration
+runall configuration is managed in runall.conf.
+Every cluster of servers has two parameters:
+1. ENV_NAME - Discriptive cluster name (e.g. Space Servers / management servers etc)
+2. SERVICES - A collection of parameters delimited by colons (e.g. F1:F2:F3)
+* > F1 - the scope of check R / L
+* >> R = check is executed remotely - not on the server itself
+* >> L = check is executed localy on the server
+* > F2 ::	the number of the service port
+* > F3 ::	the name of the service
+
+* Example:  to test ssh enter connectivity: R:22:SSH_SERVER
+
+For help and usage run:<br>
 	
 	./runall.sh -h
