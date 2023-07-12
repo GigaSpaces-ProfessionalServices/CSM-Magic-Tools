@@ -2,20 +2,14 @@
 
 ## Execute commands or run health checks on remote servers across selected clusters
 
-<br>
-
-### Componenets
-runall utility includes two files:
+### Requirements
 * runall.sh - the main utility script
 * runall.conf - configuration file for clusters and services
-
-<br>
+* host.yaml - yaml containing a list of all servers
 
 ### Deployment
 1. get runall.sh and runall.conf files from GIT and deploy them in your directory of choice
 2. make sure runall.sh is executable (chmod +x runall.sh)
-
-<br>
 
 ### Configuration
 runall configuration is managed in runall.conf.
