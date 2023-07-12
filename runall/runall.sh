@@ -8,7 +8,8 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.5.4
+VERSION=2.6.5
+
 
 function usage() {
     printf "\nrunall.sh v$VERSION\n"
@@ -19,8 +20,8 @@ function usage() {
     printf "%7s%-50s\n" " " "Note: without options commands will run for all servers"
     case $1 in
         err0)
-            printf "At least one argument is needed."
-            printf "See help [-h, --help] for options.\n"
+            printf "\nMissing required argument(s). "
+            printf "See help [-h, --help] for usage.\n"
             ;;
         *)
             printf "\n%-10s\n" "Options:"
@@ -33,6 +34,7 @@ function usage() {
             printf "%2s%-13s%-50s\n" "" "-nm" "Connect to northbound management servers"
             printf "%2s%-13s%-50s\n" "" "-n" "Connect to northbound application and management servers"
             printf "%2s%-13s%-50s\n" "" "-p" "Connect to pivot/admin server"
+            printf "%2s%-13s%-50s\n" "" "-cp" "Connect to cockpit server"
             printf "%2s%-13s%-50s\n" "" "-A" "Connect to all servers (including pivot server)"
             printf "%2s%-13s%-50s\n" "" "-q" "Do not print error summary"
             printf "%2s%-5s%-8s%-50s\n" "" "-h, " "--help" "Display this help screen"
@@ -43,67 +45,139 @@ function usage() {
             printf "%2s%-13s%-50s\n" "" "-hw" "Display complete hardware information"
             printf "%2s%-30s%-50s\n" "" "-hw.method[=property]" "Invoke methods to display specific hardware information"
             printf "%2s%-30s%-50s\n" "" "" "collection of methods is supported (e.g: -hw.cpu-count -hw.mem.count)"
-            printf "%5s%-30s%-50s\n" "" ".capacity=<VOLUME>" "Get capacity stats for the named volume"
-            printf "%5s%-30s%-50s\n" "" ".cpu-count" "Get number of CPU cores"
-            printf "%5s%-30s%-50s\n" "" ".cpu-load" "Get CPU load stats "
-            printf "%5s%-30s%-50s\n" "" ".mem-count" "Get amount of RAM"
-            printf "%5s%-30s%-50s\n" "" ".mem-load" "Get memory usage stats"
+            printf "%5s%-27s%-50s\n" "" ".capacity=<VOLUME>" "Get capacity stats for the named volume"
+            printf "%5s%-27s%-50s\n" "" ".cpu-count" "Get number of CPU cores"
+            printf "%5s%-27s%-50s\n" "" ".cpu-load" "Get CPU load stats "
+            printf "%5s%-27s%-50s\n" "" ".mem-count" "Get amount of RAM"
+            printf "%5s%-27s%-50s\n" "" ".mem-load" "Get memory usage stats"
+            printf "%2s%-30s%-50s\n" "" "copy -src PATHS -tgt PATH" "Copy data to nodes in a cluster (source collections supported)"
             printf "%2s%-13s%-50s\n" "" "<command>" "Execute shell command(s) on all hosts for the selected cluster"
             printf "\n"
     esac
 }
 
+
+function logit() {
+    # print to screen or logfile
+    # arg $1: --text (print the string input) / --service (print status according to value input)
+    # arg $2: string to print / value
+    # arg $3: -f (print to file), -s (print to screen), -fs (print to both)
+    # arg $4: severity (incident level to register in log file)
+
+    local log_type=$1
+    local log_text=$2
+    local print_to=$3
+    local severity=$4
+    local ts="$(date +"%Y-%m-%d %H:%M:%S")"
+    local loggin_ok=true
+
+    # check login prereqisites
+    if [[ -z $LOG_FILE ]]; then
+        loggin_ok=false
+        printf "\nRequired LOG_FILE variable is not set!\nLoggin is disabled.\n\n"
+    fi
+    if [[ ! -d $LOGS_DIR ]]; then
+        logging_ok=false
+        printf "\nRequired logs directory '$LOGS_DIR' doesn't exist.\nLoggin is disabled.\n\n"
+    fi
+
+    # exec logging
+    case $log_type in
+        '--text')
+            local txt_to_file="$(printf "%s %-8s %s" "${ts}" "$severity" "${log_text}")"
+            local txt_to_screen="${log_text}"
+            ;;
+        '--state')
+            local txt_to_file="${log_text}\n"
+            case $log_text in
+                "Passed") log_text="${lgreen}${log_text}${reset}" ;;
+                "Failed") log_text="${lred}${log_text}${reset}" ;;
+                "Up") log_text="${lgreen}${log_text}${reset}" ;;
+                "Down") log_text="${lred}${log_text}${reset}" ;;
+                "Active") log_text="${lgreen}${log_text}${reset}" ;;
+                "Inactive") log_text="${lred}${log_text}${reset}" ;;
+                "Leader") log_text="${lblue}${log_text}${reset}" ;;
+                "Follower") log_text="${lblue}${log_text}${reset}" ;;
+            esac
+            local txt_to_screen="${log_text}\n"
+    esac
+    case $print_to in
+        '-f') $logging_ok && echo -ne "$txt_to_file" >> $LOG_FILE ;;
+        '-s') echo -ne "$txt_to_screen" ;;
+        '-fs'|'-sf')
+            $logging_ok && echo -ne "$txt_to_file" >> $LOG_FILE
+            echo -ne "$txt_to_screen" ;;
+        *)  echo -ne "$txt_to_screen" ;;
+    esac
+}
+
+function get_cluster_hosts {
+    local cluster_name=$1
+    local prefix=$2
+    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
+        ${ENV_CONFIG}/host.yaml |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        }
+    }' | while read line; do
+        [[ "$line" =~ .*"${cluster_name}_host".* ]] && \
+        echo $line | sed 's/ *//g' | sed 's/"//g' | cut -d= -f2
+    done
+}
+
+
 function get_targeted_servers() {
-    local SERVER_GROUP=(
+     local SERVER_GROUP=(
         "space"             # [0]
         "manager"           # [1]
         "dataIntegration"   # [2]
         "nb_applicative"    # [3]
         "nb_management"     # [4]
         "pivot"             # [5]
+        "cockpit"           # [6]
     )
     case $1 in
         -l) list_all_servers ; exit ;;
-        -s)
-            local env_preffix="_s_"
+        -s) local env_preffix="_s_"
             local srv_group=(${SERVER_GROUP[0]}) ;;
-        -m)
-            local env_preffix="_m_"
+        -m) local env_preffix="_m_"
             local srv_group=(${SERVER_GROUP[1]}) ;;
-        -a)
-            local env_preffix="_a_"
+        -a) local env_preffix="_a_"
             local srv_group=(${SERVER_GROUP[0]} ${SERVER_GROUP[1]}) ;;
-        -c)
-            local env_preffix="_c_"
+        -c) local env_preffix="_c_"
             local srv_group=(${SERVER_GROUP[2]}) ;;
-        -d)
-            local env_preffix="_d_"
+        -d) local env_preffix="_d_"
             local srv_group=(${SERVER_GROUP[2]}) ;;
-        -na)
-            local env_preffix="_na_"
+        -na) local env_preffix="_na_"
             local srv_group=(${SERVER_GROUP[3]}) ;;
-        -nm)
-            local env_preffix="_nm_"
+        -nm) local env_preffix="_nm_"
             local srv_group=(${SERVER_GROUP[4]}) ;;
-        -n)
-            local env_preffix="_n_"
+        -n) local env_preffix="_n_"
             local srv_group=(${SERVER_GROUP[3]} ${SERVER_GROUP[4]}) ;;
-        -p)
-            local env_preffix="_p_"
+        -p) local env_preffix="_p_"
             local srv_group=(${SERVER_GROUP[5]}) ;;
-        -A)
-            local env_preffix="_A_"
+        -cp) local env_preffix="_cp_"
+            local srv_group=(${SERVER_GROUP[6]}) ;;
+        -A) local env_preffix="_A_"
             local srv_group=${SERVER_GROUP[@]} ;;
         *)
             echo "invalid option or bad syntax."
             usage ; exit
     esac
     ENV_NAME="$(cat $CONFIG_FILE | grep "${env_preffix}ENV_NAME" | cut -d'=' -f2)"
-    # loading services
+    # load services
     if [[ ${#env_preffix[@]} -eq 1 ]]; then
         SERVICES="$(cat $CONFIG_FILE | grep "${env_preffix[0]}SERVICES" | cut -d= -f2)"
     fi
-    # loading servers
+    # build server list
     servers=""
     for s in ${srv_group[@]}; do
         servers+=" $(for h in $(get_cluster_hosts $s); do hlist+=" $h"; done ; echo $hlist)"
@@ -111,10 +185,11 @@ function get_targeted_servers() {
     servers=$(echo $servers | xargs)
     SERVER_LIST=""
     for node in $servers; do
-        grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+="${node} "
+        grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+=" ${node}"
     done
     SERVER_LIST=$(echo $SERVER_LIST | xargs)
 }
+
 
 function text_align() {
     # align text presentation according to string length.
@@ -140,15 +215,22 @@ function text_align() {
     esac
 }
 
+
 function list_all_servers() {
     # list servers by cluster
     local target_env=${1:-$ENV_TYPES}
     for type in $target_env; do
+        unset SERVER_LIST
         get_targeted_servers $type
         logit --text "${bold}$(text_align "${ENV_NAME^^}" "--title")${nbold}\n" -s
-		for node in $SERVER_LIST; do echo "$node" | sed 's/ *//g' ; done
+        if [[ ${SERVER_LIST[@]} == "" ]]; then
+            echo "None"
+            continue
+        fi
+        for node in $SERVER_LIST; do echo "$node" | sed 's/ *//g' ; done
     done
 }
+
 
 function check_services() {
   # check service(s) status
@@ -163,18 +245,18 @@ function check_services() {
   esac
 }
 
+
 function get_kafka_status() {
     # using kafka's utility to check its cluster health
     local host=$1
-    # local kafka_home="/opt/Kafka/latest_kafka"
-    local kafka_home="/opt/Kafka/kafka_2.13-2.8.1"
+    local kafka_home="/dbagiga/kafka_latest"
     if $(ssh $host "[[ -e "$kafka_home/bin/zookeeper-shell.sh" ]] && echo true || echo false") ; then
         local return_code=$(ssh $host "$kafka_home/bin/zookeeper-shell.sh localhost:2181 ls /brokers/ids" > /dev/null 2>&1 ; echo $?)
         if [[ $return_code -eq 0 ]]; then
             logit --text "$(text_align "[${host}]${R_SPC}Kafka-Zookeeper cluster connection")" -fs INFO
             logit --state "Passed" -fs
             # if kafka-zk connection is ok we check the kafka cluster
-            local rstr="$(ssh $host "$kafka_home/bin/zookeeper-shell.sh localhost:2181 ls /brokers/ids" | tail -1)"
+            local rstr="$(ssh $host "$kafka_home/bin/zookeeper-shell.sh localhost:2181 ls /brokers/ids 2>&1" | grep -v "ERROR" | tail -1)"
             if [[ $rstr == "[1, 2, 3]" ]]; then
                 local status="Passed" ; local severity="INFO"
             else
@@ -195,12 +277,14 @@ function get_kafka_status() {
     fi
 }
 
+
 function get_cpu_count(){
     # get number of cpu cores
     local host=$1
     num_cpu_cores=$(ssh $host "grep processor /proc/cpuinfo | wc -l")
     logit --text "$(text_align "[${host}]${R_SPC}[CPU] # of cores: $num_cpu_cores" "--params")\n" -fs INFO
 }
+
 
 function get_cpu_load() {
     # get cpu load for the past 1m, 5m and 15m
@@ -210,12 +294,14 @@ function get_cpu_load() {
     logit --text "$(text_align "[${host}]${R_SPC}[CPU] average load: ${load}" "--params")\n" -fs INFO
 }
 
+
 function get_mem_count() {
     # get total amount of memory
     rstr="$(ssh $host "grep -i 'MemTotal' /proc/meminfo | sed 's/ //g' | sed 's/kB//g' | sed 's/MemTotal\://g'")"
     logit --text "$(text_align "[${host}]${R_SPC}[RAM] Total amount of memory: \
     $(($rstr/1000/1000))GB" "--params")\n" -fs INFO
 }
+
 
 function get_mem_load() {
     # get memory usage
@@ -228,6 +314,7 @@ function get_mem_load() {
         logit --text "$(text_align "${R_SPC}${R_SPC}${R_SPC}${R_SPC}${type}: ${value}" "--params")\n" -fs INFO
     done
 }
+
 
 function get_volume_usage(){
     # get used capacity for root volume
@@ -243,12 +330,12 @@ function get_volume_usage(){
             local severity="CRITICAL"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
-        elif [[ $hdd_cap -ge 75 ]]; then
+        elif [[ $hdd_cap -ge 90 ]]; then
             local set_color="${lred}"
             local severity="ERROR"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
-        elif [[ $hdd_cap -ge 50 ]]; then
+        elif [[ $hdd_cap -ge 70 ]]; then
             local set_color="${yellow}"
             local severity="WARNING"
         else
@@ -265,9 +352,11 @@ function get_volume_usage(){
     fi
 }
 
+
 function show_hw_report() {
     # aggregate hardware related data
     local env_type=$1
+    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
     local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity='/'" "-hw.cpu-load" "-hw.mem-load")
     get_targeted_servers $env_type
     echo
@@ -292,6 +381,7 @@ function show_hw_report() {
         logit --text "\n" -fs
     done
 }
+
 
 function check_cr8_status() {
     # show cr8 streams status and name
@@ -342,6 +432,7 @@ function check_cr8_status() {
     fi
 }
 
+
 function check_dns_resolve() {
     # check if dns resolution is correct
     local host_name=$1
@@ -359,6 +450,7 @@ function check_dns_resolve() {
     echo $err
 }
 
+
 function check_network_consistency() {
     # check if dns resolution is correct
     local host_name=$1
@@ -370,6 +462,7 @@ function check_network_consistency() {
     done
     echo $percent_packet_loss
 }
+
 
 function check_system_service(){
     # check systemd service exists and active
@@ -411,8 +504,9 @@ function check_system_service(){
     fi
 }
 
+
 function check_time() {
-    # check time sync
+    # check time offsets on all servers
     h=$1
     result=$(ssh $h "timedatectl | grep 'synchronized' | cut -d: -f2 | sed 's/ *//g'")
     [[ $result == "yes" ]] && return 0 || return 1
@@ -436,15 +530,26 @@ function print_errors_report() {
     unset ERRORS
 }
 
+
+function secure_copy() {
+    local _source=$1
+    local _target=$(echo $2 | sed 's;/*$;;g')
+    for host in $SERVER_LIST; do
+        scp -r "${_source}" "${host}:${_target}/"
+    done
+}
+
+
 function run_health_checks() {
     # traverse the different environments
     # and run health checks according to related SERVICES
     local env_type=$1
+    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
     local retval=0
     local is_number='^[0-9]+$'
     get_targeted_servers $env_type
     logit --text "$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")\n" -fs "INFO"
-	$ERR_REPORT && CLUSTER_ERRORS[0]="$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")"
+    $ERR_REPORT && CLUSTER_ERRORS[0]="$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")"
     # dividing services to [R]emote and [L]ocal
     S_R=""; for R in $SERVICES; do [[ ${R:0:1} == "R" ]] && S_R="${S_R} ${R}"; done
     S_L=""; for L in $SERVICES; do [[ ${L:0:1} == "L" ]] && S_L="${S_L} ${L}"; done
@@ -470,7 +575,7 @@ function run_health_checks() {
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
         fi
-    	# check remote services
+        # check remote services
         for svc in $S_R; do
             local net_fail=false
             local port=$(echo $svc | cut -d: -f2)
@@ -501,7 +606,8 @@ function run_health_checks() {
                         logit --text "$(text_align "[${host}]${R_SPC}network consistency (% packet loss): ")" -fs ERROR
                         logit --state "Failed" -fs
                         $ERR_REPORT && \
-                        CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}Failed network consistency test"
+                        CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] \
+                        [ERROR]${R_SPC}Failed network consistency test"
                     fi
                     ;;
                 22)
@@ -510,7 +616,8 @@ function run_health_checks() {
                     else
                         logit --state "Failed" -fs
                         $ERR_REPORT && \
-                        CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}Unable to establish SSH connection"
+                        CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] \
+                        [ERROR]${R_SPC}Unable to establish SSH connection"
                         local net_fail=true
                         break
                     fi
@@ -529,7 +636,7 @@ function run_health_checks() {
         else
             logit --state "Failed" -fs
         fi
-		# check NFS mount
+        # check NFS mount
         local retval=$(ssh $host "findmnt /dbagigashare > /dev/null" ; echo $?)
         if [[ $retval == 0 ]]; then
             logit --text "$(text_align "[${host}]${R_SPC}NFS mount check")" -fs INFO
@@ -590,47 +697,64 @@ function run_health_checks() {
     fi
     # check runtime errors per cluster
     if [[ ${#CLUSTER_ERRORS[@]} -gt 1 ]]; then
-    for k in ${!CLUSTER_ERRORS[@]}; do
-      if [[ ${#ERRORS[@]} -eq 0 ]]; then
-        ERRORS[0]="${CLUSTER_ERRORS[$k]}"
-      else
-        ERRORS[$[${#ERRORS[@]}+1]]="${CLUSTER_ERRORS[$k]}"
-      fi
-    done
-    unset CLUSTER_ERRORS
-    ERRORS[$[${#ERRORS[@]}+1]]=""
-  fi
+        for k in ${!CLUSTER_ERRORS[@]}; do
+            if [[ ${#ERRORS[@]} -eq 0 ]]; then
+                ERRORS[0]="${CLUSTER_ERRORS[$k]}"
+            else
+                ERRORS[$[${#ERRORS[@]}+1]]="${CLUSTER_ERRORS[$k]}"
+            fi
+        done
+        unset CLUSTER_ERRORS
+        ERRORS[$[${#ERRORS[@]}+1]]=""
+    fi
 }
 
-#
+
 ### MAIN ###
 #
 
-# import global parameters and functions
-INCLUDE="/dbagiga/utils/common/include.sh"
-if [[ ! -f $INCLUDE ]]; then
-    echo "unable to find required '${INCLUDE}' file. operation aborted."
-    exit 1
-else
-    source $INCLUDE
-fi
-
-LOG_FILE="/var/log/ods_sanity.log"
+### global veriables ###
+GS_ROOT="/dbagiga"
+LOGS_DIR="/dbagigalogs"
+UTILS_DIR="${GS_ROOT}/utils"
+LOG_FILE="${LOGS_DIR}/sanity/ods_sanity.log"
 CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
 
-# keys representing clusters in the environment as per 'get_targeted_servers()'
-ENV_TYPES="-s -m -c -d -na -nm -p"
-
-# text styling globals
+### text style ###
+bold=$(tput bold)        # bold text
+nbold=$(tput sgr0)       # not bold text
+red='\033[0;31m'        # red text
+lred='\033[1;31m'       # light red text
+green='\033[0;32m'      # green text
+lgreen='\033[1;32m'     # light green text
+orange='\033[0;33m'     # orange text
+yellow='\033[1;33m'     # yellow text
+blue='\033[0;34m'       # blue text
+lblue='\033[1;34m'      # light blue text
+purple='\033[0;35m'     # purple text
+lpurple='\033[1;35m'    # light purple text
+cyan='\033[0;36m'       # cyan text
+lcyan='\033[1;36m'      # light cyan text
+reset='\033[0m'         # no colour
+### text spacers ###
 H_SPC="    "      # header spacer
 R_SPC="        "  # row spacer
 
+### cluster keys ###
+ENV_TYPES="-s -m -c -d -na -nm -p -cp"
+
+# check if host.yaml exists
+if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
+    echo "ERROR: '${ENV_CONFIG}/host.yaml' could not be found!"
+    exit
+fi
+
 # abort if conf file is missing
 if [[ ! -e $CONFIG_FILE ]]; then
-    echo "missing configuration file runall.conf" ; exit
+    echo "[WARNING] missing '$CONFIG_FILE'" ; exit
 else
     # remove carriage return characters from config file
     sed -i 's/\r$//g' $CONFIG_FILE
@@ -640,12 +764,30 @@ fi
 list_servers=false
 hardware_check=false
 health_check=false
+is_scp=false
 ERR_REPORT=true
+
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -s|-m|-a|-c|-d|-na|-nm|-n|-p|-A) type="$1" ;;
+        -s|-m|-a|-c|-d|-na|-nm|-n|-p|-cp|-A) type="$1" ;;
         -l) list_servers=true ;;
         -v) printf "runall.sh v${VERSION}\n" ; exit ;;
+        copy)   scp_sources=()
+                shift
+                if [[ $1 == '-src' ]]; then
+                    while true; do
+                        shift
+                        if [[ $1 == '-tgt' ]]; then
+                            shift
+                            scp_target="$1"
+                            break
+                        fi
+                        scp_sources+=("$1")
+                    done
+                fi
+                [[ -z $scp_sources ]] && usage err0 && exit
+                is_scp=true
+                ;;
         -hc) health_check=true ;;
         -hw*)
             hardware_check=true
@@ -676,10 +818,33 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
 if $list_servers; then
     [[ -z $type ]] && list_all_servers || list_all_servers $type
     exit
 fi
+
+if $is_scp; then
+    if [[ -z $type ]]; then
+        echo "ERROR: missing option for cluster type"
+        exit 1
+    fi
+    for src in ${scp_sources[@]}; do
+        if [[ ! -d $src && ! -f $src ]]; then
+            echo "ERROR: invalid source path '$src'"
+            exit
+        fi
+    done
+    if ! [[ "$scp_target" == *"/"* ]]; then
+        echo "ERROR: invlid target path"
+        exit
+    fi
+    get_targeted_servers $type
+    for src in ${scp_sources[@]}; do
+        secure_copy $src $scp_target
+    done
+fi
+
 if $health_check; then
     START_TIME=$(date +"%Y-%m-%d %H:%M:%S")
     if [[ ! -z $type ]] ; then
