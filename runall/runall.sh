@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.5
+VERSION=2.6.6
 
 
 function usage() {
