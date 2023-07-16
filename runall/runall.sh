@@ -298,8 +298,10 @@ function get_cpu_load() {
 function get_mem_count() {
     # get total amount of memory
     rstr="$(ssh $host "grep -i 'MemTotal' /proc/meminfo | sed 's/ //g' | sed 's/kB//g' | sed 's/MemTotal\://g'")"
+    total=$(($rstr/1000/1000))
+    [[ $(expr $total % 2) -eq 1 ]] && total=$((total+1))
     logit --text "$(text_align "[${host}]${R_SPC}[RAM] Total amount of memory: \
-    $(($rstr/1000/1000))GB" "--params")\n" -fs INFO
+    ${total}GB" "--params")\n" -fs INFO
 }
 
 
