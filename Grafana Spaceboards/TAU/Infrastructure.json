@@ -43,7 +43,7 @@
       },
       "id": 26,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"Leumi Spaceboard\" src=\"/public/img/Leumi.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Infrastructure </span>\n         </div>\n      </a>\n   \n         ",
+        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Infrastructure </span>\n         </div>\n      </a>\n   \n         ",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",

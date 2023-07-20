@@ -44,7 +44,7 @@
       },
       "id": 7,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"Leumi Spaceboard\" src=\"https://www.f5.com/content/dam/f5-com/page-assets-en/home-en/customers/case-studies/logo-bank-leumi.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Spaces </span>\n         </div>\n      </a>\n         ",
+        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Spaces </span>\n         </div>\n      </a>\n         ",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",
