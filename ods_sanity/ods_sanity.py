@@ -447,6 +447,7 @@ def show_pu_status(_step=None):
 
 
 def run_services_polling(_step=None):
+    logger = logging.getLogger()
     if interactive_mode:
         os.system('clear')
         print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
@@ -454,18 +455,29 @@ def run_services_polling(_step=None):
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
     print_title(_title)
+    if ms_config_data is None:
+        print(f"service polling is unavailable. configuration data required ({ms_config})")
+        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+        logging.shutdown()
+        return
     for s in load_microservices():
         time.sleep(random.random())
         show_service_polling(s)
+    logging.shutdown()
 
 
 def show_service_polling(the_service_name):
     logger = logging.getLogger()
+    if ms_config_data is None:
+        print(f"service polling is unavailable. configuration data required ({ms_config})")
+        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+        logging.shutdown()
+        return
     connection_params = get_service_space_from_nb(the_service_name)        
     colorama.init(autoreset=True)
     svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
     svc_log_status = 'Failed'
-    if connection_params == [''] or connection_params[0] == "127.0.X.X":
+    if connection_params == [''] or connection_params[0] == "127.0.0.1":
         print_line = f"connection to '{the_service_name}'"
     else:
         a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -865,8 +877,11 @@ if __name__ == '__main__':
                 logging.shutdown()
                 exit(1)
             # load microservice config
-            with open(ms_config, 'r', encoding='utf8') as msc:
-                ms_config_data = json.load(msc)
+            if os.path.exists(ms_config):
+                with open(ms_config, 'r', encoding='utf8') as msc:
+                    ms_config_data = json.load(msc)
+            else:
+                ms_config_data = None
             if 'cycles' in arguments:
                 cycles = True
                 total_cycles = int(arguments['cycles'])
