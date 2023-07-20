@@ -28,14 +28,14 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 2,
+        "h": 3,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "id": 50,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"Leumi Spaceboard\" src=\"/public/img/Leumi.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n         </div>\n      </a>\n   ",
+        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/HEB_bold.jpg\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n         </div>\n      </a>\n   ",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",
@@ -175,7 +175,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 2
+        "y": 3
       },
       "id": 47,
       "options": {
@@ -356,7 +356,7 @@
         "h": 5,
         "w": 9,
         "x": 6,
-        "y": 2
+        "y": 3
       },
       "id": 54,
       "interval": "",
@@ -547,7 +547,7 @@
         "h": 5,
         "w": 9,
         "x": 15,
-        "y": 2
+        "y": 3
       },
       "id": 55,
       "interval": "",
@@ -670,7 +670,7 @@
         "h": 5,
         "w": 20,
         "x": 0,
-        "y": 7
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 26,
@@ -814,7 +814,7 @@
         "h": 5,
         "w": 4,
         "x": 20,
-        "y": 7
+        "y": 8
       },
       "id": 60,
       "options": {
@@ -906,7 +906,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 12
+        "y": 13
       },
       "hiddenSeries": false,
       "id": 45,
@@ -1071,7 +1071,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 12
+        "y": 13
       },
       "id": 34,
       "links": [],
@@ -1199,7 +1199,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 20
+        "y": 21
       },
       "id": 38,
       "links": [],
@@ -1312,7 +1312,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 20
+        "y": 21
       },
       "id": 43,
       "links": [],
@@ -1425,7 +1425,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 28
       },
       "id": 58,
       "links": [],
@@ -1552,7 +1552,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 28
       },
       "id": 51,
       "links": [],
@@ -1679,7 +1679,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 34
       },
       "id": 59,
       "links": [],
@@ -1800,7 +1800,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 34
       },
       "id": 52,
       "links": [],
@@ -1979,7 +1979,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 41
       },
       "id": 57,
       "options": {
