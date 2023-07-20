@@ -21,6 +21,7 @@ import itertools
 import threading
 import pyfiglet
 import socket
+from pathlib import Path
 
 
 def argument_parser():
@@ -43,7 +44,7 @@ def argument_parser():
     parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.2')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.3')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -391,7 +392,7 @@ def get_service_space_from_nb(the_service_name):
 def show_grid_info(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- ODS INFORMATION '
@@ -425,7 +426,7 @@ def show_grid_info(_step=None):
 def show_pu_status(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- OVERALL SERVICES STATUS '
@@ -450,7 +451,7 @@ def run_services_polling(_step=None):
     logger = logging.getLogger()
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
@@ -503,7 +504,7 @@ def show_service_polling(the_service_name):
 def show_cdc_status(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- CDC HEALTH AND FRESHNESS '
@@ -653,7 +654,7 @@ def shob_update():
 def show_hardware_info(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- ODS HARDWARE STATUS '
@@ -666,7 +667,7 @@ def show_hardware_info(_step=None):
 def show_health_info(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- MODULES CONNECTIVITY STATUS '
@@ -689,7 +690,7 @@ def show_total_objects():
 def run_stress_test(_step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- SERVICE LOAD TEST '
@@ -733,7 +734,7 @@ def run_stress_test(_step=None):
 def show_recovery_report(script, _step=None):
     if interactive_mode:
         os.system('clear')
-        print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- PARTITIONS INTEGRITY REPORT '
@@ -789,9 +790,7 @@ else:
 
 gs_root = "/dbagiga"
 utils_dir = gs_root + "/utils"
-lib_dir = utils_dir + "/mega_loader/lib"
-config_dir = utils_dir + "/mega_loader/config"
-mega_loader_exec = utils_dir + "/mega_loader/mega_loader.py"
+logs_root = "/dbagigalogs"
 runall_exe = utils_dir + "/runall/runall.sh"
 runall_conf = utils_dir + "/runall/runall.conf"
 recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
@@ -817,8 +816,15 @@ exec_funcs = [
 if __name__ == '__main__':
     try: 
         # creating logger
+        if not os.path.exists(logs_root):
+            print(f"logs root directory '{logs_root}' does not exist. aborting.")
+            exit(1)
+        else:
+            logs_dir = f"{logs_root}/sanity"
+            if not os.path.exists(logs_dir):
+                os.makedirs(logs_dir)
         log_format = "%(asctime)s %(levelname)s %(message)s"
-        log_file = "/dbagigalogs/sanity/ods_sanity.log"
+        log_file = f"{logs_dir}/{Path(__file__).stem}.log"
         logging.basicConfig(filename=log_file,
                             filemode="a",
                             format=log_format,
@@ -832,7 +838,7 @@ if __name__ == '__main__':
         if arguments:
             subprocess.run(['clear'])
             # present title
-            print(pyfiglet.figlet_format("     ODS Sanity", font='slant'))
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
             # check REST status and set operational manager
             managers = get_host_yaml_servers('manager')
             # configure authentication
