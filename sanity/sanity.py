@@ -603,11 +603,12 @@ def show_di_pipeline_info():
 def shob_update():
     logger = logging.getLogger()
     print('\n-- [ SHOB STATUS ]')
-    _env = f'{THIS_ENV}'.lower()
-    if _env == 'grg': _env = 'garage'
-    if _env == 'prd': _env = 'lod-prd'
-    if _env == 'dr': _env = 'tlv-prd'
-    server = f"odsgs-mng-{_env}.hq.il.{DC}"
+    # set _env if nb management endpoint available
+    # _env = f'{THIS_ENV}'.casefold()
+    # if _env == 'TAUG': _env = 'garage'
+    # if _env == 'TAUP': _env = 'lod-prd'
+    # if _env == '': _env = 'tlv-prd'
+    server = manager
     port = 8090
     the_base_url = f'https://{server}:{port}/v2/spaces/{space_name}'
     the_query = 'query?typeName=D2TBD201_SHOB_ODS&columns=D201_ODS_TIMESTAMP'
