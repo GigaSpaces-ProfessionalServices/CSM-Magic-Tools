@@ -76,9 +76,16 @@ def get_host_yaml_servers(_cluster):
     :_cluster: name of cluster to filter
     :return: list of hosts
     """
-    with open(host_yaml, 'r', encoding='utf8') as cfile:
-        ydata = yaml.safe_load(cfile)
-    _hosts = [h for h in ydata['servers'][_cluster].values()]
+    _hosts = []
+    try:
+        with open(host_yaml, 'r', encoding='utf8') as cfile:
+            ydata = yaml.safe_load(cfile)
+    except FileNotFoundError as e:
+        print('[ERROR] File not found: ', e)
+    except Exception as e:
+        print('[ERROR] An error occurred: ', e)
+    else:
+        _hosts = [h for h in ydata['servers'][_cluster].values()]
     return _hosts
 
 
@@ -125,6 +132,18 @@ def print_title(_string):
     colorama.init(autoreset=True)
     print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
 
+
+def check_connection(_server, _port, _timeout):
+    check_port = 1
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.settimeout(_timeout)
+    try:
+        check_port = a_socket.connect_ex((_server, _port))
+    except socket.error as socerr:
+        print(f"[ERROR] caught exception: {socerr}")
+    a_socket.settimeout(None)
+    return check_port 
+    
 
 class Spinner:
 
@@ -493,15 +512,16 @@ def show_service_polling(the_service_name):
     if connection_params == [''] or connection_params[0] == "127.0.0.1":
         print_line = f"connection to '{the_service_name}'"
     else:
-        a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server = connection_params[0]
         port = int(connection_params[1])
-        a_socket.settimeout(5)
-        check_port = a_socket.connect_ex((server, port))
-        a_socket.settimeout(None)
-        if check_port == 0:
+        if check_connection(server, port) == 0:
             try:
-                response = test_microservice_e2e(the_service_name, connection_params[0], connection_params[1], ms_config_data[the_service_name])
+                response = test_microservice_e2e(
+                    the_service_name, 
+                    server, 
+                    port, 
+                    ms_config_data[the_service_name]
+                    )
             except:
                 response = 444
         if response == 200:
@@ -527,88 +547,88 @@ def show_cdc_status(_step=None):
     
 
 def show_iidr_subscriptions(_step=None):
-    logger = logging.getLogger()
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print('\n-- [ IIDR SUBSCRIPTIONS ]')
     servers = get_host_yaml_servers('dataIntegration')
-    port = 10101
-    user = "xxxxx"
-    service_active = False
-    for server in servers:
-        a_socket.settimeout(5)
-        check_port = a_socket.connect_ex((server, port))
-        a_socket.settimeout(None)
-        if check_port == 0:
-            service_active = True
-            break
-    if not service_active:
-        print(f"ERROR: unable to connect to any DI server on port {port}")
-        logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
-    else:
-        as_home = f"/home/{user}/iidr_cdc/as"
-        monitor_home = "/dbagiga/di-iidr-watchdog"
-        ss_file = "status_subscription.chcclp"
-        exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|LEUMI)' | sed 's/Inactive/Ready/g'"
-        sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
-        response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
-        if response == '':
-            print(f"   no subscriptions found!")
+    if len(servers) > 0:
+        logger = logging.getLogger()
+        port = 10101
+        user = "gsods"
+        service_active = False
+        for server in servers:
+            if check_connection(server, port) == 0:
+                service_active = True
+                break
+        if not service_active:
+            print(f"ERROR: unable to connect to any DI server on port {port}")
+            logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
         else:
-            lnum = 1
-            for line in response.splitlines():
-                f = line.strip().split()
-                if 'mirror' in f[1].lower():
-                    print(f"   {f[0]:<15} | {f[1]} {f[2]}")
-                    continue
-                else:
-                    print(f"   {f[0]:<15} | {f[1]:<30}")
-                if lnum == 1: print("="*36)
-                lnum += 1
+            as_home = f"/home/{user}/iidr_cdc/as"
+            monitor_home = "/dbagiga/di-iidr-watchdog"
+            ss_file = "status_subscription.chcclp"
+            exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|LEUMI)' | sed 's/Inactive/Ready/g'"
+            sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
+            response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
+            if response == '':
+                print(f"   no subscriptions found!")
+            else:
+                lnum = 1
+                for line in response.splitlines():
+                    f = line.strip().split()
+                    if 'mirror' in f[1].lower():
+                        print(f"   {f[0]:<15} | {f[1]} {f[2]}")
+                        continue
+                    else:
+                        print(f"   {f[0]:<15} | {f[1]:<30}")
+                    if lnum == 1: print("="*36)
+                    lnum += 1
+    else:
+        print("[ERROR] dataIntegration servers not found.")
+        logger.error("[ERROR] dataIntegration servers not found.")
     logging.shutdown()
 
 
 def show_di_pipeline_info():
-    logger = logging.getLogger()
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print('\n-- [ DI PIPELINES ]')
     servers = get_host_yaml_servers('dataIntegration')
-    port = 6080
-    port_ok, service_ok = False, False
-    for server in servers:
-        a_socket.settimeout(1)
-        check_port = a_socket.connect_ex((server, port))
-        a_socket.settimeout(None)
-        if check_port == 0:
-            port_ok = True
-            break
-    if not port_ok:
-        print(f"ERROR: unable to connect to DI server(s) on port {port}.")
-        logger.error("[IIDR] unable to connect to DI server(s) on port {port}.")
-    else:
-        try:
-            for server in servers:
-                url = f"http://{server}:{port}/api/v1/pipeline/"
-                response_data = requests.get(
-                    url,
-                    auth=(auth['user'], auth['pass']),
-                    verify=False
-                ).json()
-                if len(response_data) != 0:
-                    if type(response_data).__name__ != 'list':
-                        break   # if not a list then pipeline is not installed, we break
-                    service_ok = True
-                    break
-        except:
-            pass
-        if service_ok:
-            r = response_data[0]
-            for k,v in r.items():
-                key = f"{k}:"
-                print(f"   {k:<18} {v}")
-                logger.info(f"[IIDR] {k:<18} {v}")
+    if len(servers) > 0:
+        logger = logging.getLogger()
+        port = 6080
+        port_ok, service_ok = False, False
+        for server in servers:
+            if check_connection(server, port, 3) == 0:
+                port_ok = True
+                break
+        if not port_ok:
+            print(f"ERROR: unable to connect to DI server(s) on port {port}.")
+            logger.error("[IIDR] unable to connect to DI server(s) on port {port}.")
         else:
-            print(f"ERROR: unable to connect to API on DI server(s).")
-            logger.error("[IIDR] unable to connect to API on DI server(s).")
+            try:
+                for server in servers:
+                    url = f"http://{server}:{port}/api/v1/pipeline/"
+                    response_data = requests.get(
+                        url,
+                        auth=(auth['user'], auth['pass']),
+                        verify=False
+                    ).json()
+                    if len(response_data) != 0:
+                        if type(response_data).__name__ != 'list':
+                            break   # if not a list then pipeline is not installed, we break
+                        service_ok = True
+                        break
+            except:
+                pass
+            if service_ok:
+                r = response_data[0]
+                for k,v in r.items():
+                    key = f"{k}:"
+                    print(f"   {k:<18} {v}")
+                    logger.info(f"[IIDR] {k:<18} {v}")
+            else:
+                print(f"ERROR: unable to connect to API on DI server(s).")
+                logger.error("[IIDR] unable to connect to API on DI server(s).")
+    else:
+        print("[ERROR] dataIntegration servers not found.")
+        logger.error("[ERROR] dataIntegration servers not found.")
     logging.shutdown()
 
 
@@ -626,11 +646,7 @@ def shob_update():
     the_query = 'query?typeName=D2TBD201_SHOB_ODS&columns=D201_ODS_TIMESTAMP'
     the_url = f'{the_base_url}/{the_query}'
     the_headers = {'Content-Type': 'application/json'}
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_socket.settimeout(5)
-    check_port = a_socket.connect_ex((server, port))
-    a_socket.settimeout(None)
-    if check_port != 0:
+    if check_connection(server, port, 5) != 0:
         print(f"ERROR: unable to establish a connection to '{server}'")
         logger.error(f"[SHOB] unable to establish a connection to '{server}'")
         logging.shutdown()
@@ -774,13 +790,14 @@ def run_sanity_routine():
             input("\n\nPress Enter to continue...")
 
 
-### globals ###
+if __name__ == '__main__':
 
-# ENV_NAME
-if os.environ.get('ENV_NAME') is None:
-    print("ERROR: missing ENV_NAME environment variable. cannot continue!")
-    exit()
-else:
+    ### globals ###
+
+    # ENV_NAME
+    if os.environ.get('ENV_NAME') is None:
+        print("ERROR: missing ENV_NAME environment variable. cannot continue!")
+        exit(1)
     THIS_ENV = os.environ['ENV_NAME']
     if THIS_ENV in ('GRG', 'DEV'):
         DC = 'tleumi'
@@ -789,48 +806,47 @@ else:
     else:
         DC = 'leumi'
 
-# ENV_CONFIG
-ENV_CONFIG_BACKUP = "/dbagiga/env_config"
-if os.environ.get('ENV_CONFIG') is None:
-    print("ERROR: missing ENV_CONFIG environment variable. cannot continue!")
-    exit()
-if os.path.exists(os.environ['ENV_CONFIG']):
-    host_yaml = f"{os.environ['ENV_CONFIG']}/host.yaml"
-    app_config = f"{os.environ['ENV_CONFIG']}/app.config"
-elif os.path.exists(ENV_CONFIG_BACKUP):
-    host_yaml = f"{ENV_CONFIG_BACKUP}/host.yaml"
-    app_config = f"{ENV_CONFIG_BACKUP}/app.config"
-    print("(!) NFS mount is not accessible. using backup location for 'host.yaml' and 'app.config'.")
-else:
-    print("ERROR: no 'host.yaml' and 'app.config' source is available. cannnot continue!")
-    exit()
+    # ENV_CONFIG
+    ENV_CONFIG_BACKUP = "/dbagiga/env_config"
+    if os.environ.get('ENV_CONFIG') is None:
+        print("ERROR: missing ENV_CONFIG environment variable. cannot continue!")
+        exit(1)
+    if os.path.exists(os.environ['ENV_CONFIG']):
+        host_yaml = f"{os.environ['ENV_CONFIG']}/host.yaml"
+        app_config = f"{os.environ['ENV_CONFIG']}/app.config"
+    elif os.path.exists(ENV_CONFIG_BACKUP):
+        host_yaml = f"{ENV_CONFIG_BACKUP}/host.yaml"
+        app_config = f"{ENV_CONFIG_BACKUP}/app.config"
+        print("(!) NFS mount is not accessible. using backup location for 'host.yaml' and 'app.config'.")
+    else:
+        print("ERROR: no 'host.yaml' and 'app.config' source is available. cannnot continue!")
+        exit(1)
 
-gs_root = "/dbagiga"
-utils_dir = gs_root + "/utils"
-logs_root = "/dbagigalogs"
-runall_exe = utils_dir + "/runall/runall.sh"
-runall_conf = utils_dir + "/runall/runall.conf"
-recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
-defualt_port = 8090
-k6_test = f"{utils_dir}/sanity/run_k6.sh"
-ms_config = f"{gs_root}/microservices/config.json"
+    gs_root = "/dbagiga"
+    utils_dir = gs_root + "/utils"
+    logs_root = "/dbagigalogs"
+    runall_exe = utils_dir + "/runall/runall.sh"
+    runall_conf = utils_dir + "/runall/runall.conf"
+    recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
+    defualt_port = 8090
+    k6_test = f"{utils_dir}/sanity/run_k6.sh"
+    ms_config = f"{gs_root}/microservices/config.json"
 
-# set report width here 
-rw = 100
+    # set display report width
+    rw = 100
 
-### add routine functions here! ###
-exec_funcs = [
-    'show_grid_info',
-    'show_pu_status',
-    'run_services_polling',
-    'show_cdc_status',
-    'show_hardware_info',
-    'show_health_info',
-    'run_stress_test',
-    'show_recovery_report',
-    ]
+    # add sanity routines
+    exec_funcs = [
+        'show_grid_info',
+        'show_pu_status',
+        'run_services_polling',
+        'show_cdc_status',
+        'show_hardware_info',
+        'show_health_info',
+        'run_stress_test',
+        'show_recovery_report',
+        ]
 
-if __name__ == '__main__':
     try: 
         # creating logger
         if not os.path.exists(logs_root):
@@ -842,202 +858,203 @@ if __name__ == '__main__':
                 os.makedirs(logs_dir)
         log_format = "%(asctime)s %(levelname)s %(message)s"
         log_file = f"{logs_dir}/{Path(__file__).stem}.log"
-        logging.basicConfig(filename=log_file,
-                            filemode="a",
-                            format=log_format,
-                            datefmt='%Y-%m-%d %H:%M:%S',
-                            level=logging.INFO)
+        logging.basicConfig(
+            filename=log_file, 
+            filemode="a", 
+            format=log_format, 
+            datefmt='%Y-%m-%d %H:%M:%S', 
+            level=logging.INFO
+            )
         logger = logging.getLogger()
         logger.info('Sanity started.')
         # disable insecure request warning
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         arguments = argument_parser()
-        if arguments:
-            subprocess.run(['clear'])
-            # present title
-            print(pyfiglet.figlet_format("     Sanity", font='slant'))
-            # check REST status and set operational manager
-            managers = get_host_yaml_servers('manager')
-            # configure authentication
-            auth = {}
-            if is_env_secured():
-                auth = get_auth(managers[0])
-            else:
-                auth['user'], auth['pass'] = '', ''
-            rest_ok_hosts = []
-            for mgr in managers:
-                url = f'http://{mgr}:{defualt_port}/v2/spaces'
-                if is_restful_ok(url):
-                    rest_ok_hosts.append(mgr)
-            if len(rest_ok_hosts) == 0:
-                print('REST status: DOWN')
-                logger.error('REST status: DOWN')
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(1)
-            else:
-                # we use 1st host from rest_ok_hosts
-                manager = rest_ok_hosts[0]
-            # flags
-            interactive_mode = False
-            info = False
-            cycles = False
-            duration = False
-            status = False
-            stats = False
-            stress = False
-            polling = False
-            verbose = False
-            cycles_passed = 0
-            total_cycles = 1
-            ### parse arguments ###
-            # check if 'space_name' is valid
-            space_name = arguments['space_name']
-            osg = OdsServiceGrid()
-            if not osg.Space.exist():
-                print(f"space {space_name} does not exist!\n")
-                logger.error(f"space {space_name} does not exist!")
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(1)
-            # load microservice config
-            if os.path.exists(ms_config):
-                with open(ms_config, 'r', encoding='utf8') as msc:
-                    ms_config_data = json.load(msc)
-            else:
-                ms_config_data = None
-            if 'verbose' in arguments:
-                verbose = True
-            if 'cycles' in arguments:
-                cycles = True
-                total_cycles = int(arguments['cycles'])
-            if 'duration' in arguments:
-                duration = True
-                time_passed = 0
-                duration_sec = int(arguments['duration'])
-            if 'info' in arguments:
-                info = True
-            if 'status' in arguments:
-                status = True
-            if 'stats' in arguments:
-                stats = True
-            if 'stress' in arguments:
-                stress = True
-            if 'service' in arguments:
-                polling = True
-                service_name = arguments['service']
-            ### execute operations ###
-            # if both cycles and duration requested we abort
-            if cycles and duration:
-                print("ERROR: count and duration are mutually exclusive. choose one or the other.\n")
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(1)
-            started = int(time.time())
-            if info:
-                show_grid_info()
-                print('\n'*2)
-                logger.info('Sanity complete.')
-                logging.shutdown()
-                exit(0)
-            if polling:
-                if duration:
-                    while time_passed < duration_sec:
-                        if service_name.lower() == 'all':
-                            run_services_polling()
-                        else:
-                            show_service_polling(service_name)
-                        print()
-                        time_passed = int(time.time() - started)
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-                else:
-                    while cycles_passed < total_cycles:
-                        if service_name.lower() == 'all':
-                            run_services_polling()
-                        else:
-                            show_service_polling(service_name)
-                        print()
-                        cycles_passed += 1
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-            if status:
-                the_pu_list = osg.ProcessingUnit.list()
-                if duration:
-                    while time_passed < duration_sec:
-                        show_pu_status()
-                        time_passed = int(time.time() - started)
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-                else:
-                    while cycles_passed < total_cycles:
-                        show_pu_status()
-                        cycles_passed += 1
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-            if stats:
-                if duration:
-                    while time_passed < duration_sec:
-                        time.sleep(0.2)
-                        show_total_objects()
-                        time_passed = int(time.time() - started)
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-                else:
-                    while cycles_passed < total_cycles:
-                        time.sleep(0.2)
-                        show_total_objects()
-                        cycles_passed += 1
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-            if stress:
-                if duration:
-                    while time_passed < duration_sec:
-                        time.sleep(0.2)
-                        run_stress_test()
-                        time_passed = int(time.time() - started)
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
-                else:
-                    while cycles_passed < total_cycles:
-                        time.sleep(0.2)
-                        run_stress_test()
-                        cycles_passed += 1
-                    logger.info('Sanity complete.')
-                    logging.shutdown()
-                    exit(0)
+        subprocess.run(['clear'])
+        # present title
+        print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        # check REST status and set operational manager
+        managers = get_host_yaml_servers('manager')
+        if len(managers) == 0:
+            logger = logging.getLogger()
+            print("[ERROR] manager servers not found. aborting!")
+            logger.error("[ERROR] manager servers not found. aborting!")
+            logging.shutdown()
+            exit(1)
+        # configure authentication
+        auth = {}
+        if is_env_secured():
+            auth = get_auth(managers[0])
+        else:
+            auth['user'], auth['pass'] = '', ''
+        rest_ok_hosts = []
+        for mgr in managers:
+            url = f'http://{mgr}:{defualt_port}/v2/spaces'
+            if is_restful_ok(url):
+                rest_ok_hosts.append(mgr)
+        if len(rest_ok_hosts) == 0:
+            print('REST status: DOWN')
+            logger.error('REST status: DOWN')
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(1)
+        else:
+            # we use 1st host from rest_ok_hosts
+            manager = rest_ok_hosts[0]
+        # flags
+        interactive_mode = False
+        info = False
+        cycles = False
+        duration = False
+        status = False
+        stats = False
+        stress = False
+        polling = False
+        verbose = False
+        cycles_passed = 0
+        total_cycles = 1
+        ### parse arguments ###
+        # check if 'space_name' is valid
+        space_name = arguments['space_name']
+        osg = OdsServiceGrid()
+        if not osg.Space.exist():
+            print(f"space {space_name} does not exist!\n")
+            logger.error(f"space {space_name} does not exist!")
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(1)
+        # load microservice config
+        if os.path.exists(ms_config):
+            with open(ms_config, 'r', encoding='utf8') as msc:
+                ms_config_data = json.load(msc)
+        else:
+            ms_config_data = None
+        if 'verbose' in arguments:
+            verbose = True
+        if 'cycles' in arguments:
+            cycles = True
+            total_cycles = int(arguments['cycles'])
+        if 'duration' in arguments:
+            duration = True
+            time_passed = 0
+            duration_sec = int(arguments['duration'])
+        if 'info' in arguments:
+            info = True
+        if 'status' in arguments:
+            status = True
+        if 'stats' in arguments:
+            stats = True
+        if 'stress' in arguments:
+            stress = True
+        if 'service' in arguments:
+            polling = True
+            service_name = arguments['service']
+        ### execute operations ###
+        # if both cycles and duration requested we abort
+        if cycles and duration:
+            print("ERROR: count and duration are mutually exclusive. choose one or the other.\n")
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(1)
+        started = int(time.time())
+        if info:
+            show_grid_info()
+            print('\n'*2)
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(0)
+        if polling:
             if duration:
                 while time_passed < duration_sec:
-                    run_sanity_routine()
+                    if service_name.lower() == 'all':
+                        run_services_polling()
+                    else:
+                        show_service_polling(service_name)
+                    print()
                     time_passed = int(time.time() - started)
                 logger.info('Sanity complete.')
                 logging.shutdown()
                 exit(0)
-            if cycles:
+            else:
                 while cycles_passed < total_cycles:
-                    run_sanity_routine()
+                    if service_name.lower() == 'all':
+                        run_services_polling()
+                    else:
+                        show_service_polling(service_name)
+                    print()
                     cycles_passed += 1
                 logger.info('Sanity complete.')
                 logging.shutdown()
                 exit(0)
-            else:
-                interactive_mode = True
-                run_sanity_routine()
+        if status:
+            the_pu_list = osg.ProcessingUnit.list()
+            if duration:
+                while time_passed < duration_sec:
+                    show_pu_status()
+                    time_passed = int(time.time() - started)
                 logger.info('Sanity complete.')
                 logging.shutdown()
                 exit(0)
-        else:
-            print('\nmissing option(s). use [mega_loader.py -h] for help.\n')
-            logger.error("missing option(s). use [mega_loader.py -h] for help.\n")
+            else:
+                while cycles_passed < total_cycles:
+                    show_pu_status()
+                    cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+        if stats:
+            if duration:
+                while time_passed < duration_sec:
+                    time.sleep(0.2)
+                    show_total_objects()
+                    time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            else:
+                while cycles_passed < total_cycles:
+                    time.sleep(0.2)
+                    show_total_objects()
+                    cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+        if stress:
+            if duration:
+                while time_passed < duration_sec:
+                    time.sleep(0.2)
+                    run_stress_test()
+                    time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            else:
+                while cycles_passed < total_cycles:
+                    time.sleep(0.2)
+                    run_stress_test()
+                    cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+        if duration:
+            while time_passed < duration_sec:
+                run_sanity_routine()
+                time_passed = int(time.time() - started)
             logger.info('Sanity complete.')
             logging.shutdown()
-            exit(1)
+            exit(0)
+        if cycles:
+            while cycles_passed < total_cycles:
+                run_sanity_routine()
+                cycles_passed += 1
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(0)
+        else:
+            interactive_mode = True
+            run_sanity_routine()
+            logger.info('Sanity complete.')
+            logging.shutdown()
+            exit(0)
     except (KeyboardInterrupt, SystemExit):
         print("\n")
