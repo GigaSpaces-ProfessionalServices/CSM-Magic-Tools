@@ -238,7 +238,7 @@ class OdsServiceGrid:
             for o_name, o_attr in response_data['objectTypes'].items():
                 if o_name not in ram_only_objects:
                     total_entries += o_attr['entries']
-            del o_name, o_attr
+            del response_data
             return f"{total_entries:,}"
 
 
