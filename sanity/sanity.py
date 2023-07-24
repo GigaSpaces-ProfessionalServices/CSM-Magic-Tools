@@ -44,6 +44,7 @@ def argument_parser():
     parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
+    parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
     parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.3')
 
     the_arguments = {}
@@ -64,6 +65,8 @@ def argument_parser():
         the_arguments['stress'] = True
     if ns.service:
         the_arguments['service'] = ns.service
+    if ns.verbose:
+        the_arguments['verbose'] = True
     return the_arguments
 
 
@@ -235,7 +238,12 @@ class OdsServiceGrid:
             for o_name, o_attr  in response_data['tieredConfiguration'].items():
                 if o_attr['ruleType'] == "RAM only":
                     ram_only_objects.append(o_name)
+            if verbose:
+                print(f"RAM only objects:\n{ram_only_objects}\n")
+
             for o_name, o_attr in response_data['objectTypes'].items():
+                if verbose:
+                    print(f"OBJECT: {o_name}, Entries = {o_attr['entries']}")
                 if o_name not in ram_only_objects:
                     total_entries += o_attr['entries']
             del response_data
@@ -423,12 +431,7 @@ def show_grid_info(_step=None):
     print(f"{'partitions':<14}: {osg.Space.partition_count()}")
     print(f"{'space name':<14}: {space_name}")
     print('\n')
-    ram_count = osg.Space.total_ram_count()
-    ts_count = osg.Space.total_ts_count()
-    print(f"{'total number of objects in RAM:':<45}{ram_count}")
-    logger.info(f"total number of objects in RAM: {ram_count}")
-    print(f"{'total number of objects in Tiered Storage:':<45}{ts_count}")
-    logger.info(f"total number of objects in Tiered Storage: {ts_count}")
+    show_total_objects()
     logging.shutdown()
 
 
@@ -691,11 +694,14 @@ def show_health_info(_step=None):
 
 
 def show_total_objects():
+    logger = logging.getLogger()
     ram_count = osg.Space.total_ram_count()
     ts_count = osg.Space.total_ts_count()
     print(f"{'total number of objects in RAM:':<45}{ram_count}")
     print(f"{'total number of objects in Tiered Storage:':<45}{ts_count}")
-
+    logger.info(f"total number of objects in RAM: {ram_count}")
+    logger.info(f"total number of objects in Tiered Storage: {ts_count}")
+    logging.shutdown()
 
 def run_stress_test(_step=None):
     if interactive_mode:
@@ -768,7 +774,8 @@ def run_sanity_routine():
             input("\n\nPress Enter to continue...")
 
 
-# globals
+### globals ###
+
 # ENV_NAME
 if os.environ.get('ENV_NAME') is None:
     print("ERROR: missing ENV_NAME environment variable. cannot continue!")
@@ -880,6 +887,7 @@ if __name__ == '__main__':
             stats = False
             stress = False
             polling = False
+            verbose = False
             cycles_passed = 0
             total_cycles = 1
             ### parse arguments ###
@@ -898,6 +906,8 @@ if __name__ == '__main__':
                     ms_config_data = json.load(msc)
             else:
                 ms_config_data = None
+            if 'verbose' in arguments:
+                verbose = True
             if 'cycles' in arguments:
                 cycles = True
                 total_cycles = int(arguments['cycles'])
