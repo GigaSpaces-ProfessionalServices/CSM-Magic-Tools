@@ -219,19 +219,28 @@ class OdsServiceGrid:
                 if space['name'] == space_name:
                     return space['topology']['partitions']
         
-        def total_object_count(self):
+        def total_ram_count(self):
             the_url = self.url + f"/{space_name}/statistics/operations"
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
             total_ram_objects = f"{response_data.json()['objectCount']:,}"
             return total_ram_objects
 
-        def total_write_count(self):
-            the_url = self.url + f"/{space_name}/statistics/operations"
+        def total_ts_count(self):
+            total_entries = 0
+            the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
             response_data = requests.get(
-                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
-            total_hdd_objects = f"{response_data.json()['writeCount']:,}"
-            return total_hdd_objects
+                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
+            ram_only_objects = []
+            for o_name, o_attr  in response_data['tieredConfiguration'].items():
+                if o_attr['ruleType'] == "RAM only":
+                    ram_only_objects.append(o_name)
+            for o_name, o_attr in response_data['objectTypes'].items():
+                if o_name not in ram_only_objects:
+                    total_entries += o_attr['entries']
+            del o_name, o_attr
+            return f"{total_entries:,}"
+
 
     class ProcessingUnit:
 
@@ -414,12 +423,12 @@ def show_grid_info(_step=None):
     print(f"{'partitions':<14}: {osg.Space.partition_count()}")
     print(f"{'space name':<14}: {space_name}")
     print('\n')
-    oc = osg.Space.total_object_count()
-    print(f"{'total number of objects in RAM:':<45}{oc}")
-    wc = osg.Space.total_write_count()
-    print(f"{'total number of objects in Tiered Storage:':<45}{wc}")
-    logger.info(f"total number of objects in RAM: {oc}")
-    logger.info(f"total number of objects in Tiered Storage: {wc}")
+    ram_count = osg.Space.total_ram_count()
+    ts_count = osg.Space.total_ts_count()
+    print(f"{'total number of objects in RAM:':<45}{ram_count}")
+    logger.info(f"total number of objects in RAM: {ram_count}")
+    print(f"{'total number of objects in Tiered Storage:':<45}{ts_count}")
+    logger.info(f"total number of objects in Tiered Storage: {ts_count}")
     logging.shutdown()
 
 
@@ -682,10 +691,10 @@ def show_health_info(_step=None):
 
 
 def show_total_objects():
-    oc = osg.Space.total_object_count()
-    print(f"{'total number of objects in RAM:':<45}{oc}")
-    wc = osg.Space.total_write_count()
-    print(f"{'total number of objects in Tiered Storage:':<45}{wc}")
+    ram_count = osg.Space.total_ram_count()
+    ts_count = osg.Space.total_ts_count()
+    print(f"{'total number of objects in RAM:':<45}{ram_count}")
+    print(f"{'total number of objects in Tiered Storage:':<45}{ts_count}")
 
 
 def run_stress_test(_step=None):
