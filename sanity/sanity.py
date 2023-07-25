@@ -253,18 +253,14 @@ class OdsServiceGrid:
             the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
-            ram_only_objects = []
-            for o_name, o_attr  in response_data['tieredConfiguration'].items():
-                if o_attr['ruleType'] == "RAM only":
-                    ram_only_objects.append(o_name)
-            if verbose:
-                print(f"RAM only objects:\n{ram_only_objects}\n")
-
             for o_name, o_attr in response_data['objectTypes'].items():
                 if verbose:
-                    print(f"OBJECT: {o_name}, Entries = {o_attr['entries']}")
-                if o_name not in ram_only_objects:
+                    print(f"{o_name:<40} | "
+                          f"{o_attr['entries']:<9} | "
+                          f"{response_data['tieredConfiguration'][o_name]['ruleType']}")
+                if response_data['tieredConfiguration'][o_name]['ruleType'] != "RAM only":
                     total_entries += o_attr['entries']
+            if verbose: print()
             del response_data
             return f"{total_entries:,}"
 
