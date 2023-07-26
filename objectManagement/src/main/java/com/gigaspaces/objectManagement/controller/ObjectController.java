@@ -7,7 +7,6 @@ import com.gigaspaces.objectManagement.service.DdlParser;
 import com.gigaspaces.objectManagement.service.ObjectService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.io.FileNotFoundException;
 import java.util.Map;
 import java.util.TreeMap;
 import org.openspaces.core.GigaSpace;
@@ -99,8 +98,7 @@ public class ObjectController {
     }
 
     @PostMapping("/registertype/single")
-    public String registerTypeSingle(@RequestParam("tableName") String tableName)
-            throws ClassNotFoundException, FileNotFoundException {
+    public String registerTypeSingle(@RequestParam("tableName") String tableName) {
         logger.info("Entering into -> registerTypeSingle");
         logger.info(
                 "params received : tableName=" + tableName + ", ddlAndPropertiesBasePath=" + ddlAndPropertiesBasePath

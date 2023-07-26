@@ -18,12 +18,17 @@ import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 import static java.nio.file.Files.readAllBytes;
@@ -68,11 +73,23 @@ public class CommonUtil {
         return properties;
     }
 
-    public static void addSpaceId(String spaceId, String spaceIdType, SpaceTypeDescriptorBuilder builder) throws ClassNotFoundException {
-
-        if (spaceId != null) {
-            builder.idProperty(spaceId);
+    public static void addSpaceId(String spaceId, String spaceIdType, String broadcast, SpaceTypeDescriptorBuilder builder) throws ClassNotFoundException {
+        // the spaceId is an id that we added. It can't be broadcast. It must be auto generated
+        if (spaceId != null && spaceId.equals("id")) {
+            builder.idProperty(spaceId, true);
             builder.addFixedProperty(spaceId, Class.forName(spaceIdType));
+            // the spaceId is a single field
+        } else if (spaceId != null && !spaceId.equals("id") && spaceId.split(",").length == 0) {
+            builder.idProperty(spaceId);
+
+            // the spaceId is compound
+        } else if (spaceId != null && !spaceId.equals("id") && spaceId.split(",").length > 0) {
+            List<String> propertiesNames = new ArrayList<>(Arrays.asList(spaceId.split(",")));
+            builder.idProperty(propertiesNames);
+        }
+
+        if (broadcast != null && broadcast.equals("true")) {
+            builder.broadcast(true);
         }
     }
 
@@ -132,7 +149,10 @@ public class CommonUtil {
                             } else {
                                 logger.info("Tier configuration for '" + criteriaClass + "' is not found");
                             }
-                        } else if(lineContents != null && lineContents.length == 2 && lineContents[0].equals("A")) {
+                        } else if(lineContents.length == 2 && lineContents[0].equals("A")) {
+                            String criteriaClass = lineContents[1];
+                            return lineContents;
+                        }  else if(lineContents.length == 2 && lineContents[0].equals("R")) {
                             String criteriaClass = lineContents[1];
                             return lineContents;
                         } else {
@@ -158,14 +178,9 @@ public class CommonUtil {
         logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
             String[] criteriaArray = getTierCriteriaConfig(typeName, strTierCriteriaFile);
-            /*if (criteria != null && criteria.trim() != "") {
-                builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
-                        .setName(typeName)
-                        .setCriteria(criteria));
-            }*/
             if (criteriaArray !=null) {
                 if (criteriaArray[0].equalsIgnoreCase("C")) {
-                    logger.info("Catagory :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
+                    logger.info("Category :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
                     builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                             .setName(criteriaArray[1])
                             .setCriteria(criteriaArray[2]));
@@ -348,5 +363,45 @@ public class CommonUtil {
     public static String readDDLFromfile(String ddlFileName) throws IOException {
         String ddlText = new String(readAllBytes(Paths.get(ddlFileName)));
         return ddlText;
+    }
+
+    public static Properties readAdaptersProperties(String adaptersFilePath) {
+        // Try to reload as resource from classpath
+        File adaptersFile = new File(adaptersFilePath);
+        //InputStream inputStream = CommonUtil.class.getClassLoader().getResourceAsStream("adapters.properties");
+        InputStream inputStream;
+        try {
+            inputStream = new FileInputStream(adaptersFile);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
+        logger.info("Succeeded to load adapters.properties");
+
+        if (inputStream == null) {
+            String message = "adapters.properties doesn't exist in classpath";
+            logger.info(message);
+            throw new RuntimeException(message);
+        }
+
+        Properties properties = new Properties();
+
+        try {
+            properties.load(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+            String message = "Failed to load properties from file adapters.properties";
+            throw new RuntimeException(message);
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return properties;
     }
 }

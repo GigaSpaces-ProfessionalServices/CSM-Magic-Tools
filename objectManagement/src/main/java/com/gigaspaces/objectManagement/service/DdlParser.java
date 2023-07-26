@@ -1,15 +1,18 @@
 package com.gigaspaces.objectManagement.service;
 
+import com.gigaspaces.client.storage_adapters.PropertyStorageAdapter;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Properties;
 
 @Service
 public class DdlParser {
@@ -17,9 +20,14 @@ public class DdlParser {
     private static final String ALTER_TABLE_PREFIX = "ALTER TABLE ";
     private static final String PK_PREFIX = "PRIMARY KEY ";
     // private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private Properties adaptersProperties;
+    private String currentTable;
 
     private Logger logger = LoggerFactory.getLogger(DdlParser.class);
 
+    public void setAdaptersProperties(Properties adaptersProperties) {
+        this.adaptersProperties = adaptersProperties;
+    }
 
     public Collection<SpaceTypeDescriptorBuilder> parse(Path path) throws IOException {
         byte[] data = Files.readAllBytes(path);
@@ -63,15 +71,15 @@ public class DdlParser {
         // Remove create table prefix:
         sql.skip(CREATE_TABLE_PREFIX);
 
-
         // Read type name:
         String typeName = sql.readUntilWhiteSpace();
-
-
 
         if (suffix.trim().length() > 0) {
             typeName += suffix;
         }
+
+        // Part of the property adapter solution - Keep the current table name;
+        currentTable = typeName;
 
         SpaceTypeDescriptorBuilder builder = new SpaceTypeDescriptorBuilder(typeName);
         // Remove everything outside 'create table (...) ...'
@@ -86,7 +94,6 @@ public class DdlParser {
             }else
                 parseColumn(item, builder);
         }
-
         return builder;
     }
 
@@ -119,7 +126,20 @@ public class DdlParser {
         String sqlType = sw.readUntilWhiteSpace();
 
         Class<?> javaType = parseSqlType(sqlType);
-        builder.addFixedProperty(name, javaType);
+        // Check whether this property has an adapter
+        String tableAndPropConcatenation = currentTable + "|" + name;
+        String adapterType = adaptersProperties.getProperty(tableAndPropConcatenation);
+
+        if (adapterType != null){
+            try {
+                logger.info("Going to register " + adapterType + " to " + tableAndPropConcatenation);
+                builder.addFixedProperty(name, javaType, (Class<? extends PropertyStorageAdapter>) Class.forName(adapterType));
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }else{
+            builder.addFixedProperty(name, javaType);
+        }
         logger.info("name -> "+name+" & javaType -> "+javaType);
     }
 
@@ -133,8 +153,62 @@ public class DdlParser {
         logger.error("Skipping alter table command for " + typeName);
     }
 
+    // Examples:
+    //    Precision 8, scale 0: NUMBER(8.0)
+    //    Precision 7, scale 2: NUMBER(7,2)
+    protected int getPrecision(String sqlType) {
+        int pos1 = sqlType.indexOf('(');
+        int pos2 = sqlType.indexOf(')');
+
+        if (pos1 == -1 || pos2 == -1)
+            return -1;
+
+        String precisionScaleStr = sqlType.substring(pos1+1, pos2);
+
+        int commaIndex = precisionScaleStr.indexOf(",");
+        int precision = 0;
+
+        // there is no comma - scale is 0
+        if (commaIndex == -1) {
+            precision = Integer.parseInt(precisionScaleStr);
+        } else {
+            String[] precisionScaleArray = precisionScaleStr.split(",");
+            precision = Integer.parseInt(precisionScaleArray[0]);
+        }
+
+        return precision;
+    }
+
+    // Examples:
+    //    Precision 8, scale 0: NUMBER(8.0)
+    //    Precision 7, scale 2: NUMBER(7,2)
+    protected int getScale(String sqlType) {
+        int pos1 = sqlType.indexOf('(');
+        int pos2 = sqlType.indexOf(')');
+
+        if (pos1 == -1 || pos2 == -1)
+            return -1;
+
+        String precisionScaleStr = sqlType.substring(pos1, pos2);
+
+        int doteIndex = precisionScaleStr.indexOf(",");
+        int scale = 0;
+
+        // there is no dote - scale is 0
+        if (doteIndex == -1)
+            scale = 0;
+        else {
+            String[] precisionScaleArray = precisionScaleStr.split(",");
+            scale = Integer.parseInt(precisionScaleArray[1]);
+        }
+
+        return scale;
+    }
+
     protected Class<?> parseSqlType(String sqlType) {
         // remove (...) if exists - e.g. CHARACTER(4)
+        int precision = getPrecision(sqlType);
+        int scale = getScale(sqlType);
         int pos = sqlType.indexOf('(');
         if (pos != -1)
             sqlType = sqlType.substring(0, pos);
@@ -172,6 +246,22 @@ public class DdlParser {
             case "BIGINT":
                 return java.math.BigInteger.class;
             case "NUMBER":
+                //           uncomment for TAU, not commited may cause issue for Leumi
+                //  ---- return java.math.BigDecimal.class;
+
+                // this is only a NUMBER without (...)
+                if (scale == -1) {
+                    return BigDecimal.class;
+                }else if (scale == 0) {
+                    if (precision > 0 && precision <= 4)
+                        return Short.class;
+                    else if (precision > 4 && precision <= 9)
+                        return Integer.class;
+                    else if (precision > 9 && precision <= 18)
+                        return Long.class;
+                }else if (scale > 0){
+                    return BigDecimal.class;
+                }
             case "DOUBLE":
             case "DOUBLE PRECISION":
                 return Double.class;
@@ -183,8 +273,9 @@ public class DdlParser {
                 return java.math.BigDecimal.class;
             case "DATE":
             case "DATETIME":
-                return java.sql.Date.class;
+//           commented for TAU, not commited may cause issue for Leumi     return java.sql.Date.class;
 //                return java.util.Date.class;
+                return java.sql.Timestamp.class;
             case "TIMESTAMP":
             case "TIMESTAMP WITH TIME ZONE":
             case "TIMESTAMP WITH LOCAL TIME ZONE":

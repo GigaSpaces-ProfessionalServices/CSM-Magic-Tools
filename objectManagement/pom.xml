@@ -17,7 +17,7 @@
         <java.version>8</java.version>
         <gs.version.leumi>16.2.0-m18</gs.version.leumi>
         <gs.version.old>16.2.0-m4-sun-10</gs.version.old>
-        <gs.version>16.2.0-patch-L-1</gs.version>
+        <gs.version>16.3.0</gs.version>
     </properties>
     <repositories>
         <repository>
@@ -41,6 +41,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>23.2.0.0</version>
+            <scope>compile</scope>
         </dependency>
         <!--<dependency>
             <groupId>org.gigaspaces</groupId>

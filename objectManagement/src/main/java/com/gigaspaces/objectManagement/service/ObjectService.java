@@ -14,6 +14,8 @@ import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.SpaceObjectDto;
 import com.gigaspaces.objectManagement.model.TableOutcome;
 import com.gigaspaces.objectManagement.utils.CommonUtil;
+
+import static com.gigaspaces.objectManagement.utils.CommonUtil.readAdaptersProperties;
 import static com.gigaspaces.objectManagement.utils.DataGeneratorUtils.getPropertyValue;
 import com.gigaspaces.objectManagement.utils.ReportWriter;
 import com.gigaspaces.query.IdQuery;
@@ -78,6 +80,10 @@ public class ObjectService {
     private String tableListFilePath;
     @Value("${tier.criteria.file}")
     private String strTierCriteriaFile;
+
+    @Value("${adapter.property.file}")
+    private String adaptersFilePath;
+
     @Value("${lookup.group}")
     private String lookupGroup;
     @Value("${lookup.locator}")
@@ -110,11 +116,13 @@ public class ObjectService {
         String routing = properties.getProperty("routing");
         String index = properties.getProperty("index");
         String indexType = properties.getProperty("indexType");
+        String broadcast = properties.getProperty("braodcast");
         String supportDynamicProperties = properties.getProperty("supportDynamicProperties");
+        Properties adaptersProperties = readAdaptersProperties(adaptersFilePath);
 
         // DdlParser parser = new DdlParser();
         Collection<SpaceTypeDescriptorBuilder> result = null;
-
+        parser.setAdaptersProperties(adaptersProperties);
         try {
             result = parser.parse(Paths.get(ddlAndPropertiesBasePath + tableName + ".ddl"));
 
@@ -132,10 +140,10 @@ public class ObjectService {
 
             for (SpaceTypeDescriptorBuilder builder : result) {
 
-                CommonUtil.addSpaceId(spaceId, spaceIdType, builder);
+                CommonUtil.addSpaceId(spaceId, spaceIdType, broadcast, builder);
                 CommonUtil.addRouting(routing, builder);
                 CommonUtil.addIndex(index, indexType, builder);
-                //CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
+                CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
                 builder = CommonUtil.setTierCriteria(tableName, builder, strTierCriteriaFile);
                 SpaceTypeDescriptor typeDescriptor = builder.create();
                 CommonUtil.registerType(typeDescriptor, gigaSpace);
@@ -336,11 +344,13 @@ public class ObjectService {
             String routing = properties.getProperty("routing");
             String index = properties.getProperty("index");
             String indexType = properties.getProperty("indexType");
-            // supportDynamicProperties = properties.getProperty("supportDynamicProperties");
+            String broadcast = properties.getProperty("braodcast");
+            String supportDynamicProperties = properties.getProperty("supportDynamicProperties");
+            Properties adaptersProperties = readAdaptersProperties(adaptersFilePath);
 
             // DdlParser parser = new DdlParser();
             Collection<SpaceTypeDescriptorBuilder> result = null;
-
+            parser.setAdaptersProperties(adaptersProperties);
             try {
                 result = parser.parse(Paths.get(ddlAndPropertiesBasePath + table + ".ddl"));
 
@@ -357,10 +367,10 @@ public class ObjectService {
 
                 for (SpaceTypeDescriptorBuilder builder : result) {
 
-                    CommonUtil.addSpaceId(spaceId, spaceIdType, builder);
+                    CommonUtil.addSpaceId(spaceId, spaceIdType, broadcast, builder);
                     CommonUtil.addRouting(routing, builder);
                     CommonUtil.addIndex(index, indexType, builder);
-                    //CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
+                    CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
                     builder = CommonUtil.setTierCriteria(table, builder, strTierCriteriaFile);
                     SpaceTypeDescriptor typeDescriptor = builder.create();
                     CommonUtil.registerType(typeDescriptor, gigaSpace);
@@ -437,6 +447,7 @@ public class ObjectService {
         String routing = properties.getProperty("routing");
         String index = properties.getProperty("index");
         String indexType = properties.getProperty("indexType");
+        String broadcast = properties.getProperty("braodcast");
         String supportDynamicProperties = properties.getProperty("supportDynamicProperties");
 
         // DdlParser parser = new DdlParser();
@@ -453,10 +464,10 @@ public class ObjectService {
 
             for (SpaceTypeDescriptorBuilder builder : result) {
 
-                CommonUtil.addSpaceId(spaceId, spaceIdType, builder);
+                CommonUtil.addSpaceId(spaceId, spaceIdType, broadcast, builder);
                 CommonUtil.addRouting(routing, builder);
                 CommonUtil.addIndex(index, indexType, builder);
-                //CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
+                CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
                 builder = CommonUtil.setTierCriteria(tableName, builder, strTierCriteriaFile);
                 SpaceTypeDescriptor typeDescriptor = builder.create();
                 CommonUtil.registerType(typeDescriptor, gigaSpace);
@@ -472,7 +483,7 @@ public class ObjectService {
 
             for (SpaceTypeDescriptorBuilder builder : typeDescriptorBuildersCached) {
 
-                CommonUtil.addSpaceId(spaceId, spaceIdType, builder);
+                CommonUtil.addSpaceId(spaceId, spaceIdType, broadcast, builder);
                 CommonUtil.addRouting(routing, builder);
                 CommonUtil.addIndex(index, indexType, builder);
                 //CommonUtil.dynamicPropertiesSupport(Boolean.getBoolean(supportDynamicProperties), builder);
