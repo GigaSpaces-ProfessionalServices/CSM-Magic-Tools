@@ -2,22 +2,17 @@ mdmUrl="gstest-di1.tau.ac.il:6081"  #<ip of mdm>:port
 managerUrl="gstest-di1.tau.ac.il:6080"   #<ip of di-manager>:port
 flinkUrl="http://gstest-di1.tau.ac.il:8081"   #http://<ip of flink>:port
 diProcessorJar="/home/gsods/di-manager/latest-di-manager/lib/job-2.1.36.jar"   #/home/gsods/di-manager/latest-di-manager/lib/job-2.1.36.jar
-bootstrapServers="http://gstest-di1.tau.ac.il:9092"   #kafka1:9092,kafka2:9092,kafka3 - to test if works with mutliple ips
+bootstrapServers="gstest-di1.tau.ac.il:9092"   #kafka1:9092,kafka2:9092,kafka3 - to test if works with mutliple ips
 kafkaGroupId="diprocessor"    #diprocessor
 spaceLookupGroups="xap-16.3.0"
-spaceLookupLocators="gstest-manager1.tau.ac.il,gstest-manager2.tau.ac.il,gstest-manager3.tau.ac.il"  #mng1,mng2,mng3 - to test if works with mutliple ips
+spaceLookupLocators="gstest-manager1.tau.ac.il" #,gstest-manager2.tau.ac.il,gstest-manager3.tau.ac.il"  #mng1,mng2,mng3 - to test if works with mutliple ips
 
 echo;echo
 read -p "exec 1 Configure Flink"
 
 # 1 Configure Flink
-curl -s --location "${mdmUrl}/api/v1/global-config/flink" \
---header 'Content-Type: application/json' \
---data '{
-    "restEndpoint": "${flinkUrl}",
-    "diProcessorJar": "${diProcessorJar}"
-}' |jq
-
+mycurl=$( echo -e "curl -s --location \"${mdmUrl}/api/v1/global-config/flink\" --header 'Content-Type: application/json' --data '{ \"restEndpoint\": \"${flinkUrl}\", \"diProcessorJar\": \"${diProcessorJar}\" }' |jq" )
+eval $mycurl
 echo;echo
 read -p "exec 2 Configure Kafka"
 
@@ -33,7 +28,6 @@ read -p "exec 3 Configure Space Common"
 
 mycurl=$(echo -e "curl -s --location '${mdmUrl}/api/v1/global-config/space' --header 'Content-Type: application/json' --data '{\"lookupGroups\": \"${spaceLookupGroups}\",\"lookupLocators\":\"${spaceLookupLocators}\"}'")
 eval $mycurl |jq
-
 
 echo;echo
 read -p "exec 4 Configure IIDR extraction"
