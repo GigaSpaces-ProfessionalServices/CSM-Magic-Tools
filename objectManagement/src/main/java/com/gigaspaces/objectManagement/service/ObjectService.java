@@ -1,5 +1,6 @@
 package com.gigaspaces.objectManagement.service;
 
+import com.gigaspaces.admin.quiesce.QuiesceState;
 import com.gigaspaces.client.CountModifiers;
 import com.gigaspaces.client.ReadModifiers;
 import com.gigaspaces.document.SpaceDocument;
@@ -40,9 +41,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsm.GridServiceManager;
 import org.openspaces.admin.pu.ProcessingUnit;
+import org.openspaces.admin.pu.ProcessingUnitType;
+import org.openspaces.admin.quiesce.QuiesceRequest;
 import org.openspaces.admin.space.SpaceDeployment;
 import org.openspaces.core.GigaSpace;
 import org.openspaces.core.GigaSpaceTypeManager;
@@ -383,6 +388,7 @@ public class ObjectService {
         return jsonObject;
     }
 
+
     public void unregisterObject(String object) throws Exception {
 
         //Admin admin = commonUtil.getAdmin();
@@ -394,9 +400,92 @@ public class ObjectService {
                 break;
             }
         }*/
-        logger.info("gigaSpace: " + gigaSpace);
         CommonUtil.unregisterType(object, gigaSpace);
         logger.info("end -- unregistertype");
+    }
+    public void quiescePU(ProcessingUnit pu){
+        QuiesceRequest request = new QuiesceRequest("quiesce pu");
+        pu.quiesce(request);
+        boolean quiesced = pu.waitFor(QuiesceState.QUIESCED, 2, TimeUnit.MINUTES);
+        if (quiesced) {
+            logger.info("All instances are QUIESCED");
+        }else{
+            logger.info("All instances were not QUIESCED within the given timeout");
+        }
+    }
+    public void unquiescePU(ProcessingUnit pu){
+        QuiesceRequest request = new QuiesceRequest("Unquiesce pu");
+        pu.unquiesce(request);
+        boolean quiesced = pu.waitFor(QuiesceState.UNQUIESCED, 2, TimeUnit.MINUTES);
+        if (quiesced) {
+            logger.info("All instances are UN-QUIESCED");
+        }else {
+            logger.info("All instances were not UN-QUIESCED within the given timeout");
+        }
+    }
+    public ProcessingUnit searchProcessingUnitByName(String puName, SearchType type){
+        ProcessingUnit resultPU = null;
+        logger.info("SearchProcessingUnitByName="+puName);
+        Admin admin = CommonUtil.getAdmin(
+                lookupLocator,
+                lookupGroup,
+                odsxProfile,
+                gsUsername,
+                gsPassword,
+                appId,
+                safeId,
+                objectId);
+        admin.getProcessingUnits().waitFor("",2, TimeUnit.SECONDS);
+        logger.info("Admin api pu count="+admin.getProcessingUnits().getSize());
+        logger.info("Admin api space count="+admin.getSpaces().getSpaces().length);
+
+        for (ProcessingUnit processingUnit : admin.getProcessingUnits()) {
+            switch (type){
+                case EXACT:
+                    if(processingUnit.getName().equals(puName)){
+                        resultPU = processingUnit;
+                    }
+                    break;
+                case PREFIX:
+                    if(processingUnit.getName().startsWith(puName)){
+                        resultPU = processingUnit;
+                    }
+                    break;
+                case SUFFIX:
+                    if(processingUnit.getName().endsWith(puName)){
+                        resultPU = processingUnit;
+                    }
+                    break;
+                case CONTAIN:
+                    if(processingUnit.getName().contains(puName)){
+                        resultPU = processingUnit;
+                    }
+                    break;
+            }
+        }
+        return  resultPU;
+    }
+    public void undeployProcessingUnit(ProcessingUnit pu){
+        logger.info("Processing Unit type = "+pu.getType());
+        if(pu.getType().equals(ProcessingUnitType.STATEFUL)){
+            QuiesceRequest request = new QuiesceRequest("QUIESCE PU");
+            pu.quiesce(request);
+            boolean quiesced = pu.waitFor(QuiesceState.QUIESCED, 1, TimeUnit.MINUTES);
+            if (quiesced) {
+                logger.info("All instances are QUIESCED, shutting down...");
+                // wait for redo log to drop to zero
+                pu.undeployAndWait(5*1000, TimeUnit.MILLISECONDS);
+            }
+            else {
+                logger.info("All instances were not QUIESCED within the given timeout");
+                // Print QuiesceDetails to figure out which instances were not QUIESCED
+                logger.info("Details: " + pu.getQuiesceDetails());
+                // retry or do some logic
+            }
+        }else{
+            pu.undeployAndWait(5*1000, TimeUnit.MILLISECONDS);
+        }
+
     }
 
     public void registerAndValidateInSandbox(

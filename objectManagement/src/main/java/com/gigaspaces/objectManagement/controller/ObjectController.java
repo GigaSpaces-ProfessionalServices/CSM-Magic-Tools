@@ -5,10 +5,14 @@ import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.service.DdlParser;
 import com.gigaspaces.objectManagement.service.ObjectService;
+import com.gigaspaces.objectManagement.service.SearchType;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.io.FileNotFoundException;
 import java.util.Map;
 import java.util.TreeMap;
+
+import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.core.GigaSpace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +92,20 @@ public class ObjectController {
         logger.info("start -- unregistertype");
         logger.info("params received :type=" + type + ",spaceName=" + spaceName);
         try {
+            //1. Undeploy feeder pu for this type (Assume that pu name is starting with type name)
+            String puName = type.indexOf(".")>0?type.substring(type.lastIndexOf(".")+1):type;
+            puName=puName.toLowerCase();
+            logger.info(" Processing unit search keyword = "+puName);
+            ProcessingUnit pu = objectService.searchProcessingUnitByName(puName, SearchType.PREFIX);
+            if(pu!=null) {
+                logger.info("Undeploy processing unit with name = "+pu.getName());
+                objectService.undeployProcessingUnit(pu);
+            }else{
+                logger.info("Processing unit with name="+puName+" not found");
+            }
+
+            //2. Un register type
+            logger.info("Unregister space type with name = "+type);
             objectService.unregisterObject(type);
             return "success";
         } catch (Exception e) {
@@ -153,7 +171,7 @@ public class ObjectController {
     public SpaceDocument getObjectMinMax(
             @RequestParam("objectType") String objectType,
             @RequestParam("minColName") String minColName,
-        @RequestParam("maxColName") String maxColName) {
+            @RequestParam("maxColName") String maxColName) {
         logger.info("Entering into -> getObjectCount,  objectType: " + objectType + ", minColName: " + minColName
                 + ", maxColName: " + maxColName);
         try {
