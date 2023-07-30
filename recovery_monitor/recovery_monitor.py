@@ -177,7 +177,7 @@ def create_session_file(_file):
             'query=\'select (\'',
             'for t in $(sqlite3 $db "SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'com.%\';"); do',
                 '[[ $t == "" ]] && continue',
-                'query+="select count(*) from \"${t}\") + ("',
+                'query+="select count(*) from \\"${t}\\") + ("',
             'done',
             'if [[ $query != \'select (\' ]]; then',
                 'query="$(echo $query | sed \'s/ + ($//g\')"',
@@ -500,8 +500,6 @@ if __name__ == '__main__':
             # debug flag
             debug = 'debug' in arguments
 
-            # MAIN
-            #
             create_session_file(temp_file)
             lock = threading.Lock()
             exit_event = False
@@ -509,11 +507,13 @@ if __name__ == '__main__':
                 subprocess.run(['clear'])
                 with spinner("collecting recovery data... ", delay=0.1):
                     if not collect_data():
-                        os.system('rm -f /tmp/recmon-*')
+                        if not debug:
+                            os.system('rm -f /tmp/recmon-*')
                         exit()
             else:
                 if not collect_data():
-                    os.system('rm -f /tmp/recmon-*')
+                    if not debug:
+                        os.system('rm -f /tmp/recmon-*')
                     exit()
             while True:
                 if not unattended:
@@ -529,9 +529,11 @@ if __name__ == '__main__':
                     logging.shutdown()
                     break
                 if not collect_data():
-                    os.system('rm -f /tmp/recmon-*')
+                    if not debug:
+                        os.system('rm -f /tmp/recmon-*')
                     exit()
         except (KeyboardInterrupt, SystemExit):
             exit_event = True
-            os.system('rm -f /tmp/recmon-*')
+            if not debug:
+                os.system('rm -f /tmp/recmon-*')
             print('\n')
