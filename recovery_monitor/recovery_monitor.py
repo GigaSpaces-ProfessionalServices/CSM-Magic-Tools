@@ -91,15 +91,22 @@ def get_auth(host):
     return auth_params
 
 
+def is_backup_active():
+    if os.environ['ENV_CONFIG'] is not None:
+        with open(app_config, 'r', encoding='utf8') as appconf:
+            for line in appconf:
+                if re.search("app.tieredstorage.pu.backuprequired", line):
+                    secure_flag = line.strip().replace('\n','').split('=')[1]
+                    return secure_flag.casefold() == 'y'
+
+
 def is_env_secured():
     if os.environ['ENV_CONFIG'] is not None:
         with open(app_config, 'r', encoding='utf8') as appconf:
             for line in appconf:
                 if re.search("app.setup.profile", line):
                     secure_flag = line.strip().replace('\n','').split('=')[1]
-                    if secure_flag == '""':
-                        return False
-                    return True
+                    return not secure_flag == '""'
 
 
 def is_restful_ok(the_url):
@@ -382,7 +389,6 @@ def collect_data():
                     for item in data:
                         params = item.split(':')    # params = [HOST, PARTITION, COUNT]
                         partition_map[params[1]] = [params[0], int(params[2])]
-    
     if not exit_event:
         threads = [
             threading.Thread(
@@ -394,9 +400,14 @@ def collect_data():
             thread.start()
         for thread in threads:
             thread.join()
-        # get number of partitions in space
-        num_partitions = int(len(partition_map) / 2) + (len(partition_map) % 2)
-        
+
+        # get number of partitions
+        ha_enabled = is_backup_active()
+        if ha_enabled:
+            num_partitions = int(len(partition_map) / 2) + (len(partition_map) % 2)
+        else:
+            num_partitions = int(len(partition_map)) + (len(partition_map) % 2)
+
         table += print_table_row('header', "") + '\n'
         p_total_count, b_total_count = 0, 0
         for p_num in range(1, num_partitions + 1):
@@ -420,6 +431,7 @@ if __name__ == '__main__':
     # disable insecure request warning
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
     arguments = argument_parser()
+    
     if arguments:
         try:
             space_name = arguments['space_name']
@@ -458,7 +470,7 @@ if __name__ == '__main__':
                 data = yaml.safe_load(_hy)
             space_hosts = [ h for h in data['servers']['space'].values()]
 
-            # instatiate spinner
+            # instantiate spinner
             spinner = Spinner
             
             # parse arguments
