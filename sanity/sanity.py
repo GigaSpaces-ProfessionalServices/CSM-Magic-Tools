@@ -133,7 +133,7 @@ def print_title(_string):
     print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
 
 
-def check_connection(_server, _port, _timeout):
+def check_connection(_server, _port, _timeout=5):
     check_port = 1
     a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     a_socket.settimeout(_timeout)
@@ -642,7 +642,7 @@ def shob_update():
     the_query = 'query?typeName=D2TBD201_SHOB_ODS&columns=D201_ODS_TIMESTAMP'
     the_url = f'{the_base_url}/{the_query}'
     the_headers = {'Content-Type': 'application/json'}
-    if check_connection(server, port, 5) != 0:
+    if check_connection(server, port) != 0:
         print(f"ERROR: unable to establish a connection to '{server}'")
         logger.error(f"[SHOB] unable to establish a connection to '{server}'")
         logging.shutdown()
