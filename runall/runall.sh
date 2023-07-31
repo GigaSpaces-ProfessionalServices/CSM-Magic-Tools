@@ -93,7 +93,7 @@ function logit() {
                 "Passed") log_text="${lgreen}${log_text}${reset}" ;;
                 "Failed") log_text="${lred}${log_text}${reset}" ;;
                 "Up") log_text="${lgreen}${log_text}${reset}" ;;
-                "Down") log_text="${lred}${log_text}${reset}" ;;
+                "Down") log_text="${yellow}${log_text}${reset}" ;;
                 "Active") log_text="${lgreen}${log_text}${reset}" ;;
                 "Inactive") log_text="${lred}${log_text}${reset}" ;;
                 "Leader") log_text="${lblue}${log_text}${reset}" ;;
