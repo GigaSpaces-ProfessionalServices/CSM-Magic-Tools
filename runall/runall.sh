@@ -437,17 +437,32 @@ function check_cr8_status() {
 
 function check_dns_resolve() {
     # check if dns resolution is correct
-    local host_name=$1
-    local host_ip=$(nslookup -timeout=3 $host_name | grep -v "#53" | awk '/Address/ {print $2}')
-    if [[ $host_ip != "" ]]; then
-        local lookup=$(nslookup -timeout=3 $host_ip | sed '/^$/d' | sed 's/.*name = //' | cut -d. -f1)
-        if [[ $lookup = "" ]]; then
+    local the_host=$1
+    local lookup_name=""
+    local lookup_ip=""
+    local lookup_name=$(nslookup -timeout=3 $the_host | grep -v "#53" | awk '/Address/ {print $2}')
+    if [[ $lookup_name == "" ]]; then
+        local lookup_ip=$(nslookup -timeout=3 $the_host | sed '/^$/d' | sed 's/.*name = //' | sed 's/\.$//g')
+    fi
+    if [[ $lookup_name == "" && $lookup_ip == "" ]]; then
+        local err=1
+    elif [[ $lookup_name != ""  ]]; then
+        local rev_lookup=$(nslookup -timeout=3 $lookup_name | sed '/^$/d' | sed 's/.*name = //' | sed 's/\.$//g')
+        if [[ $rev_lookup != "$the_host" ]]; then
+            local rev_lookup=$(nslookup -timeout=3 $lookup_name | sed '/^$/d' | sed 's/.*name = //' | cut -d. -f1)
+        fi
+        if [[ $rev_lookup = "" ]]; then
             local err=1
         else
-            [[ "${lookup^^}" == "${host_name^^}" ]] && local err=0 || local err=1
+            [[ "${rev_lookup^^}" == "${the_host^^}" ]] && local err=0 || local err=1
         fi
-    else
-        local err=1
+    elif [[ $lookup_ip != ""  ]]; then
+        local rev_lookup=$(nslookup -timeout=3 $lookup_ip | grep -v "#53" | awk '/Address/ {print $2}')
+        if [[ $rev_lookup = "" ]]; then
+            local err=1
+        else
+            [[ "${rev_lookup^^}" == "${the_host^^}" ]] && local err=0 || local err=1
+        fi
     fi
     echo $err
 }
