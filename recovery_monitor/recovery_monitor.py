@@ -96,8 +96,8 @@ def is_backup_active():
         with open(app_config, 'r', encoding='utf8') as appconf:
             for line in appconf:
                 if re.search("app.tieredstorage.pu.backuprequired", line):
-                    secure_flag = line.strip().replace('\n','').split('=')[1]
-                    return secure_flag.casefold() == 'y'
+                    backup_active = line.strip().replace('\n','').split('=')[1]
+                    return backup_active.casefold() == 'y'
 
 
 def is_env_secured():
