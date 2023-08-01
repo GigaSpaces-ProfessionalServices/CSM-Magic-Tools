@@ -45,7 +45,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.3')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.4')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -72,7 +72,7 @@ def argument_parser():
 
 def get_host_yaml_servers(_cluster):
     """
-    Get ODS hosts from host.yaml
+    Get DIH hosts from host.yaml
     :_cluster: name of cluster to filter
     :return: list of hosts
     """
@@ -254,11 +254,12 @@ class OdsServiceGrid:
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
             for o_name, o_attr in response_data['objectTypes'].items():
+                rule_type = "all"
+                if len(response_data['tieredConfiguration']) != 0:
+                    rule_type = response_data['tieredConfiguration'][o_name]['ruleType']
                 if verbose:
-                    print(f"{o_name:<40} | "
-                          f"{o_attr['entries']:<9} | "
-                          f"{response_data['tieredConfiguration'][o_name]['ruleType']}")
-                if response_data['tieredConfiguration'][o_name]['ruleType'] != "RAM only":
+                    print(f"{o_name:<40} | {o_attr['entries']:<9} | {rule_type}")
+                if rule_type != "RAM only":
                     total_entries += o_attr['entries']
             if verbose: print()
             del response_data
@@ -381,6 +382,15 @@ def is_env_secured():
                 return True
 
 
+def is_backup_active():
+    if os.environ['ENV_CONFIG'] is not None:
+        with open(app_config, 'r', encoding='utf8') as appconf:
+            for line in appconf:
+                if re.search("app.tieredstorage.pu.backuprequired", line):
+                    backup_active = line.strip().replace('\n','').split('=')[1]
+                    return backup_active.casefold() == 'y'
+
+
 def test_microservice_e2e(_the_service_name, _the_host, _the_port, _the_json):
     the_data = _the_json['data']
     the_headers = _the_json['headers']
@@ -388,7 +398,6 @@ def test_microservice_e2e(_the_service_name, _the_host, _the_port, _the_json):
     if _debug_:
         print(f"\n\n{_the_service_name}".upper() + f" :: http://{_the_host}:{_the_port}/v1/u1")
     the_url = f"http://{_the_host}:{_the_port}/v1/u1"
-    #the_url = "https://odsgs-app-stg.hq.il.bleumi:8443/nt2cr/v1/u1"
     
     if _the_json['method'].lower() == "json":
         response = requests.get(
@@ -414,11 +423,21 @@ def get_service_space_from_nb(the_service_name):
     sh_cmd = "/dbagiga/utils/runall/runall.sh -na -l | grep -v '===' | head -1"
     the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
     nb_host = the_response.strip("\\n'").strip("b'")
+    nb_hosts = get_host_yaml_servers('nb_applicative')
+    if len(nb_hosts) > 0:
+        port = 22
+        service_active = False
+        for nb_host in nb_hosts:
+            if check_connection(nb_host, port) == 0:
+                service_active = True
+                break
+        if not service_active:
+            print(f"ERROR: unable to connect to any NB app server on port {port}")
+            logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
     ms_conf = "/etc/nginx/conf.d/microservices.conf"
     sh_cmd = "ssh " + nb_host + " cat " + ms_conf + \
              " | sed -n '/upstream " + the_service_name + "/,/server/p' | grep -Po '(?<=server).*?(?=max)'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    return the_response.strip("b' \\n").split(':')
+    return str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).split(':')
 
 
 def show_grid_info(_step=None):
@@ -427,10 +446,10 @@ def show_grid_info(_step=None):
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- ODS INFORMATION '
+    _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
     print_title(_title)
     logger = logging.getLogger()
-    # display ODS grid information
+    # display DIH grid information
     the_info = osg.info()
     for key, val in the_info.items():
         print(f"{key:<14}: {val}")
@@ -682,7 +701,7 @@ def show_hardware_info(_step=None):
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- ODS HARDWARE STATUS '
+    _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
     print_title(_title)
     sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
         -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
@@ -714,6 +733,7 @@ def show_total_objects():
     logger.info(f"total number of objects in RAM: {ram_count}")
     logger.info(f"total number of objects in Tiered Storage: {ts_count}")
     logging.shutdown()
+
 
 def run_stress_test(_step=None):
     if interactive_mode:
@@ -839,9 +859,12 @@ if __name__ == '__main__':
         'show_cdc_status',
         'show_hardware_info',
         'show_health_info',
-        'run_stress_test',
-        'show_recovery_report',
+        #'run_stress_test',
         ]
+    # if HA is on we add recovery monitor report step
+    backup_active = is_backup_active()
+    if backup_active:
+        exec_funcs.append('show_recovery_report')
 
     try: 
         # creating logger
