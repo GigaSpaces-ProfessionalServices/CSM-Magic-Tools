@@ -79,11 +79,11 @@ public class CommonUtil {
             builder.idProperty(spaceId, true);
             builder.addFixedProperty(spaceId, Class.forName(spaceIdType));
             // the spaceId is a single field
-        } else if (spaceId != null && !spaceId.equals("id") && spaceId.split(",").length == 0) {
+        } else if (spaceId != null && !spaceId.equals("id") && spaceId.indexOf(",") == -1) {
             builder.idProperty(spaceId);
 
             // the spaceId is compound
-        } else if (spaceId != null && !spaceId.equals("id") && spaceId.split(",").length > 0) {
+        } else if (spaceId != null && !spaceId.equals("id") && spaceId.indexOf(",") != -1) {
             List<String> propertiesNames = new ArrayList<>(Arrays.asList(spaceId.split(",")));
             builder.idProperty(propertiesNames);
         }
@@ -199,7 +199,7 @@ public class CommonUtil {
                             .setCriteria("all"));
                 }
                 if (criteriaArray[0].equalsIgnoreCase("R")) {
-                    logger.info(criteriaArray[1] + "Transient :: ");
+                    logger.info(criteriaArray[1] + " Transient :: ");
                     builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
                             .setName(criteriaArray[1])
                             .setTransient(true));

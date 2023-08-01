@@ -1,6 +1,7 @@
 package com.gigaspaces.objectManagement.service;
 
 import com.gigaspaces.admin.quiesce.QuiesceState;
+import com.gigaspaces.async.AsyncFuture;
 import com.gigaspaces.client.CountModifiers;
 import com.gigaspaces.client.ReadModifiers;
 import com.gigaspaces.document.SpaceDocument;
@@ -9,7 +10,10 @@ import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableCon
 import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
+import com.gigaspaces.metadata.index.AddTypeIndexesResult;
 import com.gigaspaces.metadata.index.SpaceIndex;
+import com.gigaspaces.metadata.index.SpaceIndexFactory;
+import com.gigaspaces.metadata.index.SpaceIndexType;
 import com.gigaspaces.objectManagement.model.RecordOutcome;
 import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.SpaceObjectDto;
@@ -249,7 +253,7 @@ public class ObjectService {
             String criteriaFieldname = "";
             logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :"
                     + spaceTypeDescriptor.getTieredStorageTableConfig());
-            if (tieredStorageConfig.getTable(objectType) != null) {
+            if (tieredStorageConfig.getTable(objectType) != null && !tieredStorageConfig.getTable(objectType).isTransient()) {
                 tiercriteria = tieredStorageConfig.getTable(objectType).getCriteria();
                 criteriaFieldname = tieredStorageConfig.getTable(objectType).getName();
                 if (tiercriteria == null) {
@@ -267,7 +271,7 @@ public class ObjectService {
 
             }
             for (int i = 0; i < propertiesName.length; i++) {
-                String prop = propertiesName[i];
+                //String prop = propertiesName[i];
                 //SpacePropertyDescriptor propertyDescriptor = spaceTypeDescriptor.getFixedProperty(prop);
                 //spaceTypeDescriptor
                 //System.out.println("  Name:" + propertyDescriptor.getName() + " Type:" + propertyDescriptor
@@ -998,5 +1002,24 @@ public class ObjectService {
         SpaceDocument queryCount = gigaSpace.read(query, 1000l, ReadModifiers.MEMORY_ONLY_SEARCH);
 
         return queryCount;
+    }
+
+    public String addIndex(String tableName, String propertyName, String indexType) throws ClassNotFoundException, FileNotFoundException, Exception {
+        SpaceIndexType type;
+        if(indexType.equals(SpaceIndexType.EQUAL.name())){
+            type = SpaceIndexType.EQUAL;
+        } else if(indexType.equals(SpaceIndexType.ORDERED.name())){
+            type = SpaceIndexType.ORDERED;
+        } else if(indexType.equals(SpaceIndexType.EQUAL_AND_ORDERED.name())){
+            type = SpaceIndexType.EQUAL_AND_ORDERED;
+        } else {
+            logger.info("index type not passed properly "+indexType);
+            return "error";
+        }
+        AsyncFuture<AddTypeIndexesResult> asyncAddIndex = gigaSpace.getTypeManager().asyncAddIndex(tableName,
+        SpaceIndexFactory.createPropertyIndex(propertyName, type));
+        logger.info("asyncAddIndex ="+asyncAddIndex.get());
+        logger.info("end -- add index ");
+        return "success";
     }
 }

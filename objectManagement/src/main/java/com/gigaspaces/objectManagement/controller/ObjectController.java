@@ -187,4 +187,20 @@ public class ObjectController {
         }
         return null;
     }
+
+    @PostMapping("/index/add")
+    public String addIndex(@RequestParam("tableName") String tableName, @RequestParam("propertyName") String propertyName, @RequestParam("indexType") String indexType) {
+        logger.info("Entering into -> addIndex");
+        logger.info(
+                "params received : tableName=" + tableName + ", propertyName=" + propertyName+ ", indexType=" + indexType);
+        try {
+            String response = objectService.addIndex(tableName, propertyName, indexType);
+            logger.info("Exiting from -> registerTypeSingle response" + response);
+            return response;
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("Error in registerTypeSingle -> " + e.getLocalizedMessage(), e);
+            return "error";
+        }
+    }
 }

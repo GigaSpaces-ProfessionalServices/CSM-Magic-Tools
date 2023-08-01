@@ -58,13 +58,13 @@
                     <artifactId>transactions-jta</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.gigaspaces</groupId>
             <artifactId>xap-datagrid</artifactId>
             <version>${gs.version}</version>
             <scope>compile</scope>
-        </dependency>-->
+        </dependency>
         <dependency>
             <groupId>com.gigaspaces</groupId>
             <artifactId>xap-admin</artifactId>
