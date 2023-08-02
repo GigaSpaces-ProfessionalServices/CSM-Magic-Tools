@@ -45,7 +45,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.4')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.5')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -244,8 +244,8 @@ class OdsServiceGrid:
         def total_ram_count(self):
             the_url = self.url + f"/{space_name}/statistics/operations"
             response_data = requests.get(
-                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
-            total_ram_objects = f"{response_data.json()['objectCount']:,}"
+                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
+            total_ram_objects = f"{response_data['objectCount']:,}"
             return total_ram_objects
 
         def total_ts_count(self):
@@ -253,14 +253,18 @@ class OdsServiceGrid:
             the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
-            for o_name, o_attr in response_data['objectTypes'].items():
-                rule_type = "all"
-                if len(response_data['tieredConfiguration']) != 0:
-                    rule_type = response_data['tieredConfiguration'][o_name]['ruleType']
-                if verbose:
-                    print(f"{o_name:<40} | {o_attr['entries']:<9} | {rule_type}")
-                if rule_type != "RAM only":
-                    total_entries += o_attr['entries']
+            if response_data["tiered"]:
+                for o_name, o_attr in response_data['objectTypes'].items():
+                    rule_type = "all"
+                    if len(response_data['tieredConfiguration']) != 0:
+                        rule_type = response_data['tieredConfiguration'][o_name]['ruleType']
+                    if verbose: print(f"{o_name:<40} | {o_attr['entries']:<9} | {rule_type}")
+                    if rule_type != "RAM only":
+                        total_entries += o_attr['entries']
+            else:
+                for o_name, o_attr in response_data['objectTypes'].items():
+                    if verbose: print(f"{o_name:<40} | {o_attr['tieredEntries']:<9} | RAM only")
+                    total_entries += o_attr['tieredEntries']
             if verbose: print()
             del response_data
             return f"{total_entries:,}"
@@ -454,13 +458,7 @@ def show_grid_info(_step=None):
     for key, val in the_info.items():
         print(f"{key:<14}: {val}")
         logger.info(f"{key:<14}: {val}")
-    spaces_servers = []
-    hosts = osg.Host.list()
-    for _h in hosts:
-        if _h not in the_info['managers']:
-            spaces_servers.append(_h)
-    if len(spaces_servers) == 0:
-        spaces_servers = the_info['managers']
+    spaces_servers = get_host_yaml_servers('space')
     print(f"{'space servers':<14}: {spaces_servers}")
     print(f"{'partitions':<14}: {osg.Space.partition_count()}")
     print(f"{'space name':<14}: {space_name}")
@@ -851,21 +849,6 @@ if __name__ == '__main__':
     # set display report width
     rw = 100
 
-    # add sanity routines
-    exec_funcs = [
-        'show_grid_info',
-        'show_pu_status',
-        'run_services_polling',
-        'show_cdc_status',
-        'show_hardware_info',
-        'show_health_info',
-        #'run_stress_test',
-        ]
-    # if HA is on we add recovery monitor report step
-    backup_active = is_backup_active()
-    if backup_active:
-        exec_funcs.append('show_recovery_report')
-
     try: 
         # creating logger
         if not os.path.exists(logs_root):
@@ -920,6 +903,7 @@ if __name__ == '__main__':
         else:
             # we use 1st host from rest_ok_hosts
             manager = rest_ok_hosts[0]
+
         # flags
         interactive_mode = False
         info = False
@@ -936,6 +920,26 @@ if __name__ == '__main__':
         # check if 'space_name' is valid
         space_name = arguments['space_name']
         osg = OdsServiceGrid()
+        
+        # add sanity routines
+        exec_funcs = [
+            'show_grid_info',
+            'show_pu_status',
+            'run_services_polling',
+            'show_cdc_status',
+            'show_hardware_info',
+            'show_health_info',
+            #'run_stress_test',
+            ]
+        # if HA is on we add recovery monitor report step
+        backup_active = is_backup_active()
+        headers = {'Accept': 'application/json'}
+        the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
+        response_data = requests.get(
+            the_url, auth=(auth['user'], auth['pass']), headers=headers, verify=False).json()
+        if backup_active and "tieredConfiguration" in response_data:
+            exec_funcs.append('show_recovery_report')
+        
         if not osg.Space.exist():
             print(f"space {space_name} does not exist!\n")
             logger.error(f"space {space_name} does not exist!")
