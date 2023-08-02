@@ -236,7 +236,7 @@ public class ObjectService {
 
             logger.info("####################");
             logger.info(">>>> tieredStorageConfig objectType : " + objectType + ", tieredStorageConfig"
-                    + tieredStorageConfig.getTable(objectType));
+                    + (tieredStorageConfig!=null ? tieredStorageConfig.getTable(objectType) : tieredStorageConfig));
 
             SpaceTypeDescriptor spaceTypeDescriptor = gigaSpaceTypeManager.getTypeDescriptor(objectType);
 
@@ -253,7 +253,7 @@ public class ObjectService {
             String criteriaFieldname = "";
             logger.info(">>>>spaceTypeDescriptor.getTieredStorageTableConfig() :"
                     + spaceTypeDescriptor.getTieredStorageTableConfig());
-            if (tieredStorageConfig.getTable(objectType) != null && !tieredStorageConfig.getTable(objectType).isTransient()) {
+            if (tieredStorageConfig!=null && tieredStorageConfig.getTable(objectType) != null && !tieredStorageConfig.getTable(objectType).isTransient()) {
                 tiercriteria = tieredStorageConfig.getTable(objectType).getCriteria();
                 criteriaFieldname = tieredStorageConfig.getTable(objectType).getName();
                 if (tiercriteria == null) {
