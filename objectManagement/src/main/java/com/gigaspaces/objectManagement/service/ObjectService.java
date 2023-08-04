@@ -14,6 +14,7 @@ import com.gigaspaces.metadata.index.AddTypeIndexesResult;
 import com.gigaspaces.metadata.index.SpaceIndex;
 import com.gigaspaces.metadata.index.SpaceIndexFactory;
 import com.gigaspaces.metadata.index.SpaceIndexType;
+import com.gigaspaces.objectManagement.model.IndexDetail;
 import com.gigaspaces.objectManagement.model.RecordOutcome;
 import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.model.SpaceObjectDto;
@@ -92,6 +93,9 @@ public class ObjectService {
 
     @Value("${adapter.property.file}")
     private String adaptersFilePath;
+
+    @Value("${batch.index.file}")
+    private String batchIndexFilePath;
 
     @Value("${lookup.group}")
     private String lookupGroup;
@@ -1004,22 +1008,51 @@ public class ObjectService {
         return queryCount;
     }
 
-    public String addIndex(String tableName, String propertyName, String indexType) throws ClassNotFoundException, FileNotFoundException, Exception {
-        SpaceIndexType type;
-        if(indexType.equals(SpaceIndexType.EQUAL.name())){
-            type = SpaceIndexType.EQUAL;
-        } else if(indexType.equals(SpaceIndexType.ORDERED.name())){
-            type = SpaceIndexType.ORDERED;
-        } else if(indexType.equals(SpaceIndexType.EQUAL_AND_ORDERED.name())){
-            type = SpaceIndexType.EQUAL_AND_ORDERED;
-        } else {
-            logger.info("index type not passed properly "+indexType);
+    public String addIndex(String tableName, String propertyName, String indexType) {
+        try {
+            SpaceIndexType type;
+            if (indexType.equals(SpaceIndexType.EQUAL.name())) {
+                type = SpaceIndexType.EQUAL;
+            } else if (indexType.equals(SpaceIndexType.ORDERED.name())) {
+                type = SpaceIndexType.ORDERED;
+            } else if (indexType.equals(SpaceIndexType.EQUAL_AND_ORDERED.name())) {
+                type = SpaceIndexType.EQUAL_AND_ORDERED;
+            } else {
+                logger.info("index type not passed properly " + indexType);
+                return "error";
+            }
+            SpaceTypeDescriptor spaceTypeDescriptor = gigaSpace.getTypeManager().getTypeDescriptor(tableName);
+            if(spaceTypeDescriptor.getIndexes().containsKey(propertyName)){
+                logger.info("index already exist for tableName : "+tableName+"propertyName : "+propertyName);
+                return "error";
+            }
+            AsyncFuture<AddTypeIndexesResult> asyncAddIndex = gigaSpace.getTypeManager().asyncAddIndex(tableName,
+                    SpaceIndexFactory.createPropertyIndex(propertyName, type));
+            logger.info("asyncAddIndex =" + asyncAddIndex.get());
+            logger.info("end -- add index ");
+            return "success";
+        } catch (Exception e){
             return "error";
         }
-        AsyncFuture<AddTypeIndexesResult> asyncAddIndex = gigaSpace.getTypeManager().asyncAddIndex(tableName,
-        SpaceIndexFactory.createPropertyIndex(propertyName, type));
-        logger.info("asyncAddIndex ="+asyncAddIndex.get());
-        logger.info("end -- add index ");
-        return "success";
+    }
+
+    public JsonArray addIndexInBatch() {
+        JsonArray jsonArray = new JsonArray();
+        List<IndexDetail> indexDetails = CommonUtil.getIndexDetails(batchIndexFilePath);
+        for (IndexDetail indexDetail : indexDetails) {
+            JsonObject jsonObject = new JsonObject();
+            String tableName = indexDetail.getTableName();
+            String propertyName = indexDetail.getColumnName();
+            String indexType = indexDetail.getIndexType();
+            String response = addIndex(tableName,propertyName,indexType);
+
+            jsonObject.addProperty("tableName", tableName);
+            jsonObject.addProperty("propertyName", propertyName);
+            jsonObject.addProperty("indexType", indexType);
+            jsonObject.addProperty("response", response);
+            jsonArray.add(jsonObject);
+        }
+
+        return jsonArray;
     }
 }

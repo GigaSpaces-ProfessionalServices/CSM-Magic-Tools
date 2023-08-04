@@ -203,4 +203,11 @@ public class ObjectController {
             return "error";
         }
     }
+
+    @PostMapping("/index/addinbatch")
+    public JsonArray addIndexInbatch() {
+        logger.info("start -- index  batch");
+        JsonArray jsonArray = objectService.addIndexInBatch();
+        return jsonArray;
+    }
 }

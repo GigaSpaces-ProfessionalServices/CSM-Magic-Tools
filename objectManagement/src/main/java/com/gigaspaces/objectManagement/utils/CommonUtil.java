@@ -4,6 +4,7 @@ import com.gigaspaces.internal.server.space.tiered_storage.TieredStorageTableCon
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
 import com.gigaspaces.metadata.index.SpaceIndexType;
+import com.gigaspaces.objectManagement.model.IndexDetail;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -403,5 +404,49 @@ public class CommonUtil {
         }
 
         return properties;
+    }
+
+
+    public static List<IndexDetail> getIndexDetails(String batchIndexFileStr) {
+        logger.info("Entering into -> getIndexDetails");
+        logger.info("batchIndexFile -> " + batchIndexFileStr);
+        try {
+            if (batchIndexFileStr != null && !batchIndexFileStr.trim().equals("")) {
+                File batchIndexFile = new File(batchIndexFileStr);
+                if (batchIndexFile.exists()) {
+                    List<IndexDetail> indexDetails = new ArrayList<>();
+                    logger.info("Batch Index exists");
+                    BufferedReader bufferedReader = new BufferedReader(new FileReader(batchIndexFile));
+                    String line;
+                    while ((line = bufferedReader.readLine()) != null) {
+                        logger.info("Batch Index file line -> " + line);
+                        String[] lineContents = line.split("\t");
+                        if (lineContents.length == 3) {
+                            String tableName = lineContents[0];
+                            String columnName = lineContents[1];
+                            String indexType = lineContents[2];
+                            IndexDetail indexDetail = new IndexDetail();
+                            indexDetail.setIndexType(indexType);
+                            indexDetail.setColumnName(columnName);
+                            indexDetail.setTableName(tableName);
+                            logger.info("indexDetail : "+indexDetail);
+                            indexDetails.add(indexDetail);
+                        } else {
+                            logger.info("Batch Index for '" + line + "' is not defined");
+                        }
+                    }
+                    return indexDetails;
+                } else {
+                    logger.info("Batch Index file '" + batchIndexFileStr + "' does not exists");
+                }
+            } else {
+                logger.info("Batch Index file path is not configured");
+            }
+            logger.info("Exiting from -> getIndexDetails");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("Error in getIndexDetails -> " + e, e);
+        }
+        return new ArrayList<>();
     }
 }
