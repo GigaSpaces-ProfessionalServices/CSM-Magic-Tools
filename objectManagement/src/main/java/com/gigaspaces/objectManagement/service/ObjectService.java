@@ -233,7 +233,7 @@ public class ObjectService {
                 logger.info(">>>>>objectType "+objectType+"======="+e.getLocalizedMessage(),e);
             }*/
             //  logger.info(">>>>>>>>>>>objectType " + objectType + ", count " + objectCount);
-            //  jsonObject3.addProperty("objectInMemory", objectCount);
+            jsonObject3.addProperty("objectInMemory", objectCountInMemory(objectType,null));
             jsonObject3.addProperty("routing", routing);
             jsonObject3.addProperty("index", index);
             //jsonObject3.addProperty("criteria", criteria != null && criteria.trim() != "" ? criteria : "");
