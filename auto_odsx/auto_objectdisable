@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+
+spawn ./odsx.py object objectmanagement service disable
+expect "Are you sure, you want to stop Object Management service"
+sleep 1
+send -- "\n"
+expect "Service is"
+sleep 1
+
+expect eof

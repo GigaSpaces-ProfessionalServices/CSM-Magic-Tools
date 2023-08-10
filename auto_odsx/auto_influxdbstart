@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers influxdb start
+# directory
+expect "Are you sure want to start Influxdb servers"
+sleep 1
+send -- "\r"
+
+expect eof
