@@ -734,7 +734,7 @@ function run_health_checks() {
 GS_ROOT="/dbagiga"
 LOGS_DIR="/dbagigalogs"
 UTILS_DIR="${GS_ROOT}/utils"
-LOG_FILE="${LOGS_DIR}/sanity/ods_sanity.log"
+LOG_FILE="${LOGS_DIR}/sanity/sanity.log"
 CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
