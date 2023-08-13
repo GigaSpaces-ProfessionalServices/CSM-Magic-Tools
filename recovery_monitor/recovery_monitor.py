@@ -51,7 +51,7 @@ def argument_parser():
         help="Print additional info")
     parser.add_argument(
         '-v', '--version',
-        action='version', version='%(prog)s v2.0.4')
+        action='version', version='%(prog)s v2.0.5')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -98,6 +98,14 @@ def is_backup_active():
                 if re.search("app.tieredstorage.pu.backuprequired", line):
                     backup_active = line.strip().replace('\n','').split('=')[1]
                     return backup_active.casefold() == 'y'
+
+
+def is_ts_enabled():
+    h = {'Accept': 'application/json'}
+    the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
+    response_data = requests.get(
+    the_url, auth=(auth['user'], auth['pass']), headers=h, verify=False).json()
+    return response_data["tiered"]
 
 
 def is_env_secured():
@@ -434,6 +442,9 @@ if __name__ == '__main__':
     
     if arguments:
         try:
+            # debug flag
+            debug = 'debug' in arguments
+
             space_name = arguments['space_name']
             # check REST status and set operational manager
             with open(hosts_config, 'r') as y:
@@ -465,6 +476,11 @@ if __name__ == '__main__':
                 print(f"ERROR: space name '{space_name}' could not be found.")
                 exit(1)
             
+            # check if tiered storage is enabled
+            if not is_ts_enabled():
+                print(f"ERROR: Tiered storage is required for recovery monitor but is not enabled!")
+                exit(1)
+
             # get space hosts
             with open(hosts_config, 'r', encoding='utf8') as _hy:
                 data = yaml.safe_load(_hy)
@@ -501,16 +517,13 @@ if __name__ == '__main__':
             
             # creating logger
             log_format = "%(asctime)s %(levelname)s %(message)s"
-            log_file = "/dbagigalogs/sanity/ods_sanity.log"
+            log_file = "/dbagigalogs/sanity/sanity.log"
             logging.basicConfig(filename=log_file,
                                 filemode="a",
                                 format=log_format,
                                 datefmt='%Y-%m-%d %H:%M:%S',
                                 level=logging.INFO)
             logger = logging.getLogger()
-
-            # debug flag
-            debug = 'debug' in arguments
 
             create_session_file(temp_file)
             lock = threading.Lock()
