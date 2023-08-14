@@ -20,6 +20,11 @@ function usage() {
 }
 
 ### main ###
+date
+
+# Waiting random miliseconds before executing
+sleep $( bc -l <<< "scale=3 ; ${RANDOM}/32767" )
+
 ZONE=bll
 TYPE_SUFFIX="feeder"
 
@@ -54,4 +59,5 @@ the_feeder="${the_feeder}-${TYPE_SUFFIX}"
 
 # run command
 cd /dbagiga/gs-odsx
+echo -e ./odsx.py dataengine $the_feeder $opt $table_name
 ./odsx.py dataengine $the_feeder $opt $table_name
