@@ -21,129 +21,9 @@ import itertools
 import threading
 import pyfiglet
 import socket
+from glob import glob
 from pathlib import Path
 
-
-def argument_parser():
-    '''
-    argument parser function
-    :return: arguments object/dictionary
-    '''
-    
-    parser = argparse.ArgumentParser(
-        description='description: kill space instances duo - primary and backup',
-        epilog='* please report any issue to alon.segal@gigaspaces.com'
-    )
-    parser = argparse.ArgumentParser()
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('space_name', action="store", help="target the named space")
-    parser.add_argument('-c', action="store", dest="cycles", help="set number of iterations to execute")
-    parser.add_argument('-d', action="store", dest="duration", help="set duration (in seconds) for execution")
-    parser.add_argument('--info', action="store_true", help="show general grid information")
-    parser.add_argument('--status', action="store_true", help="get processing units state for all services")
-    parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
-    parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
-    parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
-    parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.3')
-
-    the_arguments = {}
-    ns = parser.parse_args()
-    if ns.space_name:
-        the_arguments['space_name'] = ns.space_name
-    if ns.cycles:
-        the_arguments['cycles'] = ns.cycles
-    if ns.duration:
-        the_arguments['duration'] = ns.duration
-    if ns.info:
-        the_arguments['info'] = True
-    if ns.status:
-        the_arguments['status'] = True
-    if ns.stats:
-        the_arguments['stats'] = True
-    if ns.stress:
-        the_arguments['stress'] = True
-    if ns.service:
-        the_arguments['service'] = ns.service
-    if ns.verbose:
-        the_arguments['verbose'] = True
-    return the_arguments
-
-
-def get_host_yaml_servers(_cluster):
-    """
-    Get ODS hosts from host.yaml
-    :_cluster: name of cluster to filter
-    :return: list of hosts
-    """
-    _hosts = []
-    try:
-        with open(host_yaml, 'r', encoding='utf8') as cfile:
-            ydata = yaml.safe_load(cfile)
-    except FileNotFoundError as e:
-        print('[ERROR] File not found: ', e)
-    except Exception as e:
-        print('[ERROR] An error occurred: ', e)
-    else:
-        _hosts = [h for h in ydata['servers'][_cluster].values()]
-    return _hosts
-
-
-def load_microservices():
-    """
-    Get microservices from config.json
-    :return: list of microservices names
-    """
-    with open(ms_config, 'r', encoding='utf8') as cfile:
-        ydata = json.load(cfile)
-    for y in ydata:
-        yield(y)
-
-
-def blink(_string):
-    return f"\033[30;5m{_string}\033[0m"
-
-
-def is_restful_ok(the_url):
-    """
-    send REST GET query and get the response [200 = OK]
-    :param the_url: url for GET request
-    :return: True / False
-    """
-    
-    try:
-        the_response = requests.get(
-            the_url,
-            auth=(auth['user'], auth['pass']),
-            verify=False,
-            timeout=3
-            )
-    except requests.exceptions.RequestException as e:
-        return False
-    else:
-        if the_response.status_code == 200:
-            return True
-        else:
-            return False
-
-
-def print_title(_string):
-    line = _string + '-' * (rw - len(_string)) + '\n'
-    colorama.init(autoreset=True)
-    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-
-
-def check_connection(_server, _port, _timeout):
-    check_port = 1
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_socket.settimeout(_timeout)
-    try:
-        check_port = a_socket.connect_ex((_server, _port))
-    except socket.error as socerr:
-        print(f"[ERROR] caught exception: {socerr}")
-    a_socket.settimeout(None)
-    return check_port 
-    
 
 class Spinner:
 
@@ -244,8 +124,8 @@ class OdsServiceGrid:
         def total_ram_count(self):
             the_url = self.url + f"/{space_name}/statistics/operations"
             response_data = requests.get(
-                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
-            total_ram_objects = f"{response_data.json()['objectCount']:,}"
+                the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
+            total_ram_objects = f"{response_data['objectCount']:,}"
             return total_ram_objects
 
         def total_ts_count(self):
@@ -253,13 +133,18 @@ class OdsServiceGrid:
             the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
             response_data = requests.get(
                 the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False).json()
-            for o_name, o_attr in response_data['objectTypes'].items():
-                if verbose:
-                    print(f"{o_name:<40} | "
-                          f"{o_attr['entries']:<9} | "
-                          f"{response_data['tieredConfiguration'][o_name]['ruleType']}")
-                if response_data['tieredConfiguration'][o_name]['ruleType'] != "RAM only":
-                    total_entries += o_attr['entries']
+            if response_data["tiered"]:
+                for o_name, o_attr in response_data['objectTypes'].items():
+                    rule_type = "all"
+                    if len(response_data['tieredConfiguration']) != 0:
+                        rule_type = response_data['tieredConfiguration'][o_name]['ruleType']
+                    if verbose: print(f"{o_name:<40} | {o_attr['entries']:<9} | {rule_type}")
+                    if rule_type != "RAM only":
+                        total_entries += o_attr['entries']
+            else:
+                for o_name, o_attr in response_data['objectTypes'].items():
+                    if verbose: print(f"{o_name:<40} | {o_attr['tieredEntries']:<9} | RAM only")
+                    total_entries += o_attr['tieredEntries']
             if verbose: print()
             del response_data
             return f"{total_entries:,}"
@@ -348,6 +233,116 @@ class OdsServiceGrid:
                 return False
 
 
+def argument_parser():
+    '''
+    argument parser function
+    :return: arguments object/dictionary
+    '''
+    
+    parser = argparse.ArgumentParser(
+        description='description: kill space instances duo - primary and backup',
+        epilog='* please report any issue to alon.segal@gigaspaces.com'
+    )
+    parser = argparse.ArgumentParser()
+    required = parser.add_argument_group('required arguments')
+    required.add_argument('space_name', action="store", help="target the named space")
+    parser.add_argument('-c', action="store", dest="cycles", help="set number of iterations to execute")
+    parser.add_argument('-d', action="store", dest="duration", help="set duration (in seconds) for execution")
+    parser.add_argument('--info', action="store_true", help="show general grid information")
+    parser.add_argument('--status', action="store_true", help="get processing units state for all services")
+    parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
+    parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
+    parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
+    parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.0')
+
+    the_arguments = {}
+    ns = parser.parse_args()
+    if ns.space_name:
+        the_arguments['space_name'] = ns.space_name
+    if ns.cycles:
+        the_arguments['cycles'] = ns.cycles
+    if ns.duration:
+        the_arguments['duration'] = ns.duration
+    if ns.info:
+        the_arguments['info'] = True
+    if ns.status:
+        the_arguments['status'] = True
+    if ns.stats:
+        the_arguments['stats'] = True
+    if ns.stress:
+        the_arguments['stress'] = True
+    if ns.service:
+        the_arguments['service'] = ns.service
+    if ns.verbose:
+        the_arguments['verbose'] = True
+    return the_arguments
+
+
+def get_host_yaml_servers(_cluster):
+    """
+    Get DIH hosts from host.yaml
+    :_cluster: name of cluster to filter
+    :return: list of hosts
+    """
+    _hosts = []
+    try:
+        with open(host_yaml, 'r', encoding='utf8') as cfile:
+            ydata = yaml.safe_load(cfile)
+    except FileNotFoundError as e:
+        print('[ERROR] File not found: ', e)
+    except Exception as e:
+        print('[ERROR] An error occurred: ', e)
+    else:
+        _hosts = [h for h in ydata['servers'][_cluster].values()]
+    return _hosts
+
+
+def blink(_string):
+    return f"\033[30;5m{_string}\033[0m"
+
+
+def is_restful_ok(the_url):
+    """
+    send REST GET query and get the response [200 = OK]
+    :param the_url: url for GET request
+    :return: True / False
+    """
+    
+    try:
+        the_response = requests.get(
+            the_url,
+            auth=(auth['user'], auth['pass']),
+            verify=False,
+            timeout=3
+            )
+    except requests.exceptions.RequestException as e:
+        return False
+    else:
+        if the_response.status_code == 200:
+            return True
+        else:
+            return False
+
+
+def print_title(_string):
+    line = _string + '-' * (rw - len(_string)) + '\n'
+    colorama.init(autoreset=True)
+    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+
+
+def check_connection(_server, _port, _timeout=5):
+    check_port = 1
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.settimeout(_timeout)
+    try:
+        check_port = a_socket.connect_ex((_server, _port))
+    except socket.error as socerr:
+        print(f"[ERROR] caught exception: {socerr}")
+    a_socket.settimeout(None)
+    return check_port == 0
+
+
 def get_auth(host):
     auth_params = {}
     if THIS_ENV.upper() in ['PRD', 'DR']:
@@ -381,32 +376,21 @@ def is_env_secured():
                 return True
 
 
-def test_microservice_e2e(_the_service_name, _the_host, _the_port, _the_json):
-    the_data = _the_json['data']
-    the_headers = _the_json['headers']
-    _debug_ = False
-    if _debug_:
-        print(f"\n\n{_the_service_name}".upper() + f" :: http://{_the_host}:{_the_port}/v1/u1")
-    the_url = f"http://{_the_host}:{_the_port}/v1/u1"
-    #the_url = "https://odsgs-app-stg.hq.il.bleumi:8443/nt2cr/v1/u1"
-    
-    if _the_json['method'].lower() == "json":
-        response = requests.get(
-            the_url,
-            json=the_data,
-            auth=(auth['user'], auth['pass']),
-            headers=the_headers
-        )
-    elif _the_json['method'].lower() == "params":
-        response = requests.get(
-            the_url,
-            params=the_data,
-            auth=(auth['user'], auth['pass']),
-            headers=the_headers
-        )
-    if _debug_:
-        print(response.json())
-    return response.status_code
+def is_backup_active():
+    if os.environ['ENV_CONFIG'] is not None:
+        with open(app_config, 'r', encoding='utf8') as appconf:
+            for line in appconf:
+                if re.search("app.tieredstorage.pu.backuprequired", line):
+                    backup_active = line.strip().replace('\n','').split('=')[1]
+                    return backup_active.casefold() == 'y'
+
+
+def get_nb_domain():
+    with open(nb_conf_template, 'r', encoding='utf8') as nbconf:
+        for line in nbconf:
+            if re.search("NB_DOMAIN=", line):
+                value = line.strip().replace('\n','').split('=')[1].replace('"','')
+                return value
 
 
 def get_service_space_from_nb(the_service_name):
@@ -414,11 +398,21 @@ def get_service_space_from_nb(the_service_name):
     sh_cmd = "/dbagiga/utils/runall/runall.sh -na -l | grep -v '===' | head -1"
     the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
     nb_host = the_response.strip("\\n'").strip("b'")
+    nb_hosts = get_host_yaml_servers('nb_applicative')
+    if len(nb_hosts) > 0:
+        port = 22
+        service_active = False
+        for nb_host in nb_hosts:
+            if check_connection(nb_host, port):
+                service_active = True
+                break
+        if not service_active:
+            print(f"ERROR: unable to connect to any NB app server on port {port}")
+            logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
     ms_conf = "/etc/nginx/conf.d/microservices.conf"
     sh_cmd = "ssh " + nb_host + " cat " + ms_conf + \
              " | sed -n '/upstream " + the_service_name + "/,/server/p' | grep -Po '(?<=server).*?(?=max)'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    return the_response.strip("b' \\n").split(':')
+    return str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).split(':')
 
 
 def show_grid_info(_step=None):
@@ -427,21 +421,15 @@ def show_grid_info(_step=None):
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- ODS INFORMATION '
+    _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
     print_title(_title)
     logger = logging.getLogger()
-    # display ODS grid information
+    # display DIH grid information
     the_info = osg.info()
     for key, val in the_info.items():
         print(f"{key:<14}: {val}")
         logger.info(f"{key:<14}: {val}")
-    spaces_servers = []
-    hosts = osg.Host.list()
-    for _h in hosts:
-        if _h not in the_info['managers']:
-            spaces_servers.append(_h)
-    if len(spaces_servers) == 0:
-        spaces_servers = the_info['managers']
+    spaces_servers = get_host_yaml_servers('space')
     print(f"{'space servers':<14}: {spaces_servers}")
     print(f"{'partitions':<14}: {osg.Space.partition_count()}")
     print(f"{'space name':<14}: {space_name}")
@@ -474,7 +462,11 @@ def show_pu_status(_step=None):
     logging.shutdown()
 
 
-def run_services_polling(_step=None):
+def run_services_polling(_service_name=None, _step=None):
+    '''
+    function reads lines from microservices/curls file
+    and executes a CURL command for each line
+    '''
     logger = logging.getLogger()
     if interactive_mode:
         os.system('clear')
@@ -483,49 +475,36 @@ def run_services_polling(_step=None):
         print('\n' * 3)
     _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
     print_title(_title)
-    if ms_config_data is None:
+    if not os.path.exists(ms_config):
         print(f"service polling is unavailable. configuration data required ({ms_config})")
         logger.info(f"service polling unavailable. configuration data required ({ms_config})")
         logging.shutdown()
         return
-    for s in load_microservices():
-        time.sleep(random.random())
-        show_service_polling(s)
-    logging.shutdown()
-
-
-def show_service_polling(the_service_name):
-    logger = logging.getLogger()
-    if ms_config_data is None:
-        print(f"service polling is unavailable. configuration data required ({ms_config})")
-        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
-        logging.shutdown()
-        return
-    connection_params = get_service_space_from_nb(the_service_name)        
     colorama.init(autoreset=True)
     svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
     svc_log_status = 'Failed'
-    if connection_params == [''] or connection_params[0] == "127.0.0.1":
-        print_line = f"connection to '{the_service_name}'"
-    else:
-        server = connection_params[0]
-        port = int(connection_params[1])
-        if check_connection(server, port) == 0:
-            try:
-                response = test_microservice_e2e(
-                    the_service_name, 
-                    server, 
-                    port, 
-                    ms_config_data[the_service_name]
-                    )
-            except:
-                response = 444
-        if response == 200:
-            svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
-            svc_log_status = 'Successful'
-        print_line = f"polling service '{the_service_name}':"
-    print(f"{print_line:<70}{svc_status}")
-    logger.info(f"{print_line:<70}{svc_log_status}")
+    _timeout = 3
+    with open(ms_config, 'r') as r:
+        _lines = r.readlines()
+        for _l in _lines:
+            l = _l.strip()
+            _this_service_name = l.split('?')[0].split('/')[3]
+            if _service_name != None and _this_service_name != _service_name:
+                continue
+            cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+            _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
+            if verbose:
+                print(f"curl line = {l}")
+                print(f"service name = {_this_service_name}")
+                print(f"cmd = {cmd}")
+                print(f"response = {_response}")
+            _response = json.loads(_response)
+            if len(_response["res"]) != 0:
+                svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
+                svc_log_status = 'Successful'
+            print_line = f"polling service '{_this_service_name}':"
+            print(f"{print_line:<70}{svc_status}")
+            logger.info(f"{print_line:<70}{svc_log_status}")
     logging.shutdown()
 
 
@@ -551,7 +530,7 @@ def show_iidr_subscriptions(_step=None):
         user = "gsods"
         service_active = False
         for server in servers:
-            if check_connection(server, port) == 0:
+            if check_connection(server, port):
                 service_active = True
                 break
         if not service_active:
@@ -591,7 +570,7 @@ def show_di_pipeline_info():
         port = 6080
         port_ok, service_ok = False, False
         for server in servers:
-            if check_connection(server, port, 3) == 0:
+            if check_connection(server, port, 3):
                 port_ok = True
                 break
         if not port_ok:
@@ -642,7 +621,7 @@ def shob_update():
     the_query = 'query?typeName=D2TBD201_SHOB_ODS&columns=D201_ODS_TIMESTAMP'
     the_url = f'{the_base_url}/{the_query}'
     the_headers = {'Content-Type': 'application/json'}
-    if check_connection(server, port, 5) != 0:
+    if not check_connection(server, port):
         print(f"ERROR: unable to establish a connection to '{server}'")
         logger.error(f"[SHOB] unable to establish a connection to '{server}'")
         logging.shutdown()
@@ -682,7 +661,7 @@ def show_hardware_info(_step=None):
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
     else:
         print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- ODS HARDWARE STATUS '
+    _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
     print_title(_title)
     sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
         -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
@@ -714,6 +693,7 @@ def show_total_objects():
     logger.info(f"total number of objects in RAM: {ram_count}")
     logger.info(f"total number of objects in Tiered Storage: {ts_count}")
     logging.shutdown()
+
 
 def run_stress_test(_step=None):
     if interactive_mode:
@@ -810,9 +790,11 @@ if __name__ == '__main__':
     if os.path.exists(os.environ['ENV_CONFIG']):
         host_yaml = f"{os.environ['ENV_CONFIG']}/host.yaml"
         app_config = f"{os.environ['ENV_CONFIG']}/app.config"
+        nb_conf_template = f"{os.environ['ENV_CONFIG']}/nb/applicative/nb.conf.template"
     elif os.path.exists(ENV_CONFIG_BACKUP):
         host_yaml = f"{ENV_CONFIG_BACKUP}/host.yaml"
         app_config = f"{ENV_CONFIG_BACKUP}/app.config"
+        nb_conf_template = f"{ENV_CONFIG_BACKUP}//nb/applicative/nb.conf.template"
         print("(!) NFS mount is not accessible. using backup location for 'host.yaml' and 'app.config'.")
     else:
         print("ERROR: no 'host.yaml' and 'app.config' source is available. cannnot continue!")
@@ -826,22 +808,16 @@ if __name__ == '__main__':
     recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
     defualt_port = 8090
     k6_test = f"{utils_dir}/sanity/run_k6.sh"
-    ms_config = f"{gs_root}/microservices/config.json"
+    ms_config = f"{gs_root}/microservices/curls"
+    ssl_root = gs_root + "/ssl"
 
     # set display report width
     rw = 100
 
-    # add sanity routines
-    exec_funcs = [
-        'show_grid_info',
-        'show_pu_status',
-        'run_services_polling',
-        'show_cdc_status',
-        'show_hardware_info',
-        'show_health_info',
-        'run_stress_test',
-        'show_recovery_report',
-        ]
+    proxy = {
+        "http": "http://132.66.251.5:8080",
+        "https": "http://132.66.251.5:8080"
+    }
 
     try: 
         # creating logger
@@ -863,12 +839,15 @@ if __name__ == '__main__':
             )
         logger = logging.getLogger()
         logger.info('Sanity started.')
+        
         # disable insecure request warning
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         arguments = argument_parser()
         subprocess.run(['clear'])
+        
         # present title
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        
         # check REST status and set operational manager
         managers = get_host_yaml_servers('manager')
         if len(managers) == 0:
@@ -877,6 +856,7 @@ if __name__ == '__main__':
             logger.error("[ERROR] manager servers not found. aborting!")
             logging.shutdown()
             exit(1)
+        
         # configure authentication
         auth = {}
         if is_env_secured():
@@ -897,6 +877,7 @@ if __name__ == '__main__':
         else:
             # we use 1st host from rest_ok_hosts
             manager = rest_ok_hosts[0]
+
         # flags
         interactive_mode = False
         info = False
@@ -909,22 +890,38 @@ if __name__ == '__main__':
         verbose = False
         cycles_passed = 0
         total_cycles = 1
+        
         ### parse arguments ###
         # check if 'space_name' is valid
         space_name = arguments['space_name']
         osg = OdsServiceGrid()
+        
+        # add sanity routines
+        exec_funcs = [
+            'show_grid_info',
+            'show_pu_status',
+            'run_services_polling',
+            'show_cdc_status',
+            'show_hardware_info',
+            'show_health_info',
+            #'run_stress_test',
+            ]
+        
+        # if HA is active we add recovery monitor report step
+        backup_active = is_backup_active()
+        headers = {'Accept': 'application/json'}
+        the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
+        response_data = requests.get(
+            the_url, auth=(auth['user'], auth['pass']), headers=headers, verify=False).json()
+        if backup_active and "tieredConfiguration" in response_data:
+            exec_funcs.append('show_recovery_report')
+        
         if not osg.Space.exist():
             print(f"space {space_name} does not exist!\n")
             logger.error(f"space {space_name} does not exist!")
             logger.info('Sanity complete.')
             logging.shutdown()
             exit(1)
-        # load microservice config
-        if os.path.exists(ms_config):
-            with open(ms_config, 'r', encoding='utf8') as msc:
-                ms_config_data = json.load(msc)
-        else:
-            ms_config_data = None
         if 'verbose' in arguments:
             verbose = True
         if 'cycles' in arguments:
@@ -945,6 +942,26 @@ if __name__ == '__main__':
         if 'service' in arguments:
             polling = True
             service_name = arguments['service']
+        
+        # setup SSL certificates
+        try:
+            cert_file = glob(f"{ssl_root}/cert/*")[0]
+        except:
+            cert_file = ""
+        try:
+            key_file = glob(f"{ssl_root}/key/*")[0]
+        except:
+            key_file = ""
+        try:
+            ca_file = glob(f"{ssl_root}/ca/*")[0]
+        except:
+            ca_file = ""
+    
+        if verbose:
+            print(f"cert_file = {cert_file}")
+            print(f"key_file = {key_file}")
+            print(f"ca_file = {ca_file}")
+        
         ### execute operations ###
         # if both cycles and duration requested we abort
         if cycles and duration:
@@ -965,7 +982,7 @@ if __name__ == '__main__':
                     if service_name.lower() == 'all':
                         run_services_polling()
                     else:
-                        show_service_polling(service_name)
+                        run_services_polling(service_name)
                     print()
                     time_passed = int(time.time() - started)
                 logger.info('Sanity complete.')
@@ -976,7 +993,7 @@ if __name__ == '__main__':
                     if service_name.lower() == 'all':
                         run_services_polling()
                     else:
-                        show_service_polling(service_name)
+                        run_services_polling(service_name)
                     print()
                     cycles_passed += 1
                 logger.info('Sanity complete.')
