@@ -254,7 +254,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.0')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.1')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -416,50 +416,58 @@ def get_service_space_from_nb(the_service_name):
 
 
 def show_grid_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
-    print_title(_title)
-    logger = logging.getLogger()
-    # display DIH grid information
-    the_info = osg.info()
-    for key, val in the_info.items():
-        print(f"{key:<14}: {val}")
-        logger.info(f"{key:<14}: {val}")
-    spaces_servers = get_host_yaml_servers('space')
-    print(f"{'space servers':<14}: {spaces_servers}")
-    print(f"{'partitions':<14}: {osg.Space.partition_count()}")
-    print(f"{'space name':<14}: {space_name}")
-    print('\n')
-    show_total_objects()
-    logging.shutdown()
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
+        print_title(_title)
+        logger = logging.getLogger()
+        # display DIH grid information
+        the_info = osg.info()
+        for key, val in the_info.items():
+            print(f"{key:<14}: {val}")
+            logger.info(f"{key:<14}: {val}")
+        spaces_servers = get_host_yaml_servers('space')
+        print(f"{'space servers':<14}: {spaces_servers}")
+        print(f"{'partitions':<14}: {osg.Space.partition_count()}")
+        print(f"{'space name':<14}: {space_name}")
+        print('\n')
+        show_total_objects()
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_pu_status(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- OVERALL SERVICES STATUS '
-    print_title(_title)
-    logger = logging.getLogger()
-    the_pu_list = osg.ProcessingUnit.list()
-    colorama.init(autoreset=True)
-    for pu in the_pu_list:
-        time.sleep(0.1)
-        the_status = str(pu['status']).upper()
-        if the_status == "INTACT":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.GREEN}{the_status}':<20}" + u'[\u2713]')
-        if the_status == "SCHEDULED":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.YELLOW}{the_status}':<20}")
-        if the_status == "BROKEN":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.RED}{the_status}':<20}" + u'[\u2717]')
-        logger.info(f"{pu['name']:<70} status: {pu['status']}")
-    logging.shutdown()
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- OVERALL SERVICES STATUS '
+        print_title(_title)
+        logger = logging.getLogger()
+        the_pu_list = osg.ProcessingUnit.list()
+        colorama.init(autoreset=True)
+        for pu in the_pu_list:
+            time.sleep(0.1)
+            the_status = str(pu['status']).upper()
+            if the_status == "INTACT":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.GREEN}{the_status}':<20}" + u'[\u2713]')
+            if the_status == "SCHEDULED":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.YELLOW}{the_status}':<20}")
+            if the_status == "BROKEN":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.RED}{the_status}':<20}" + u'[\u2717]')
+            logger.info(f"{pu['name']:<70} status: {pu['status']}")
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def run_services_polling(_service_name=None, _step=None):
@@ -467,58 +475,66 @@ def run_services_polling(_service_name=None, _step=None):
     function reads lines from microservices/curls file
     and executes a CURL command for each line
     '''
-    logger = logging.getLogger()
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
-    print_title(_title)
-    if not os.path.exists(ms_config):
-        print(f"service polling is unavailable. configuration data required ({ms_config})")
-        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+    try:
+        logger = logging.getLogger()
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
+        print_title(_title)
+        if not os.path.exists(ms_config):
+            print(f"service polling is unavailable. configuration data required ({ms_config})")
+            logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+            logging.shutdown()
+            return
+        colorama.init(autoreset=True)
+        svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
+        svc_log_status = 'Failed'
+        _timeout = 3
+        with open(ms_config, 'r') as r:
+            _lines = r.readlines()
+            for _l in _lines:
+                l = _l.strip()
+                _this_service_name = l.split('?')[0].split('/')[3]
+                if _service_name != None and _this_service_name != _service_name:
+                    continue
+                cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
+                if verbose:
+                    print(f"curl line = {l}")
+                    print(f"service name = {_this_service_name}")
+                    print(f"cmd = {cmd}")
+                    print(f"response = {_response}")
+                _response = json.loads(_response)
+                if len(_response["res"]) != 0:
+                    svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
+                    svc_log_status = 'Successful'
+                print_line = f"polling service '{_this_service_name}':"
+                print(f"{print_line:<70}{svc_status}")
+                logger.info(f"{print_line:<70}{svc_log_status}")
         logging.shutdown()
-        return
-    colorama.init(autoreset=True)
-    svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
-    svc_log_status = 'Failed'
-    _timeout = 3
-    with open(ms_config, 'r') as r:
-        _lines = r.readlines()
-        for _l in _lines:
-            l = _l.strip()
-            _this_service_name = l.split('?')[0].split('/')[3]
-            if _service_name != None and _this_service_name != _service_name:
-                continue
-            cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
-            _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
-            if verbose:
-                print(f"curl line = {l}")
-                print(f"service name = {_this_service_name}")
-                print(f"cmd = {cmd}")
-                print(f"response = {_response}")
-            _response = json.loads(_response)
-            if len(_response["res"]) != 0:
-                svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
-                svc_log_status = 'Successful'
-            print_line = f"polling service '{_this_service_name}':"
-            print(f"{print_line:<70}{svc_status}")
-            logger.info(f"{print_line:<70}{svc_log_status}")
-    logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_cdc_status(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- CDC HEALTH AND FRESHNESS '
-    print_title(_title)
-    show_iidr_subscriptions()
-    show_di_pipeline_info()
-    shob_update()
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- CDC HEALTH AND FRESHNESS '
+        print_title(_title)
+        show_iidr_subscriptions()
+        show_di_pipeline_info()
+        shob_update()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
     
 
 def show_iidr_subscriptions(_step=None):
@@ -656,32 +672,40 @@ def shob_update():
 
 
 def show_hardware_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
-    print_title(_title)
-    sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
-        -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
-    subprocess.call([sh_cmd], shell=True)
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
+        print_title(_title)
+        sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
+            -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_health_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- MODULES CONNECTIVITY STATUS '
-    print_title(_title)
-    sh_cmd = f"{runall_exe} -a -hc -q"
-    subprocess.call([sh_cmd], shell=True)
-    sh_cmd = f"{runall_exe} -n -hc -q"
-    subprocess.call([sh_cmd], shell=True)
-    sh_cmd = f"{runall_exe} -p -hc -q"
-    subprocess.call([sh_cmd], shell=True)
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- MODULES CONNECTIVITY STATUS '
+        print_title(_title)
+        sh_cmd = f"{runall_exe} -a -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+        sh_cmd = f"{runall_exe} -n -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+        sh_cmd = f"{runall_exe} -p -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_total_objects():
@@ -696,60 +720,67 @@ def show_total_objects():
 
 
 def run_stress_test(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- SERVICE LOAD TEST '
-    print_title(_title)
-    spinner = Spinner
-    logger = logging.getLogger()
-    rand_id = random.randrange(10000, 99999)
-    report_file = f"{utils_dir}/sanity/k6-{rand_id}.out.report"
-    subprocess.run(f"{k6_test} {rand_id} &", shell=True)
-    print("(!) run '/dbagiga/utils/sanity/k6/k6control.py' in a separate terminal to monitor progress.")
-    with spinner(f'Stress test in progress... ', delay=0.1):
-        while not os.path.exists(report_file):
-            time.sleep(1)
-    print("Stress test completed successfully!\n")
-    with open(report_file, 'r') as r:
-        lines = r.readlines()
-        colorama.init(autoreset=True)
-        for line in lines:
-            line = line.strip()
-            logger.info(line)
-            if "is status" in line:
-                #if '✗' in line:
-                if '\u2717' in line:
-                    print(f"{Fore.RED}{Style.BRIGHT}{line}")
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- SERVICE LOAD TEST '
+        print_title(_title)
+        spinner = Spinner
+        logger = logging.getLogger()
+        rand_id = random.randrange(10000, 99999)
+        report_file = f"{utils_dir}/sanity/k6-{rand_id}.out.report"
+        subprocess.run(f"{k6_test} {rand_id} &", shell=True)
+        print("(!) run '/dbagiga/utils/sanity/k6/k6control.py' in a separate terminal to monitor progress.")
+        with spinner(f'Stress test in progress... ', delay=0.1):
+            while not os.path.exists(report_file):
+                time.sleep(1)
+        print("Stress test completed successfully!\n")
+        with open(report_file, 'r') as r:
+            lines = r.readlines()
+            colorama.init(autoreset=True)
+            for line in lines:
+                line = line.strip()
+                logger.info(line)
+                if "is status" in line:
+                    #if '✗' in line:
+                    if '\u2717' in line:
+                        print(f"{Fore.RED}{Style.BRIGHT}{line}")
+                    else:
+                        print(f"{Fore.GREEN}{Style.BRIGHT}{line}")
+                elif "service:" in line:
+                    print(f"{Back.BLUE}{line}")
+                elif "checks" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+                elif "http_reqs" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+                elif "vus_max" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
                 else:
-                    print(f"{Fore.GREEN}{Style.BRIGHT}{line}")
-            elif "service:" in line:
-                print(f"{Back.BLUE}{line}")
-            elif "checks" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            elif "http_reqs" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            elif "vus_max" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            else:
-                print(line)
-    os.remove(report_file)
-    logging.shutdown()
+                    print(line)
+        os.remove(report_file)
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_recovery_report(script, _step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- PARTITIONS INTEGRITY REPORT '
-    print_title(_title)
-    sh_cmd = f"{script} {space_name} -u -i 0.1"
-    subprocess.call([sh_cmd], shell=True)
-
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- PARTITIONS INTEGRITY REPORT '
+        print_title(_title)
+        sh_cmd = f"{script} {space_name} -u -i 0.1"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def run_sanity_routine():
@@ -1071,3 +1102,4 @@ if __name__ == '__main__':
             exit(0)
     except (KeyboardInterrupt, SystemExit):
         print("\n")
+        exit(1)
