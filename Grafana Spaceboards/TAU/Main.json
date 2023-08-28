@@ -990,7 +990,7 @@
           "measurement": "jvm_memory_heap_used-bytes",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "-- SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY  pu_name\n-- SELECT sum(\"value\") FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != '' AND $timeFilter GROUP BY time($__interval), \"pu_name\" fill(null)\nSELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY time($__interval), \"pu_name\"",
+          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY time($__interval), \"pu_name\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -2194,5 +2194,5 @@
   "timezone": "browser",
   "title": "Main dashboard",
   "uid": "tJWLBOR7z",
-  "version": 3
+  "version": 4
 }
