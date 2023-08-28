@@ -660,6 +660,20 @@
       "fieldConfig": {
         "defaults": {
           "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
           "unit": "ms"
         },
         "overrides": []
@@ -724,6 +738,8 @@
           "measurement": "pu_ServiceRoute_service-latency",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"pu_ServiceRoute_service-latency\" WHERE $timeFilter GROUP BY time($__interval), \"pu_name\" fill(null)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -747,7 +763,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Micro Services",
+      "title": "Service Latency",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -763,6 +779,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:547",
           "format": "ms",
           "label": null,
           "logBase": 1,
@@ -771,6 +788,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:548",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -889,13 +907,25 @@
     },
     {
       "aliasColors": {},
-      "bars": false,
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": "xap",
       "fieldConfig": {
         "defaults": {
           "custom": {},
+          "mappings": [],
+          "min": 0,
+          "noValue": "No services",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "decbytes"
         },
         "overrides": []
@@ -919,9 +949,9 @@
         "total": false,
         "values": false
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
-      "nullPointMode": "connected",
+      "nullPointMode": "null",
       "options": {
         "alertThreshold": true
       },
@@ -960,7 +990,7 @@
           "measurement": "jvm_memory_heap_used-bytes",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT sum(\"value\") FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != '' AND $timeFilter GROUP BY time($__interval), \"pu_name\" fill(null)",
+          "query": "-- SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY  pu_name\n-- SELECT sum(\"value\") FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != '' AND $timeFilter GROUP BY time($__interval), \"pu_name\" fill(null)\nSELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY time($__interval), \"pu_name\"",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -991,7 +1021,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Memory Used/Service",
+      "title": "Service Memory Usage",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1090,7 +1120,7 @@
       "pluginVersion": "7.3.7",
       "targets": [
         {
-          "alias": "$tag_space_name : $tag_data_type_name",
+          "alias": "$tag_space_name : $tag_data_type_short_name",
           "groupBy": [
             {
               "params": [
@@ -1114,7 +1144,7 @@
           "measurement": "space_data_data-types",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT SUM(val) FROM (select last(value) as val FROM \"space_data_tiered-storage-disk-entries\" WHERE  data_type_name != 'java.lang.Object' AND $timeFilter AND space_active = 'true' GROUP BY space_name,data_type_name, pu_instance_id) GROUP BY data_type_name, space_name",
+          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"space_data_data-types\"  WHERE (\"space_active\" = 'true' AND \"data_type_name\" != 'java.lang.Object' AND $timeFilter )  GROUP BY data_type_name, pu_instance_id) where val != 0 GROUP BY data_type_short_name, space_name",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -1196,7 +1226,7 @@
         ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 12,
         "x": 0,
         "y": 21
@@ -1309,8 +1339,8 @@
         ]
       },
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 9,
+        "w": 11,
         "x": 12,
         "y": 21
       },
@@ -1425,7 +1455,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 28
+        "y": 30
       },
       "id": 58,
       "links": [],
@@ -1552,7 +1582,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 28
+        "y": 30
       },
       "id": 51,
       "links": [],
@@ -1679,7 +1709,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 34
+        "y": 36
       },
       "id": 59,
       "links": [],
@@ -1800,7 +1830,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 34
+        "y": 36
       },
       "id": 52,
       "links": [],
@@ -1979,7 +2009,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 43
       },
       "id": 57,
       "options": {
@@ -2164,5 +2194,5 @@
   "timezone": "browser",
   "title": "Main dashboard",
   "uid": "tJWLBOR7z",
-  "version": 2
+  "version": 3
 }
