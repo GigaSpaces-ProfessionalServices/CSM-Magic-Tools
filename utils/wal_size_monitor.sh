@@ -33,11 +33,12 @@ function truncate_log() {
 
 ### MAIN ###
 [[ ! -d ${LOGS_DIR} ]] && mkdir ${LOGS_DIR}
+touch $LOG_F
 truncate_log
 echo "${TS} starting $(basename $0) ..." >> $LOG_F
-for host in $(/dbagiga/runall.sh -s -l | grep -v ===); do
+for host in $(runall -s -l | grep -v ===); do
     used_prct=$(ssh $host "df -h ${DATA_DIR}" | awk '{print $5}'| tail -1)
-    echo "${TS} ${DATA_DIR} used space: $used_prct" >> $LOG_F
+    echo "${TS} $host ${DATA_DIR} used space: $used_prct" >> $LOG_F
     ssh $host "du -sk ${WALS_DIR}/*-wal" | while read l; do
         this_wal_size=$(echo $l | awk '{print $1}')
         if [[ ${this_wal_size} -gt $SIZE_TH_KB ]]; then
