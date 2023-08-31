@@ -1,0 +1,57 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:sec="http://www.springframework.org/schema/security"
+           xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+        <sec:authentication-manager>
+                <sec:authentication-provider ref="ldapAuthenticationProvider"/>
+        </sec:authentication-manager>
+
+        <bean id="ldapAuthenticationProvider" class="org.springframework.security.ldap.authentication.LdapAuthenticationProvider">
+                <constructor-arg ref="authenticator" />
+                <constructor-arg ref="populator" />
+        </bean>
+
+        <bean id="authenticator" class="org.springframework.security.ldap.authentication.BindAuthenticator">
+                <constructor-arg ref="contextSource" />
+                <property name="userSearch" ref="ldapUserSearch"/>
+        </bean>
+
+        <bean id="ldapUserSearch" class="org.springframework.security.ldap.search.FilterBasedLdapUserSearch">
+            <constructor-arg value=""/> <!-- optional sub-tree here -->
+            <constructor-arg value="(&amp;(sAMAccountName={0})(objectclass=user))"/>
+            <constructor-arg ref="contextSource"/>
+        </bean>
+
+        <bean id="myPsdkPasswordRequestBean" class="com.gs.ldap.MyPSDKPasswordRequestBean">
+            <property name="appId" value="APPODSUSERSBLLPRD" />
+            <property name="safe" value="AIMODSUSERSBLLPRD" />
+            <property name="folder" value="" />
+            <property name="object" value="ACCHQxxxxxxx" />
+            <property name="reason" value="ODSX-LDAP-bind" />
+        </bean>
+
+
+        <bean id="contextSource"
+                class="org.springframework.security.ldap.DefaultSpringSecurityContextSource">
+                <!-- LDAP URI -->
+                <constructor-arg value="ldap://NTAS107778A3K.hq.il.leumi:389/dc=hq,dc=il,dc=leumi"/>
+                <!-- BindDN -->
+                <property name="userDn" value="CN=#{@myPsdkPasswordRequestBean.userName},OU=Application Account,OU=Special Users,DC=hq,DC=il,DC=leumi" />
+
+                <property name="password" value="#{@myPsdkPasswordRequestBean.password}" />
+        </bean>
+
+        <bean id="populator"
+                class="org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopulator">
+                <constructor-arg ref="contextSource" />
+                <constructor-arg value="ou=Gigaspaces,ou=Groups" /> <!-- <<<= name of container with GS related groups to search -->
+                <property name="groupRoleAttribute" value="extensionName" /> <!-- <<<= We put role names here at AD -->
+                <!-- case normalization to upper case. Default is true -->
+                <property name="convertToUpperCase" value="false" />
+                <!-- role prefix to append to the group name. Default is "ROLE_". -->
+                <property name="rolePrefix" value="" />
+        </bean>
+</beans>
+

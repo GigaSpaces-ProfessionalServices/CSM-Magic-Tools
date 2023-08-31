@@ -1,0 +1,20 @@
+space:
+  name: SPACENAME
+  secured: false
+  securityConfig:
+    username: xxxxx
+    password: xxxxx
+rest:
+  port: 8020
+  locators: xxxxxxxxxxAGM:4174,xxxxxxxxxxAGO:4174,xxxxxxxxxxAGQ:4174
+  group: xap-16.2.0
+  secured: false
+mssql:
+  server: xxxxxxxxxx\\app1
+  integratedSecurity: true
+  authenticationScheme: JavaKerberos
+  databaseName: DB_Central
+feeder:
+  writeBatchSize: 10000
+  sleepAfterWriteInMillis: 500
+  progressPrintIntervalInSec: 5
