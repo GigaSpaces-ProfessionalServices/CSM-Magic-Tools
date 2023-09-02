@@ -89,6 +89,7 @@ public class GSManagerConfiguration {
         out.println("exit");
         p.waitFor();
     }
+    @Bean
     public Admin getGSAdmin(){
         logger.info("Generating bean -> getGSAdmin:Admin");
         AdminFactory adminFactory = new AdminFactory();

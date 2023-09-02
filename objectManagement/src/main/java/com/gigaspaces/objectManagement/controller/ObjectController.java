@@ -4,11 +4,13 @@ import com.gigaspaces.document.SpaceDocument;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.objectManagement.model.ReportData;
 import com.gigaspaces.objectManagement.service.DdlParser;
+import com.gigaspaces.objectManagement.service.ObfuscatorEventContainerService;
 import com.gigaspaces.objectManagement.service.ObjectService;
 import com.gigaspaces.objectManagement.service.SearchType;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.FileNotFoundException;
+import java.rmi.RemoteException;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -18,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,6 +40,8 @@ public class ObjectController {
     private GigaSpace gigaSpace;
     @Autowired
     private ObjectService objectService;
+    @Autowired
+    private ObfuscatorEventContainerService obfuscatorEventContainerService;
     @Autowired
     private DdlParser parser;
     @Value("${ddl.properties.file.path}")
@@ -209,5 +214,35 @@ public class ObjectController {
         logger.info("start -- index  batch");
         JsonArray jsonArray = objectService.addIndexInBatch();
         return jsonArray;
+    }
+
+    @PostMapping("/polling/registerinbatch")
+    public String registerPollingInbatch() {
+        logger.info("start -- register polling  batch");
+        try {
+            obfuscatorEventContainerService.registerInBatch();
+        } catch (Exception e) {
+            logger.error(e.getMessage(),e);
+            return "error";
+        }
+        return "success";
+    }
+
+    @DeleteMapping("/polling/unregisterinbatch")
+    public String unregisterPollingInbatch() {
+        logger.info("start -- unregister polling batch");
+        try {
+            obfuscatorEventContainerService.dropEventListenerBatch();
+        } catch (Exception e) {
+            logger.error(e.getMessage(),e);
+            return "error";
+        }
+        return "success";
+    }
+
+    @GetMapping("/polling/list")
+    public JsonArray getPollingList() throws RemoteException {
+        logger.info("start -- getPollingList");
+        return obfuscatorEventContainerService.eventListenerList();
     }
 }

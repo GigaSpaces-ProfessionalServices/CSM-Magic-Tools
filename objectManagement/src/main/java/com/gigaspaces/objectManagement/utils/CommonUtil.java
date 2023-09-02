@@ -5,6 +5,7 @@ import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptorBuilder;
 import com.gigaspaces.metadata.index.SpaceIndexType;
 import com.gigaspaces.objectManagement.model.IndexDetail;
+import com.gigaspaces.objectManagement.model.ObfuscatorEventContainerDetail;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -150,10 +151,10 @@ public class CommonUtil {
                             } else {
                                 logger.info("Tier configuration for '" + criteriaClass + "' is not found");
                             }
-                        } else if(lineContents.length == 2 && lineContents[0].equals("A")) {
+                        } else if (lineContents.length == 2 && lineContents[0].equals("A")) {
                             String criteriaClass = lineContents[1];
                             return lineContents;
-                        }  else if(lineContents.length == 2 && lineContents[0].equals("R")) {
+                        } else if (lineContents.length == 2 && lineContents[0].equals("R")) {
                             String criteriaClass = lineContents[1];
                             return lineContents;
                         } else {
@@ -179,7 +180,7 @@ public class CommonUtil {
         logger.info("strTierCriteriaFile -> " + strTierCriteriaFile);
         try {
             String[] criteriaArray = getTierCriteriaConfig(typeName, strTierCriteriaFile);
-            if (criteriaArray !=null) {
+            if (criteriaArray != null) {
                 if (criteriaArray[0].equalsIgnoreCase("C")) {
                     logger.info("Category :" + criteriaArray[0] + " DataType :" + criteriaArray[1] + " Property :" + criteriaArray[2]);
                     builder.setTieredStorageTableConfig(new TieredStorageTableConfig()
@@ -429,7 +430,7 @@ public class CommonUtil {
                             indexDetail.setIndexType(indexType);
                             indexDetail.setColumnName(columnName);
                             indexDetail.setTableName(tableName);
-                            logger.info("indexDetail : "+indexDetail);
+                            logger.info("indexDetail : " + indexDetail);
                             indexDetails.add(indexDetail);
                         } else {
                             logger.info("Batch Index for '" + line + "' is not defined");
@@ -446,6 +447,62 @@ public class CommonUtil {
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("Error in getIndexDetails -> " + e, e);
+        }
+        return new ArrayList<>();
+    }
+
+    public static List<ObfuscatorEventContainerDetail> getObfuscatorEventContainerDetail(String obfuscatorEventContainerDetailFileStr) {
+        logger.info("Entering into -> getObfuscatorEventContainerDetail");
+        logger.info("obfuscatorEventContainerDetailFile -> " + obfuscatorEventContainerDetailFileStr);
+        try {
+            if (obfuscatorEventContainerDetailFileStr != null && !obfuscatorEventContainerDetailFileStr.trim().isEmpty()) {
+                File obfuscatorEventContainerDetailFile = new File(obfuscatorEventContainerDetailFileStr);
+                if (obfuscatorEventContainerDetailFile.exists()) {
+                    List<ObfuscatorEventContainerDetail> obfuscatorEventContainerDetails = new ArrayList<>();
+                    logger.info("Obfuscator Event Container Detail File exists");
+                    BufferedReader bufferedReader = new BufferedReader(new FileReader(obfuscatorEventContainerDetailFile));
+                    String line;
+                    while ((line = bufferedReader.readLine()) != null) {
+                        logger.info("obfuscatorEventContainerDetail file line -> " + line);
+                        if (line.startsWith("#")) {
+                            logger.info("skipping commented line : " + line);
+                            continue;
+                        }
+                        String[] lineContents = line.split("\t");
+                        if (lineContents.length == 6) {
+
+                            String typeName = lineContents[0];
+                            String srcPropName = lineContents[1];
+                            String destPropName = lineContents[2];
+                            String obfuscatePropName = lineContents[3];
+                            String obfuscationType = lineContents[4];
+                            String spaceId = lineContents[5];
+
+                            ObfuscatorEventContainerDetail obfuscatorEventContainerDetail = new ObfuscatorEventContainerDetail();
+                            obfuscatorEventContainerDetail.setObfuscationType(obfuscationType);
+                            obfuscatorEventContainerDetail.setObfuscatePropName(obfuscatePropName);
+                            obfuscatorEventContainerDetail.setSrcPropName(srcPropName);
+                            obfuscatorEventContainerDetail.setDestPropName(destPropName);
+                            obfuscatorEventContainerDetail.setSpaceId(spaceId);
+                            obfuscatorEventContainerDetail.setTypeName(typeName);
+
+                            logger.info("indexDetail : " + obfuscatorEventContainerDetail);
+                            obfuscatorEventContainerDetails.add(obfuscatorEventContainerDetail);
+                        } else {
+                            logger.info("obfuscatorEventContainerDetail for '" + line + "' is not defined");
+                        }
+                    }
+                    return obfuscatorEventContainerDetails;
+                } else {
+                    logger.info("Obfuscator Event Container Detail file '" + obfuscatorEventContainerDetailFileStr + "' does not exists");
+                }
+            } else {
+                logger.info("Obfuscator Event Container Detail file path is not configured");
+            }
+            logger.info("Exiting from -> getObfuscatorEventContainerDetail");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("Error in getObfuscatorEventContainerDetail -> " + e, e);
         }
         return new ArrayList<>();
     }
