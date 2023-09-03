@@ -490,8 +490,8 @@ def run_services_polling(_service_name=None, _step=None):
             logging.shutdown()
             return
         colorama.init(autoreset=True)
-        svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
-        svc_log_status = 'Failed'
+        svc_status_print = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
+        svc_status = 'Failed'
         _timeout = 3
         with open(ms_config, 'r') as r:
             _lines = r.readlines()
@@ -507,13 +507,17 @@ def run_services_polling(_service_name=None, _step=None):
                     print(f"service name = {_this_service_name}")
                     print(f"cmd = {cmd}")
                     print(f"response = {_response}")
-                _response = json.loads(_response)
-                if len(_response["res"]) != 0:
-                    svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
-                    svc_log_status = 'Successful'
                 print_line = f"polling service '{_this_service_name}':"
-                print(f"{print_line:<70}{svc_status}")
-                logger.info(f"{print_line:<70}{svc_log_status}")
+                if f"x{_response}x" == 'xx':
+                    svc_status = 'undeployed'
+                    svc_status_print = f"{svc_status:<20}"
+                else:
+                    _response = json.loads(_response)
+                    if len(_response["res"]) != 0:
+                        svc_status = 'Successful'
+                        svc_status_print = f"{Fore.GREEN + svc_status:<20}" + u'[\u2713]'
+                print(f"{print_line:<70} {svc_status}")
+                logger.info(f"{print_line:<70} {svc_status}")
         logging.shutdown()
     except (KeyboardInterrupt, SystemExit):
         print("\n")
@@ -889,11 +893,11 @@ if __name__ == '__main__':
             exit(1)
         
         # configure authentication
-        auth = {}
-        if is_env_secured():
-            auth = get_auth(managers[0])
-        else:
-            auth['user'], auth['pass'] = '', ''
+        auth = {'user': '', 'pass': ''}
+        # if is_env_secured():
+        #     auth = get_auth(managers[0])
+        # else:
+        #     auth['user'], auth['pass'] = '', ''
         rest_ok_hosts = []
         for mgr in managers:
             url = f'http://{mgr}:{defualt_port}/v2/spaces'
