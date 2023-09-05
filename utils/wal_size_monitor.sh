@@ -3,10 +3,11 @@
 # report abnormal wal file size (= larger than SIZE_TH_KB)
 
 SPACE_NAME="dih-tau-space"
-SIZE_TH_KB=4200
+SIZE_TH_KB=4096
 
-G_LIMIT=$((1024 * 1024))
-M_LIMIT=1024
+MB=1024
+GB=$(($MB * 1024))
+
 LOGS_DIR="/dbagigalogs/sqlite"
 DATA_DIR="/dbagigadata"
 LOG_F="${LOGS_DIR}/wal_size_monitor.log"
@@ -43,10 +44,10 @@ for host in $(runall -s -l | grep -v ===); do
         this_wal_size=$(echo $l | awk '{print $1}')
         if [[ ${this_wal_size} -gt $SIZE_TH_KB ]]; then
             this_wal_file_name=$(basename $(echo $l | awk '{print $2}'))
-            if [[ ${this_wal_size} -ge $G_LIMIT ]]; then
-                this_wal_size_human="$((${this_wal_size} / 1024 / 1024))GB"
-            elif [[ ${this_wal_size} -ge $M_LIMIT ]]; then
-                this_wal_size_human="$((${this_wal_size} / 1024))MB"
+            if [[ ${this_wal_size} -ge $GB ]]; then
+                this_wal_size_human="$(bc -l <<< "scale=2; ${this_wal_size}/$GB")GB"
+            elif [[ ${this_wal_size} -ge $MB ]]; then
+                this_wal_size_human="$(bc -l <<< "scale=2; ${this_wal_size}/$MB")MB"
             else
                 this_wal_size_human="${this_wal_size}KB"
             fi
