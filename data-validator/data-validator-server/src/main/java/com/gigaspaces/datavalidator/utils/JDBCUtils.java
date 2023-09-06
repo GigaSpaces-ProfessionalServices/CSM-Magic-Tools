@@ -62,6 +62,11 @@ public class JDBCUtils {
 			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
 			break;
 
+        case "oracle":
+			Class.forName("oracle.jdbc.OracleDriver");
+			connectionString = "jdbc:oracle:thin:@"+dataSourceHostIp+":"+dataSourcePort+":" + schemaName;
+			break;
+
 		case "ms-sql":
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
 			connectionString = "jdbc:sqlserver://" + dataSourceHostIp + ":" + dataSourcePort + ";DatabaseName="+ schemaName + ";";
@@ -106,7 +111,12 @@ public class JDBCUtils {
 			Class.forName("com.ibm.db2.jcc.DB2Driver").newInstance();
 			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
 			break;
-		
+
+		case "oracle":
+			Class.forName("oracle.jdbc.OracleDriver");
+			connectionString = "jdbc:oracle:thin:@"+dataSourceHostIp+":"+dataSourcePort+":" + schemaName;
+			break;
+
 		case "ms-sql":
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
 			connectionString = "jdbc:sqlserver://" + dataSourceHostIp + ":" + dataSourcePort + ";DatabaseName="	+ schemaName+";";
@@ -150,6 +160,9 @@ public class JDBCUtils {
                 case "db2":
                     query.append(" (SELECT ").append(fieldName).append(" FROM ").append(tableName).append(" FETCH FIRST ").append(limitRecords).append(" ROWS ONLY").append(" ) A");
                     break;
+				case "oracle":
+					query.append(" (SELECT ").append(fieldName).append(" FROM ").append(tableName).append(" WHERE ROWNUM <= ").append(limitRecords).append(" ) A");
+					break;
             }
         }else{
             query.append(tableName).append(" A");

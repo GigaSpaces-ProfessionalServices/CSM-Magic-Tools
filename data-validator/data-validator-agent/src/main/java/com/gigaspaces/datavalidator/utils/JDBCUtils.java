@@ -58,6 +58,11 @@ public class JDBCUtils {
 			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
 			break;
 
+		case "oracle":
+			Class.forName("oracle.jdbc.OracleDriver");
+			connectionString = "jdbc:oracle:thin:@"+dataSourceHostIp+":"+dataSourcePort+":" + schemaName;
+			break;
+
 		case "ms-sql":
 			SQLServerDataSource ds = new SQLServerDataSource();
 			ds.setServerName(dataSourceHostIp);
@@ -124,6 +129,9 @@ public class JDBCUtils {
                 case "db2":
                     query.append(" (SELECT ").append(fieldName).append(" FROM ").append(tableName).append(" FETCH FIRST ").append(limitRecords).append(" ROWS ONLY").append(" ) A");
                     break;
+				case "oracle":
+					query.append(" (SELECT ").append(fieldName).append(" FROM ").append(tableName).append(" WHERE ROWNUM <= ").append(limitRecords).append(" ) A");
+					break;
             }
         }else{
             query.append(tableName).append(" A");
