@@ -497,6 +497,7 @@ def run_services_polling(_service_name=None, _step=None):
             _lines = r.readlines()
             for _l in _lines:
                 l = _l.strip()
+                if l == '': continue
                 _this_service_name = l.split('?')[0].split('/')[3]
                 if _service_name != None and _this_service_name != _service_name:
                     continue
@@ -516,7 +517,7 @@ def run_services_polling(_service_name=None, _step=None):
                     if len(_response["res"]) != 0:
                         svc_status = 'Successful'
                         svc_status_print = f"{Fore.GREEN + svc_status:<20}" + u'[\u2713]'
-                print(f"{print_line:<70} {svc_status}")
+                print(f"{print_line:<70} {svc_status_print}")
                 logger.info(f"{print_line:<70} {svc_status}")
         logging.shutdown()
     except (KeyboardInterrupt, SystemExit):
