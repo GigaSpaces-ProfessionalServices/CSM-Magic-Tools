@@ -70,11 +70,11 @@
             <artifactId>jcc</artifactId>
             <version>11.1.4.4</version>
         </dependency> -->
-        <dependency>
+      <!--  <dependency>
             <groupId>com.ibm.db2.jcc</groupId>
                 <artifactId>db2jcc4</artifactId>
                 <version>4.26.14</version>
-        </dependency>
+        </dependency>-->
         <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/sqljdbc4 -->
         <!--<dependency>
             <groupId>com.microsoft.sqlserver</groupId>

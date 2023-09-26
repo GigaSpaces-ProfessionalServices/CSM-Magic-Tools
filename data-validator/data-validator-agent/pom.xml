@@ -76,7 +76,7 @@
                 <version>4.31.10 </version>
         </dependency> -->
         <!-- https://mvnrepository.com/artifact/com.ibm.db2.jcc/db2jcc4 -->
-        <dependency>
+        <!--<dependency>
             <groupId>com.ibm.db2.jcc</groupId>
             <artifactId>db2jcc4</artifactId>
             <version>4.26.14</version>
@@ -86,7 +86,7 @@
             <artifactId>db2jcc4license</artifactId>
             <version>4.16.53</version>
         </dependency>
-
+-->
         <!--<dependency>
             <groupId>db2jcc</groupId>
             <artifactId>db2jcc</artifactId>
