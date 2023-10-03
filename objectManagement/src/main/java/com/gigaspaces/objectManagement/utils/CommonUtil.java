@@ -77,15 +77,15 @@ public class CommonUtil {
 
     public static void addSpaceId(String spaceId, String spaceIdType, String broadcast, SpaceTypeDescriptorBuilder builder) throws ClassNotFoundException {
         // the spaceId is an id that we added. It can't be broadcast. It must be auto generated
-        if (spaceId != null && spaceId.equals("id")) {
+        if (spaceId != null && spaceId.equals("internal_id")) {
             builder.idProperty(spaceId, true);
             builder.addFixedProperty(spaceId, Class.forName(spaceIdType));
             // the spaceId is a single field
-        } else if (spaceId != null && !spaceId.equals("id") && spaceId.indexOf(",") == -1) {
+        } else if (spaceId != null && !spaceId.equals("internal_id") && spaceId.indexOf(",") == -1) {
             builder.idProperty(spaceId);
 
             // the spaceId is compound
-        } else if (spaceId != null && !spaceId.equals("id") && spaceId.indexOf(",") != -1) {
+        } else if (spaceId != null && !spaceId.equals("internal_id") && spaceId.indexOf(",") != -1) {
             List<String> propertiesNames = new ArrayList<>(Arrays.asList(spaceId.split(",")));
             builder.idProperty(propertiesNames);
         }
