@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+
+cd /dbagiga/gs-odsx
+set timeout -1
+set force_conservative 1
+spawn ./odsx.py dataengine mssql-feeder start
+expect "For exit"
+sleep 1
+send -- "\n"
+
+expect eof

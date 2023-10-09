@@ -1,0 +1,13 @@
+#!/bin/bash
+
+space_servers=$(/dbagiga/utils/host-yaml.sh -s | wc -w)
+gsc_per_space_server=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
+expected_containers=$(( $space_servers * $gsc_per_space_server ))
+containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
+echo space_servers=$space_servers gsc_per_space_server=$gsc_per_space_server expected_containers=$expected_containers containers=$containers
+while (( $containers < $expected_containers )); do
+  containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
+	echo containers=$containers
+done
+echo containers=$containers
+auto_inmemorydeploy

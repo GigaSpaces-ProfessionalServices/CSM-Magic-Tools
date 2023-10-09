@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py servers space install
+expect "Do you want to continue installation for above configuration"
+sleep 1
+send -- "y"
+sleep 1
+send -- "\n"
+
+expect eof
