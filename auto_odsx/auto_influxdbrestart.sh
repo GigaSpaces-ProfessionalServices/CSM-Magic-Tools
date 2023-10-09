@@ -1,4 +1,0 @@
-auto_grafanastop
-auto_influxdbstop
-auto_influxdbstart
-auto_grafanastart
