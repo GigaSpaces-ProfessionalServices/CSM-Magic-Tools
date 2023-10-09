@@ -1,0 +1,69 @@
+#!/bin/bash
+
+source ~/.bashrc
+_LOG=/var/log/auto_odsx.log
+_FULL_LOG=/dbagigalogs/auto_odsx_full.log
+_WAIT=120
+
+echo -e "$(date) ===Starting DIH space reinstall===" | tee -a $_LOG $_FULL_LOG
+
+cd /dbagiga/utils/auto_odsx
+echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spacestop 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Removing ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spaceremove 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Installing ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spaceinstall 2>&1 | tee -a $_FULL_LOG
+
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  echo -e "$(date) Stopping ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerstop 2>&1 | tee -a $_FULL_LOG
+  echo -e "$(date) Removing ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerremove 2>&1 | tee -a $_FULL_LOG
+  echo -e "$(date) Installing ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerinstall 2>&1 | tee -a $_FULL_LOG
+  echo -e "$(date) Starting ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerstart 2>&1 | tee -a $_FULL_LOG
+fi
+
+echo -e "$(date) Starting ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spacestart 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $_LOG $_FULL_LOG
+auto_tsdeploy_check 2>&1 | tee -a $_FULL_LOG
+#auto_inmemorydeploy_check 2>&1 | tee -a $_FULL_LOG
+
+# space1
+echo "##### Going to register types #####"
+cd /dbagiga/yuval/TAU/deployment/DDL_PARSER ; ./deploy.sh
+
+# All managers
+echo "##### Going to add indexes #####"
+cd /dbagiga/yuval/TAU/deployment/INDEXING ; ./index.sh
+
+#echo -e "$(date) Disable object-management.service" | tee -a $_LOG $_FULL_LOG
+#auto_objectdisable
+#echo -e "$(date) Enable object-management.service" | tee -a $_LOG $_FULL_LOG
+#auto_objectenable
+#echo -e "$(date) Wait 10s before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
+#sleep 10
+#auto_objectregistration
+#echo -e "$(date) Starting Object Index Registration." | tee -a $_LOG $_FULL_LOG
+#auto_objectindexregistration
+
+echo -e "$(date) Resetting mssqlFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_mssqlfeederreset
+echo -e "$(date) Starting to deploy MSSQL feeders." | tee -a $_LOG $_FULL_LOG
+auto_mssqlfeederdeploy
+echo -e "$(date) Starting MSSQL feeders." | tee -a $_LOG $_FULL_LOG
+auto_mssqlfeederstart
+
+echo -e "$(date) Resetting oracleFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederreset
+echo -e "$(date) Starting to deploy ORACLE feeders." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederdeploy
+echo -e "$(date) Starting ORACLE feeders." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederstart
+
+[[ "${ENV_NAME}" == "TAUP" ]] && { sleep $_WAIT ; auto_oraclefeederstop ; }
+
+echo -e "$(date) ===Finished DIH space reinstall===" | tee -a $_LOG $_FULL_LOG
