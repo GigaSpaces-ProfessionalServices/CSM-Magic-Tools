@@ -1,57 +1,46 @@
 #!/bin/bash
 
-function usage() {
-    printf "\n%-10s\n%7s%-50s\n" "Usage:" " " "$(basename $0) [arguments] [start|stop|...]"
-    printf "\n%-10s\n" "Description:"
-    printf "%7s%-50s\n" " " "Execute odsx dataengine command(s)"
-    case $1 in
-        err0)
-            printf "\nERROR: At least one argument is missing.\n"
-            printf "See help [-h, --help] for options.\n"
-            exit 1
-            ;;
-        *)
-            printf "\n%-10s\n" "required arguments:"
-            printf "%2s%-20s%-50s\n" "" "-f <FEEDER TYPE>" "the feeder type (db2, mssql ...)"
-            printf "%2s%-20s%-50s\n" "" "-t <TABLE NAME>" "the table name"
-            printf "%2s%-5s%-15s%-50s\n" "" "-h, " "--help" "Display this help screen"
-            printf "\n"
-    esac
+# ./odsx.py dataengine oracle-feeder start oraclefeeder_tl_kurs
+# auto_dataengine.sh -f oracle -t tl_kurs
+# |       32 | oraclefeeder_tl_kurs              | gsprod-space2 | ['oracle_tl_kurs']              | NA             | intact   |
+
+usage() {
+  cat << EOF
+
+  USAGE: $(basename $0) [<option>] [<action>]
+
+  OPTIONS:
+
+  -f <feeder>      Feeder type
+  -t <table>       Table name
+  
+  ACTIONS:
+
+  start            Start feeder
+  stop             Stop feeder
+
+  EXAMPLE:
+  $(basename $0) -f oracle -t tl_kurs start
+  $(basename $0) -f mssql -t Portal_Calendary_Changes_View start
+
+EOF
+exit
 }
 
-### main ###
-ZONE=bll
-TYPE_SUFFIX="feeder"
+[[ $# -eq 0 ]] && usage 
 
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -f)
-            the_feeder=$(echo $2 | tr '[:upper:]' '[:lower:]')
-            shift
-            ;;
-        'start'|'stop')
-            opt=$1 ;;
-        -t)
-            table_name=$(echo $2 | tr '[:upper:]' '[:lower:]')
-            shift
-            ;;
-        -h|--help) usage && exit ;;
-    esac
-    shift
+while [[ $# -gt 0 ]] ; do
+  case $1 in
+    "-f") shift ; feeder="${1,,}" ;;
+    "-t") shift ; table="${1,,}" ;;
+    "start") action=start ;;
+    "stop") action=stop ;;
+    *) echo -e "\nWrong option.\n" ; usage ;;
+  esac
+  shift
 done
 
-# if any argument is missing we exit with code 1
-[[ -z $the_feeder ]] || [[ -z $table_name ]] || [[ -z $opt ]] && usage err0
-
-# build table name for dataengine
-if [[ $the_feeder == 'mssql' ]]; then
-    table_name="${the_feeder}${TYPE_SUFFIX}_${ZONE}_${table_name}"
-else
-    table_name="${the_feeder}${TYPE_SUFFIX}_${table_name}"
-fi
-# build feeder name for dataengine
-the_feeder="${the_feeder}-${TYPE_SUFFIX}"
-
-# run command
+# cd /dbagiga/gs-odsx ; ./odsx.py dataengine oracle-feeder start oraclefeeder_ta_sem
+echo -e "./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table}"
 cd /dbagiga/gs-odsx
-./odsx.py dataengine $the_feeder $opt $table_name
+./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table}

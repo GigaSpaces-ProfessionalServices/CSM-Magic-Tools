@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.6
+VERSION=2.6.7
 
 
 function usage() {
@@ -138,11 +138,12 @@ function get_targeted_servers() {
      local SERVER_GROUP=(
         "space"             # [0]
         "manager"           # [1]
-        "dataIntegration"   # [2]
-        "nb_applicative"    # [3]
-        "nb_management"     # [4]
-        "pivot"             # [5]
-        "cockpit"           # [6]
+        "cdc"               # [2]
+        "dataIntegration"   # [3]
+        "nb_applicative"    # [4]
+        "nb_management"     # [5]
+        "pivot"             # [6]
+        "cockpit"           # [7]
     )
     case $1 in
         -l) list_all_servers ; exit ;;
@@ -155,17 +156,17 @@ function get_targeted_servers() {
         -c) local env_preffix="_c_"
             local srv_group=(${SERVER_GROUP[2]}) ;;
         -d) local env_preffix="_d_"
-            local srv_group=(${SERVER_GROUP[2]}) ;;
-        -na) local env_preffix="_na_"
             local srv_group=(${SERVER_GROUP[3]}) ;;
-        -nm) local env_preffix="_nm_"
+        -na) local env_preffix="_na_"
             local srv_group=(${SERVER_GROUP[4]}) ;;
-        -n) local env_preffix="_n_"
-            local srv_group=(${SERVER_GROUP[3]} ${SERVER_GROUP[4]}) ;;
-        -p) local env_preffix="_p_"
+        -nm) local env_preffix="_nm_"
             local srv_group=(${SERVER_GROUP[5]}) ;;
-        -cp) local env_preffix="_cp_"
+        -n) local env_preffix="_n_"
+            local srv_group=(${SERVER_GROUP[4]} ${SERVER_GROUP[5]}) ;;
+        -p) local env_preffix="_p_"
             local srv_group=(${SERVER_GROUP[6]}) ;;
+        -cp) local env_preffix="_cp_"
+            local srv_group=(${SERVER_GROUP[7]}) ;;
         -A) local env_preffix="_A_"
             local srv_group=${SERVER_GROUP[@]} ;;
         *)

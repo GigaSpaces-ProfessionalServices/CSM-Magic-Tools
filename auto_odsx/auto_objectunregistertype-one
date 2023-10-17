@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py object objectmanagement registration unregistertype
+# Enter for all servers
+expect "or exit"
+sleep .5
+send -- "3"
+sleep .5
+send -- "6"
+sleep .5
+send -- "\n"
+# Verify
+expect "Do you want to unregister object with above inputs"
+sleep .5
+send -- "y"
+sleep .5
+send -- "\n"
+
+expect eof

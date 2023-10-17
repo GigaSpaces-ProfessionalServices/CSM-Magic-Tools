@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set force_conservative 1
+
+cd /dbagiga/gs-odsx
+spawn ./odsx.py space createnewspace
+expect "Do you want to create GSC"
+sleep .5
+send -- "n"
+sleep .5
+send -- "\r"
+expect "Do you want to create space"
+sleep .5
+send -- "\r"
+expect "Enter space name"
+sleep .5
+send -- "\r"
+expect "Enter space zone"
+sleep .5
+send -- "\r"
+expect "Enter service name"
+sleep .5
+send -- "\r"
+expect "Enter partitions"
+sleep .5
+send -- "\r"
+expect "Enter max instance per machine"
+sleep .5
+send -- "\r"
+expect "SLA"
+sleep .5
+send -- "y"
+sleep .5
+send -- "\r"
+expect "Are you sure want to proceed"
+sleep .5
+send -- "\r"
+
+expect eof

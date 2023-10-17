@@ -1,10 +1,11 @@
 #!/bin/bash
+
 source ~/.bashrc
 _LOG=/var/log/auto_odsx.log
 _FULL_LOG=/dbagigalogs/auto_odsx_full.log
 _WAIT=120
 
-echo -e "$(date) ===Starting space refresh===" | tee -a $_LOG $_FULL_LOG
+echo -e "$(date) ===Starting DIH space refresh===" | tee -a $_LOG $_FULL_LOG
 
 echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spacestop 2>&1 | tee -a $_FULL_LOG
@@ -31,7 +32,7 @@ fi
 echo -e "$(date) Starting ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spacestart 2>&1 | tee -a $_FULL_LOG
 echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $_LOG $_FULL_LOG
-auto_inmemorydeploy_check
+[[ "${ENV_NAME}" == "TAUP" ]] && auto_inmemorydeploy_check || auto_inmemorydeploy-full-response
 echo -e "$(date) Disable object-management.service" | tee -a $_LOG $_FULL_LOG
 auto_objectdisable
 echo -e "$(date) Enable object-management.service" | tee -a $_LOG $_FULL_LOG
@@ -41,19 +42,16 @@ sleep 10
 auto_objectregistration
 echo -e "$(date) Starting Object Index Registration." | tee -a $_LOG $_FULL_LOG
 auto_objectindexregistration
+exit
 
 echo -e "$(date) Resetting oracleFeeder.db." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederreset
 echo -e "$(date) Starting to deploy ORACLE feeders." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederdeploy
 
-echo -e "$(date) Starting ORACLE feeders for ${_WAIT} seconds then stopping." | tee -a $_LOG $_FULL_LOG
-[[ "${ENV_NAME=}" == "TAUP" ]] && { auto_oraclefeederstart ; sleep ${_WAIT} ; auto_oraclefeederstop ; }
-
-# Yuval
-exit
-
-#echo -e "$(date) Load benchmark data into space" | tee -a $_LOG $_FULL_LOG
-#auto_benchmark 2>&1 | tee -a $_FULL_LOG
+if [[ "${ENV_NAME=}" == "TAUP" ]] ; then
+  echo -e "$(date) Starting ORACLE feeders for ${_WAIT} seconds then stopping." | tee -a $_LOG $_FULL_LOG
+  auto_oraclefeederstart ; sleep ${_WAIT} ; auto_oraclefeederstop
+fi
 
 echo -e "$(date) ===Finished space refresh===" | tee -a $_LOG $_FULL_LOG
