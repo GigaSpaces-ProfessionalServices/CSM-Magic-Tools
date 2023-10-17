@@ -18,5 +18,6 @@ for shob_t in $SHOB_TABLES; do
     [[ ${shob_t,,} == "shob" ]] && continue
     url="${SWAGGER}/spaces/${SPACE_ID}/query?typeName=${shob_t}&columns=ZZ_META_DI_TIMESTAMP"
     shob_status=$(curl -ks $url | jq -r '.results[0].values[0]')
+    [[ $shob_status == 'null' ]] && continue
     echo "shobStatus,table_name=$shob_t last_updated=$shob_status"
 done
