@@ -275,7 +275,8 @@ public class DdlParser {
             case "DATETIME":
 //           commented for TAU, not commited may cause issue for Leumi     return java.sql.Date.class;
 //                return java.util.Date.class;
-                return java.sql.Timestamp.class;
+                //return java.sql.Timestamp.class;
+                return java.sql.Date.class;
             case "TIMESTAMP":
             case "TIMESTAMP WITH TIME ZONE":
             case "TIMESTAMP WITH LOCAL TIME ZONE":
