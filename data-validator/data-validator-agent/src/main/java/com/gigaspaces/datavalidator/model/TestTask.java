@@ -5,6 +5,7 @@ import com.gigaspaces.datavalidator.utils.JDBCUtils;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.List;
 import java.util.logging.Logger;
@@ -29,8 +30,6 @@ public class TestTask  implements Serializable  {
 		this.query="";
 	}
 	public String executeTask() {
-
-		
 		try {
 				if (measurement != null) {
 					//DataSource dataSource = measurement.getDataSource();
@@ -46,9 +45,26 @@ public class TestTask  implements Serializable  {
 					logger.info("query: " + query);
 					ResultSet rs = st.executeQuery(query);
 
+					//Retrieving the ResultSetMetaData object
+					ResultSetMetaData rsmd = rs.getMetaData();
+					String column_type=null;
+					try {
+						column_type = rsmd.getColumnClassName(1);
+					}catch(Exception e){
+						logger.warning("Error in getting column data type so assuming string");
+					}
 					String val = "";
 					while (rs.next()) {
-						val = rs.getString(1);
+						if(column_type!=null
+								&& (column_type.equalsIgnoreCase("java.sql.Timestamp")
+						)){
+							val = String.valueOf(rs.getTimestamp(1).getTime());
+						}else if(column_type.equalsIgnoreCase("java.sql.Date")) {
+							val = String.valueOf(rs.getDate(1).getTime());
+						}else{
+
+							val = rs.getString(1);
+						}
 						logger.info("val:     " + val);
 					}
 					this.result = String.valueOf(val);

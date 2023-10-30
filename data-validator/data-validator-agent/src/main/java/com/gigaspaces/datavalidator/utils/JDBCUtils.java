@@ -40,11 +40,13 @@ public class JDBCUtils {
 
 		case "gigaspaces":
 			Class.forName("com.j_spaces.jdbc.driver.GDriver");
-			connectionString = "jdbc:gigaspaces:url:jini://" + dataSourceHostIp + ":" + dataSourcePort + "/*/"
+//			connectionString = "jdbc:gigaspaces:url:jini://" + dataSourceHostIp + ":" + dataSourcePort + "/*/"
+//					+ schemaName;
+			connectionString = "jdbc:gigaspaces:v3://" + dataSourceHostIp + ":" + dataSourcePort + "/"
 					+ schemaName;
-			if(gslookupGroup!=null && gslookupGroup.length()>0){
-				connectionString += "?groups="+ gslookupGroup;
-			}
+//			if(gslookupGroup!=null && gslookupGroup.length()>0){
+//				connectionString += "?groups="+ gslookupGroup;
+//			}
 			break;
 
 		case "mysql":
