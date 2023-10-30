@@ -1,13 +1,21 @@
 package com.gigaspaces.datavalidator.model;
 
 
+import com.gigaspaces.cluster.activeelection.SpaceMode;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
+import org.openspaces.admin.Admin;
+import org.openspaces.admin.AdminFactory;
+import org.openspaces.admin.space.Space;
+import org.openspaces.admin.space.SpaceInstance;
+
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class TestTask  implements Serializable  {
@@ -36,6 +44,35 @@ public class TestTask  implements Serializable  {
 					logger.info("Executing task id: " + uuid);
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
+
+					if(measurement.getDataSourceType().equals("gigaspaces")
+							&& measurement.getFieldName().equals("*")
+							&& whereCondition.equals("")){
+						logger.info("### Admin API: Fetching record count ###");
+						Admin admin = new AdminFactory()
+								.addGroup(measurement.getGsLookupGroup())
+								//.discoverUnmanagedSpaces()
+								.createAdmin();
+						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+						logger.info("Admin API - Table name: "+measurement.getTableName());
+						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
+						Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
+						logger.info("Admin API - Space: "+space.toString());
+						for(SpaceInstance se: space.getInstances()){
+							while(se.getMode().equals(SpaceMode.NONE)){
+								Thread.sleep(200);
+							}
+						}
+						Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
+						logger.info("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
+
+
+						Integer count = countPerClassName.get(measurement.getTableName());
+						this.result = String.valueOf(count);
+						this.query = "N/A";
+						logger.info("### Admin API: Count="+this.result);
+						return this.result;
+					}
 
 					Connection conn = JDBCUtils.getConnection(measurement);
 					Statement st = conn.createStatement();

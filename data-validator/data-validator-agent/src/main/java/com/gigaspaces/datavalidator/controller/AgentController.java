@@ -1,11 +1,17 @@
 package com.gigaspaces.datavalidator.controller;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationConfig;
 import com.gigaspaces.datavalidator.model.*;
 import com.gigaspaces.datavalidator.utils.EncryptionDecryptionUtils;
+import oadd.org.codehaus.jackson.annotate.JsonMethod;
+/*
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonMethod;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
+*/
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,8 +37,8 @@ public class AgentController {
             TestTask task = new TestTask(uuid.toString(),measurementRequestModel);
             task.executeTask();
             ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
-            objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+            //objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
+            //objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
             jsonResponse= objectMapper.writeValueAsString(task);
         } catch (Exception exe) {
             exe.printStackTrace();
