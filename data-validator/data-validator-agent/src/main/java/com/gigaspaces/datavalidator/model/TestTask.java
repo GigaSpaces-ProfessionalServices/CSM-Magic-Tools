@@ -49,13 +49,13 @@ public class TestTask  implements Serializable  {
 							&& measurement.getFieldName().equals("*")
 							&& whereCondition.equals("")){
 						logger.info("### Admin API: Fetching record count ###");
+						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+						logger.info("Admin API - Table name: "+measurement.getTableName());
+						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
 						Admin admin = new AdminFactory()
 								.addGroup(measurement.getGsLookupGroup())
 								//.discoverUnmanagedSpaces()
 								.createAdmin();
-						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
-						logger.info("Admin API - Table name: "+measurement.getTableName());
-						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
 						Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
 						logger.info("Admin API - Space: "+space.toString());
 						for(SpaceInstance se: space.getInstances()){
