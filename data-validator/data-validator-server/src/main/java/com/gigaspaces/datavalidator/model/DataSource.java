@@ -22,7 +22,7 @@ public class DataSource implements Serializable{
 	private String integratedSecurity;
 	private String properties;
 	private String authenticationScheme;
-	private String gsLookupGroup="xap-16.3.0";
+	private String gsLookupGroup;
 	private String status;
 	@JsonManagedReference
 	private Agent agent;

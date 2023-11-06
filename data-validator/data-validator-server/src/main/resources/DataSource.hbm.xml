@@ -18,6 +18,7 @@
 		<property name="username" column="USERNAME" type="string" />
 		<property name="password" column="PASSWORD" type="string" />
 		<property name="status" column="STATUS" type="string" />
+		<property name="gsLookupGroup" column="GS_LOOKUP_GROUP" type="string" />
 		<property name="integratedSecurity" column="INTRIGRATEDSECURITY" type="string" />
 		<property name="properties" column="PROPERTIES" type="string" />
 		<property name="authenticationScheme" column="AUTHENTICATIONSCHEME" type="string" />
