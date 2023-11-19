@@ -165,7 +165,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 150
+                "value": 148
               }
             ]
           }
@@ -215,6 +215,8 @@
           "measurement": "space_data_data-types",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"space_data_data-types\" WHERE (\"space_active\" = 'true') AND $timeFilter GROUP BY time($__interval), \"pu_name\", \"space_active\" fill(null) LIMIT 1",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "table",
           "select": [
@@ -354,7 +356,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 9,
+        "w": 14,
         "x": 6,
         "y": 3
       },
@@ -462,100 +464,71 @@
     },
     {
       "datasource": "InfluxDB",
+      "description": "",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "left",
-            "displayMode": "auto",
-            "filterable": false
-          },
+          "custom": {},
+          "links": [
+            {
+              "title": "Go to Freshness dashboard",
+              "url": "/d/1RIb31VIz/freshness?orgId=1&refresh=5s"
+            }
+          ],
           "mappings": [
             {
               "from": "",
               "id": 1,
-              "text": "Up",
+              "text": "Fresh",
+              "to": "",
+              "type": 1,
+              "value": "1"
+            },
+            {
+              "from": "",
+              "id": 2,
+              "text": "Stale",
               "to": "",
               "type": 1,
               "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 2,
-              "text": "Down",
-              "to": "11",
-              "type": 2
             }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "green",
                 "value": 1
               }
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "max"
-            },
-            "properties": [
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "displayName",
-                "value": "Status"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "host"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 495
-              },
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "$host",
-                    "url": "/d/DycvqiKnz/server-metrics-copy?orgId=1&refresh=30s&var-datasource=InfluxDB&var-hosts=${__data.fields.host}"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 5,
-        "w": 9,
-        "x": 15,
+        "h": 3,
+        "w": 4,
+        "x": 20,
         "y": 3
       },
-      "id": 55,
-      "interval": "",
-      "maxDataPoints": 1,
+      "id": 64,
+      "links": [],
       "options": {
-        "frameIndex": 0,
-        "showHeader": true,
-        "sortBy": []
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "min"
+          ],
+          "fields": "/^freshness$/",
+          "values": false
+        },
+        "textMode": "auto"
       },
       "pluginVersion": "7.3.7",
       "targets": [
@@ -563,93 +536,148 @@
           "groupBy": [
             {
               "params": [
-                "$interval"
+                "$__interval"
               ],
               "type": "time"
             },
             {
               "params": [
-                "host"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "none"
+                "null"
               ],
               "type": "fill"
             }
           ],
-          "hide": false,
-          "limit": "1",
-          "measurement": "systemd_units",
-          "orderByTime": "DESC",
+          "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE ((\"nb_role\" = 'management' ) AND \"name\" = 'nginx.service' ) AND $timeFilter GROUP BY time($interval), \"host\" fill(none) ORDER BY time DESC LIMIT 1",
+          "query": "SELECT * FROM \"shobStatus\" WHERE $timeFilter",
           "rawQuery": true,
-          "refId": "B",
+          "refId": "A",
           "resultFormat": "table",
           "select": [
             [
               {
                 "params": [
-                  "active_code"
+                  "value"
                 ],
                 "type": "field"
               },
               {
                 "params": [],
-                "type": "max"
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Data Freshness Status",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": "xap",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 20,
+        "y": 6
+      },
+      "id": 60,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "7.3.7",
+      "targets": [
+        {
+          "alias": "$tag_pu_name",
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "pu_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "jvm_memory_heap_used-bytes",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE $timeFilter AND pu_name != '' GROUP BY \"pu_instance_id\")",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "sum"
               }
             ]
           ],
           "tags": [
             {
-              "key": "nb_role",
-              "operator": "=",
-              "value": "application"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "nginx.service"
-            },
-            {
-              "condition": "OR",
-              "key": "name",
-              "operator": "=",
-              "value": "consul-template.service"
-            },
-            {
-              "condition": "OR",
-              "key": "name",
-              "operator": "=",
-              "value": "consul.service"
+              "key": "pu_name",
+              "operator": "!=",
+              "value": "data-feeder-spaceB"
             }
           ]
         }
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "NB - Management",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "indexByName": {},
-            "renameByName": {}
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        }
-      ],
-      "type": "table"
+      "title": "Services - Total Memory Used",
+      "type": "gauge"
     },
     {
       "aliasColors": {},
@@ -801,109 +829,6 @@
         "align": false,
         "alignLevel": null
       }
-    },
-    {
-      "datasource": "xap",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "percentage",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "decbytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 20,
-        "y": 8
-      },
-      "id": 60,
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "alias": "$tag_pu_name",
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "pu_name"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "jvm_memory_heap_used-bytes",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE $timeFilter AND pu_name != '' GROUP BY \"pu_instance_id\")",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "sum"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "pu_name",
-              "operator": "!=",
-              "value": "data-feeder-spaceB"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Services - Total Memory Used",
-      "type": "gauge"
     },
     {
       "aliasColors": {},
@@ -2194,5 +2119,5 @@
   "timezone": "browser",
   "title": "Main dashboard",
   "uid": "tJWLBOR7z",
-  "version": 4
+  "version": 6
 }
