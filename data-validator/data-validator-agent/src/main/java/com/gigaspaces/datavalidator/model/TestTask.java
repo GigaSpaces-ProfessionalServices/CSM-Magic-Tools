@@ -9,10 +9,10 @@ import org.openspaces.admin.space.Space;
 import org.openspaces.admin.space.SpaceInstance;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -94,13 +94,14 @@ public class TestTask  implements Serializable  {
 					while (rs.next()) {
 						if(column_type!=null
 								&& (column_type.equalsIgnoreCase("java.sql.Timestamp"))
-								||( column_type.equalsIgnoreCase("java.time.LocalDateTime"))
 						){
 							val = String.valueOf(rs.getTimestamp(1).getTime());
 						}else if(column_type.equalsIgnoreCase("java.sql.Date")) {
 							val = String.valueOf(rs.getDate(1).getTime());
+						}else if( column_type.equalsIgnoreCase("java.time.LocalDateTime")){
+							LocalDateTime localDateTime = rs.getObject(1, java.time.LocalDateTime.class);
+							val = String.valueOf(Timestamp.valueOf(localDateTime).getTime());
 						}else{
-
 							val = rs.getString(1);
 						}
 						logger.info("val:     " + val);
