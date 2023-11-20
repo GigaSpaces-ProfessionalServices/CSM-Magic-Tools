@@ -93,8 +93,9 @@ public class TestTask  implements Serializable  {
 					String val = "";
 					while (rs.next()) {
 						if(column_type!=null
-								&& (column_type.equalsIgnoreCase("java.sql.Timestamp")
-						)){
+								&& (column_type.equalsIgnoreCase("java.sql.Timestamp"))
+								||( column_type.equalsIgnoreCase("java.time.LocalDateTime"))
+						){
 							val = String.valueOf(rs.getTimestamp(1).getTime());
 						}else if(column_type.equalsIgnoreCase("java.sql.Date")) {
 							val = String.valueOf(rs.getDate(1).getTime());

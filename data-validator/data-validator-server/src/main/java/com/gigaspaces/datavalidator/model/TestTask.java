@@ -193,6 +193,7 @@ public class TestTask  implements Serializable  {
 							",\"password\":\""+EncryptionDecryptionUtils.encrypt(dataSource1.getPassword())+"\"" +			",\"integratedSecurity\":\""+dataSource1.getIntegratedSecurity()+"\"" +
 							",\"properties\":\""+dataSource1.getProperties()+"\"" +
 							",\"authenticationScheme\":\""+dataSource1.getAuthenticationScheme()+"\"" +
+							",\"gsLookupGroup\":\""+dataSource1.getGsLookupGroup()+"\"" +
 							"}";
 
 					String response1=NetClientPost.send(endPoint,data);
@@ -238,6 +239,7 @@ public class TestTask  implements Serializable  {
 							",\"integratedSecurity\":\""+dataSource2.getIntegratedSecurity()+"\"" +
 							",\"properties\":\""+dataSource2.getProperties()+"\"" +
 							",\"authenticationScheme\":\""+dataSource2.getAuthenticationScheme()+"\"" +
+							",\"gsLookupGroup\":\""+dataSource2.getGsLookupGroup()+"\"" +
 							"}";
 
 					String response2=NetClientPost.send(endPoint2,data2);
