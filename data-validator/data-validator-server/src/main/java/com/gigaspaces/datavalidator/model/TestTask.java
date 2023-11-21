@@ -253,12 +253,12 @@ public class TestTask  implements Serializable  {
 					if(!response1.contains("FAIL") && !response2.contains("FAIL")){
 						if (Float.parseFloat(response1) == Float.parseFloat(response2)) {
 							this.result = "PASS";
-							this.summary = "Results matched. Result-1: "+response1 +"  Result-2: "+response2;
+							this.summary = "Results matched. "+dataSource1.getDataSourceType()+"-Result: "+response1 +"  "+dataSource2.getDataSourceType()+"-Result: "+response2;
 						} else {
 							logger.info("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + response1
 									+ ", DataSource2 Result: " + response2);
 							this.result = "FAIL";
-							this.errorSummary = "Results not matched. Result-1: "+response1 +"  Result-2: "+response2;
+							this.errorSummary = "Results not matched. "+dataSource1.getDataSourceType()+"-Result: "+response1 +"  "+dataSource2.getDataSourceType()+"-Result: "+response2;
 						}
 					}else{
 						this.result = "FAIL";

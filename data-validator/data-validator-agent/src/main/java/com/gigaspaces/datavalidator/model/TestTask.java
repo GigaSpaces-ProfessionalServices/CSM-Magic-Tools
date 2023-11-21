@@ -3,16 +3,24 @@ package com.gigaspaces.datavalidator.model;
 
 import com.gigaspaces.cluster.activeelection.SpaceMode;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
+import com.gigaspaces.metadata.SpacePropertyDescriptor;
+import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
 import org.openspaces.admin.space.Space;
 import org.openspaces.admin.space.SpaceInstance;
+import org.openspaces.core.GigaSpace;
+import org.openspaces.core.GigaSpaceConfigurer;
+import org.openspaces.core.GigaSpaceTypeManager;
+import org.openspaces.core.space.SpaceProxyConfigurer;
 
 import java.io.Serializable;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -73,6 +81,23 @@ public class TestTask  implements Serializable  {
 						logger.info("### Admin API: Count="+this.result);
 						return this.result;
 					}
+					String column_type=null;
+					if(measurement.getDataSourceType().equals("gigaspaces")){
+						logger.info("### NN Admin API: Fetching Column Type ###");
+						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+						logger.info("Admin API - Table name: "+measurement.getTableName());
+						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
+
+						GigaSpace gigaSpace = new GigaSpaceConfigurer(new SpaceProxyConfigurer(measurement.getSchemaName()).lookupGroups(measurement.getGsLookupGroup())).gigaSpace();
+						GigaSpaceTypeManager gigaSpaceTypeManager = gigaSpace.getTypeManager();
+						SpaceTypeDescriptor typeManager = gigaSpaceTypeManager.getTypeDescriptor(measurement.getTableName());
+						SpacePropertyDescriptor fixedProperty = typeManager.getFixedProperty(measurement.getFieldName());
+						column_type = fixedProperty.getTypeDisplayName();
+
+						logger.info("Admin API - columnTypeSpace: " + column_type
+								+" for column name: "+measurement.getFieldName()
+								+" from table name: "+measurement.getTableName());
+					}
 
 					Connection conn = JDBCUtils.getConnection(measurement);
 					Statement st = conn.createStatement();
@@ -82,16 +107,18 @@ public class TestTask  implements Serializable  {
 					logger.info("query: " + query);
 					ResultSet rs = st.executeQuery(query);
 
-					//Retrieving the ResultSetMetaData object
-					ResultSetMetaData rsmd = rs.getMetaData();
-					String column_type=null;
-					try {
-						column_type = rsmd.getColumnClassName(1);
-					}catch(Exception e){
-						logger.warning("Error in getting column data type so assuming string");
+					if(!measurement.getDataSourceType().equals("gigaspaces")) {
+						//Retrieving the ResultSetMetaData object
+						ResultSetMetaData rsmd = rs.getMetaData();
+						try {
+							column_type = rsmd.getColumnClassName(1);
+						} catch (Exception e) {
+							logger.warning("Error in getting column data type so assuming string");
+						}
 					}
 					String val = "";
 					while (rs.next()) {
+						logger.info("Column Type:     " + column_type);
 						if(column_type!=null
 								&& (column_type.equalsIgnoreCase("java.sql.Timestamp"))
 						){
@@ -99,8 +126,18 @@ public class TestTask  implements Serializable  {
 						}else if(column_type.equalsIgnoreCase("java.sql.Date")) {
 							val = String.valueOf(rs.getDate(1).getTime());
 						}else if( column_type.equalsIgnoreCase("java.time.LocalDateTime")){
-							LocalDateTime localDateTime = rs.getObject(1, java.time.LocalDateTime.class);
-							val = String.valueOf(Timestamp.valueOf(localDateTime).getTime());
+							String dateStr = rs.getString(1);
+							String dateFormat = "yyyy-MM-dd HH:mm:ss";
+							if(dateStr.indexOf("T")>0){
+								dateFormat = "yyyy-MM-dd'T'HH:mm:ss";
+							}
+							logger.info("String val: " + dateStr);
+							logger.info("dateFormat: " + dateStr);
+							SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+							Date date = sdf.parse(dateStr);
+							val= String.valueOf(date.getTime());
+							logger.info("date final val: " + dateStr);
+
 						}else{
 							val = rs.getString(1);
 						}
