@@ -17,6 +17,7 @@
     <modules>
         <module>data-validator-server</module>
         <module>data-validator-agent</module>
+        <module>data-validator-client</module>
     </modules>
 
 </project>
