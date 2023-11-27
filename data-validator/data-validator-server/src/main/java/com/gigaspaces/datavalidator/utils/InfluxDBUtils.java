@@ -25,12 +25,17 @@ public class InfluxDBUtils {
             logger.info("InfluxDB connected successfully");
         }
         influxDB.createDatabase(database);
+        int result = 0; // 0=fail , 1=pass
+        if(state != null && state.equals("PASS")){
+            result=1;
+        }
         Point point = Point.measurement(measurement)
                 .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
                 .tag("env", tabEnv)
                 .tag("obj_type",tagObjType)
                 .tag("host",host)
                 .addField("state",state)
+                .addField("result",result)
                 .build();
 
         influxDB.write(database,"",point);
