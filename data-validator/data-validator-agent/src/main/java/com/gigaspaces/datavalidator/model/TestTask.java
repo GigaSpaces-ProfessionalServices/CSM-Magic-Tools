@@ -7,6 +7,7 @@ import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminFactory;
+import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.space.Space;
 import org.openspaces.admin.space.SpaceInstance;
 import org.openspaces.core.GigaSpace;
@@ -64,6 +65,13 @@ public class TestTask  implements Serializable  {
 								.addGroup(measurement.getGsLookupGroup())
 								//.discoverUnmanagedSpaces()
 								.createAdmin();
+						String puName = measurement.getSchemaName().replace("space","service");
+						ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(puName, 1, TimeUnit.MINUTES);
+						if(processingUnit == null){
+							this.errorSummary = "Processing unit not available with the name:"+puName;
+							this.result = "Error";
+							return this.result;
+						}
 						Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
 						logger.info("Admin API - Space: "+space.toString());
 						for(SpaceInstance se: space.getInstances()){
