@@ -68,7 +68,7 @@ public class TestTask  implements Serializable  {
 						logger.info("Admin API - Space: "+space.toString());
 						for(SpaceInstance se: space.getInstances()){
 							while(se.getMode().equals(SpaceMode.NONE)){
-								Thread.sleep(200);
+								Thread.sleep(400);
 							}
 						}
 						Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
