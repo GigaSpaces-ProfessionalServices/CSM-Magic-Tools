@@ -1,0 +1,12 @@
+dbrp "telegraf"."autogen"
+
+stream
+    |from()
+        .measurement('shobStatus')
+    |alert()
+        .crit(lambda: "freshness" == 0)
+        .stateChangesOnly()
+        .id('shobStatus_{{ index .Tags "table_name" }}')
+        .details('Custom details: {{ .Level }} - {{ .Name }}')
+        .message('Table {{ index .Tags "table_name" }} has not been updated for more than {{ index .Tags "threshold" }} seconds.')
+        .log('/gigalogs/shob_alerts.log')
