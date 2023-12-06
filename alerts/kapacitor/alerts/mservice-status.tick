@@ -7,7 +7,7 @@ var snowMetricName = 'microservices-status'
 stream
     |from()
         .measurement('consul_health_checks')
-	.where(lambda: "check_id" != 'serfHealth')
+	    .where(lambda: "check_id" != 'serfHealth')
         .groupBy('node','check_id')
     |default()
         .tag('snowType', snowType)
