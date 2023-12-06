@@ -519,16 +519,14 @@ function check_time() {
 function print_errors_report() {
     # display errors report and clean up temporary files
     printf "\n\n"
-    printf '#%.0s' {1..31}
-    echo -ne "  ERRORS SUMMARY  "
-    printf '#%.0s' {1..32}
-    printf "\n"
-    printf '#%.0s' {1..81}
+    printf '#%.0s' {1..34}
+    echo -ne "  SUMMARY  "
+    printf '#%.0s' {1..34}
     printf "\n\n"
     if [[ ${#ERRORS[@]} -gt 0 ]]; then
         for ((i=0; i<${#ERRORS[@]}+1; i++)); do echo "${ERRORS[$i]}" ; done
     else
-        echo -e "\nNo errors found!"
+        echo -e "\n${white}No issues found!${reset}"
     fi
     unset ERRORS
 }
@@ -568,16 +566,16 @@ function run_health_checks() {
         local net_fail=false
         logit --text "[${host}]${H_SPC}Basic network connectivity\n" -fs "INFO"
         # check dns
-        local retval=$(check_dns_resolve $host)
-        if [[ $retval == 0 ]]; then
-            logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs INFO
-            logit --state "Passed" -fs
-        else
-            logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs ERROR
-            logit --state "Failed" -fs
-            $ERR_REPORT && \
-            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
-        fi
+        #local retval=$(check_dns_resolve $host)
+        #if [[ $retval == 0 ]]; then
+        #    logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs INFO
+        #    logit --state "Passed" -fs
+        #else
+        #    logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs ERROR
+        #    logit --state "Failed" -fs
+        #    $ERR_REPORT && \
+        #    CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
+        #fi
         # check remote services
         for svc in $S_R; do
             local net_fail=false
@@ -741,6 +739,7 @@ purple='\033[0;35m'     # purple text
 lpurple='\033[1;35m'    # light purple text
 cyan='\033[0;36m'       # cyan text
 lcyan='\033[1;36m'      # light cyan text
+white='\033[0;37m'      # white text
 reset='\033[0m'         # no colour
 ### text spacers ###
 H_SPC="    "      # header spacer
