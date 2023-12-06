@@ -44,7 +44,7 @@ SHOB_TABLES=([STUD.KR_KURS]=18000 \
 [STUD.TB_082_HEARA_TALMID]=86400 \
 [STUD.TB_101_SIVUG_TOAR]=86400 \
 [STUD.TB_975_CALNDR_ERUA]=86400 \
-[dbo.Portal_Calendary_View]=3600 \
+[dbo.Portal_Calendary_View]=86400 \
 [STUD.TB_036_MATZAV_TZIUN]=86400 \
 [STUD.TB_071_SIMUL_TZIUN]=86400 \
 [STUD.TB_069_SCL_PEULA]=86400 \
@@ -57,7 +57,12 @@ SHOB_TABLES=([STUD.KR_KURS]=18000 \
 [STUD.TB_962_TOAR_MORE]=86400 \
 [STUD.KR_CHEDER]=86400 \
 [STUD.TL_SEM]=86400 \
+[STUD.TB_917_SHANA]=86400 \
+[STUD.TL_MOED_TZIUN]=3600 \
 )
+
+# special vaule for GilboaSync dbo.Portal_Calendary_View table
+GILBOASYNC=3600
 
 # set verbosity
 [[ $1 == '-v' ]] && verbose=true || verbose=false
@@ -65,6 +70,18 @@ SHOB_TABLES=([STUD.KR_KURS]=18000 \
 # get a manager
 MANAGER=$(cat /gigashare/env_config/host.yaml | grep -A 1 manager | awk '/host/ {print $3}' | tail -1)
 BASE_URL="http://${MANAGER}:8090/v2"
+
+# check if connecion to space available
+if [[ $(curl -ks "${BASE_URL}/spaces") == "Connect failed" ]]; then
+    echo "Connection failed."
+    exit
+fi
+
+# check if connecion returns data
+if [[ $(curl -ks "${BASE_URL}/spaces") == "" ]]; then
+    echo "No freshness data is currently available."
+    exit
+fi
 
 # get space name
 SPACE_ID=$(curl -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
@@ -80,7 +97,11 @@ while read -r value; do
     time_stamp="$(date -d "${elements[2]}" +%s)"
     seconds_since_epoch=$(date -d "${elements[2]}" "+%s")
     time_stamp_hr=$(date -d "@$seconds_since_epoch" "+%Y-%m-%dT%H:%M:%SZ")
-    th=$(get_table_threshold $table_name)
+    if [[ $source_name == "GilboaSync" ]]; then
+        th=$GILBOASYNC
+    else
+        th=$(get_table_threshold $table_name)
+    fi
     time_diff=$(expr $(date +%s) - $time_stamp)
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
