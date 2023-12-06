@@ -1,0 +1,20 @@
+dbrp "telegraf"."autogen"
+
+var snowType = 'App'
+var snowResource = 'DataValidation'
+var snowMetricName = 'shob-status'
+
+stream
+    |from()
+        .measurement('dvState')
+    |default()
+        .tag('snowType', snowType)
+        .tag('snowResource', snowResource)
+        .tag('snowMetricName', snowMetricName)
+        .tag('host', 'SystemWide')
+    |alert()
+        .crit(lambda: "state" == 'FAIL')    
+        .id('{{ .Name }}/{{ .TaskName }}/{{ .Group }}')
+        .stateChangesOnly(1d)
+        .message('{{ .ID }} - {{ index .Fields "state" }} is FAIL')
+        .log('/tmp/alerts.log')
