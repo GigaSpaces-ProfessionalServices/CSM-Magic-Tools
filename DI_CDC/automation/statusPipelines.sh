@@ -1,0 +1,14 @@
+#!/bin/bash
+numOfPl=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"' |wc -l)
+plState=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"' |grep "Subscription status is Mirror Continuous. Job of type CDC has status RUNNING" |wc -l)
+echo "Pipeline status:"
+echo "----------------"
+curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"'
+echo -----------------------------------------------------------------------------------------
+if [[ $plState = $numOfPl ]];then
+    echo "$plState/$numOfPl pipelines and subscriptions are running."
+    exit 0
+else
+    echo "$plState/$numOfPl pipelines and subscriptions are running."
+    exit 1
+fi
