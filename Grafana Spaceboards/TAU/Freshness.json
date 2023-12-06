@@ -201,10 +201,10 @@
           ],
           "hide": false,
           "limit": "1",
-          "measurement": "systemd_units",
+          "measurement": "shobStatus",
           "orderByTime": "DESC",
           "policy": "default",
-          "query": "SELECT time, source, table_name, threshold, updated, freshness FROM \"shobStatus\" WHERE $timeFilter ORDER BY DESC\n",
+          "query": "SELECT time, source, table_name, threshold, updated, freshness FROM \"shobStatus\" WHERE $timeFilter ORDER BY DESC tz('Asia/Jerusalem')\n",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table",
@@ -260,9 +260,10 @@
               "names": [
                 "source",
                 "table_name",
+                "threshold",
                 "updated",
                 "freshness",
-                "threshold"
+                "Time"
               ]
             }
           }
@@ -271,8 +272,16 @@
           "id": "organize",
           "options": {
             "excludeByName": {},
-            "indexByName": {},
+            "indexByName": {
+              "Time": 4,
+              "freshness": 5,
+              "source": 0,
+              "table_name": 1,
+              "threshold": 2,
+              "updated": 3
+            },
             "renameByName": {
+              "Time": "Sample Time",
               "freshness": "Freshness status",
               "source": "Source",
               "table_name": "Table name",
@@ -295,7 +304,7 @@
     "list": []
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-10m",
     "to": "now"
   },
   "timepicker": {
@@ -332,5 +341,5 @@
   "timezone": "browser",
   "title": "Freshness",
   "uid": "1RIb31VIz",
-  "version": 11
+  "version": 14
 }
