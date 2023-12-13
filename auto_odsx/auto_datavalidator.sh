@@ -105,7 +105,7 @@ compare_tables() {
       echo -e "$(( ++_TABLE_NUM ))\t${t}\t\t\t\t$(date)"
       echo -e "The numbers are: ${myarr[@]}"
       cat $_TMPFILE
-      [[ "${t}" != "${_TABLES[-1]}" ]] && { echo "sleep 5s" ; sleep 5 ; }
+      [[ "${t}" != "${_TABLES[-1]}" ]] && { echo "sleep 5s" ; sleep 5 ;  }
     fi
   done
 }
