@@ -343,26 +343,15 @@ def check_connection(_server, _port, _timeout=5):
     return check_port == 0
 
 
-def get_auth(host):
-    auth_params = {}
-    if THIS_ENV.upper() in ['PRD', 'DR']:
-        odsx_env = 'PRD'
-    else:
-        odsx_env = 'STG'
-    opt_user = "PassProps.UserName"
-    opt_pass = "Password"
-    cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
-          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o PassProps.UserName'
-    sh_cmd = f"ssh {host} '{cmd}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['user'] = the_response.strip("\\n'").strip("b'")
-    cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
-          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o Password'
-    sh_cmd = f"ssh {host} '{cmd}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['pass'] = the_response.strip("\\n'").strip("b'")
+def get_auth(app_config):
+    auth_params = {'user': '', 'pass': ''}
+    if is_env_secured():
+        f = open(app_config, 'r')
+        for line in f:
+            if re.search("app.manager.security.username", line):
+                auth_params['user'] = line.strip().replace('\n','').split('=')[1]
+            if re.search("app.manager.security.password", line):
+                auth_params['pass'] = line.strip().replace('\n','').split('=')[1]
     return auth_params
 
 
@@ -501,7 +490,12 @@ def run_services_polling(_service_name=None, _step=None):
                 _this_service_name = l.split('?')[0].split('/')[3]
                 if _service_name != None and _this_service_name != _service_name:
                     continue
-                cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                if is_env_secured():
+                    cmd = f'curl -sL -u "{auth["user"]}:{auth["pass"]}" --max-time {_timeout} \
+                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                else:
+                    cmd = f'curl -sL --max-time {_timeout} \
+                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
                 _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
                 if verbose:
                     print(f"curl line = {l}")
@@ -510,8 +504,14 @@ def run_services_polling(_service_name=None, _step=None):
                     print(f"response = {_response}")
                 print_line = f"polling service '{_this_service_name}':"
                 if f"x{_response}x" == 'xx':
-                    svc_status = 'undeployed'
-                    svc_status_print = f"{svc_status:<20}"
+                    svc_status = 'No Data'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
+                elif re.search("404", _response):
+                    svc_status = 'Undeployed'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
+                elif re.search("500 Internal Server Error", _response):
+                    svc_status = 'Bad Request'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
                 else:
                     _response = json.loads(_response)
                     if len(_response["res"]) != 0:
@@ -532,11 +532,11 @@ def show_cdc_status(_step=None):
             print(pyfiglet.figlet_format("     Sanity", font='slant'))
         else:
             print('\n' * 3)
-        _title = f'-- [ STEP {_step} ] --- CDC HEALTH AND FRESHNESS '
+        _title = f'-- [ STEP {_step} ] --- CDC PIPELINES '
         print_title(_title)
-        show_iidr_subscriptions()
+        #show_iidr_subscriptions()
         show_di_pipeline_info()
-        shob_update()
+        #shob_update()
     except (KeyboardInterrupt, SystemExit):
         print("\n")
         exit(1)
@@ -544,7 +544,7 @@ def show_cdc_status(_step=None):
 
 def show_iidr_subscriptions(_step=None):
     print('\n-- [ IIDR SUBSCRIPTIONS ]')
-    servers = get_host_yaml_servers('dataIntegration')
+    servers = get_host_yaml_servers('cdc')
     if len(servers) > 0:
         logger = logging.getLogger()
         port = 10101
@@ -558,7 +558,8 @@ def show_iidr_subscriptions(_step=None):
             print(f"ERROR: unable to connect to any DI server on port {port}")
             logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
         else:
-            as_home = f"/home/{user}/iidr_cdc/as"
+            #as_home = f"/home/{user}/iidr_cdc/as"
+            as_home = f"/giga/iidr/as/bin/chcclp"
             monitor_home = "/dbagiga/di-iidr-watchdog"
             ss_file = "status_subscription.chcclp"
             exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|LEUMI)' | sed 's/Inactive/Ready/g'"
@@ -584,7 +585,10 @@ def show_iidr_subscriptions(_step=None):
 
 
 def show_di_pipeline_info():
-    print('\n-- [ DI PIPELINES ]')
+
+    def get_pipeline_name(pipeline):
+        return pipeline.get('name')
+
     servers = get_host_yaml_servers('dataIntegration')
     if len(servers) > 0:
         logger = logging.getLogger()
@@ -598,27 +602,21 @@ def show_di_pipeline_info():
             print(f"ERROR: unable to connect to DI server(s) on port {port}.")
             logger.error("[IIDR] unable to connect to DI server(s) on port {port}.")
         else:
-            try:
-                for server in servers:
-                    url = f"http://{server}:{port}/api/v1/pipeline/"
-                    response_data = requests.get(
-                        url,
-                        auth=(auth['user'], auth['pass']),
-                        verify=False
-                    ).json()
-                    if len(response_data) != 0:
-                        if type(response_data).__name__ != 'list':
-                            break   # if not a list then pipeline is not installed, we break
-                        service_ok = True
-                        break
-            except:
-                pass
+            the_url = f'http://{server}:6080/api/v1/pipeline/'
+            response_data = requests.get(the_url, auth=(auth['user'], auth['pass']), verify=False).json()
+            if len(response_data) != 0 and type(response_data).__name__ == 'list':
+                response_data.sort(key=get_pipeline_name)   # sorted list by pipeline name
+                service_ok = True
             if service_ok:
-                r = response_data[0]
-                for k,v in r.items():
-                    key = f"{k}:"
-                    print(f"   {k:<18} {v}")
-                    logger.info(f"[IIDR] {k:<18} {v}")
+                for p in response_data:
+                    print(f"-- pipelineId: {p['pipelineId']}")
+                    print(f"    name: {p['name']}")
+                    print(f"    message: {p['message']}")
+                    logger.info(f"pipelineId: {p['pipelineId']}")
+                    logger.info(f"name: {p['name']}")
+                    logger.info(f"message: {p['message']}")
+                    print()
+                    time.sleep(0.3)
             else:
                 print(f"ERROR: unable to connect to API on DI server(s).")
                 logger.error("[IIDR] unable to connect to API on DI server(s).")
@@ -894,11 +892,9 @@ if __name__ == '__main__':
             exit(1)
         
         # configure authentication
-        auth = {'user': '', 'pass': ''}
-        # if is_env_secured():
-        #     auth = get_auth(managers[0])
-        # else:
-        #     auth['user'], auth['pass'] = '', ''
+        auth = get_auth(f"{os.environ['ENV_CONFIG']}/app.config")
+        
+        # get REST available host
         rest_ok_hosts = []
         for mgr in managers:
             url = f'http://{mgr}:{defualt_port}/v2/spaces'
@@ -1107,4 +1103,4 @@ if __name__ == '__main__':
             exit(0)
     except (KeyboardInterrupt, SystemExit):
         print("\n")
-        exit(1)
+        exit
