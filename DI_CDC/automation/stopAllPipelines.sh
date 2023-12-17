@@ -12,7 +12,7 @@ for i in ${plList[@]};do
   echo $plMessage
   echo
 done
-echo -e "\nSleep 10s before checking stop status...\n" ; sleep 10
- ./statusPipelines.sh
+
+/giga/scripts/statusPipelines.sh
 # Return 0 if all pipelines are stopped.
 [[ $(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"' |grep 'Refresh\|Mirror\|RUNNING' |wc -l) -eq 0 ]] && exit 0 || exit 1

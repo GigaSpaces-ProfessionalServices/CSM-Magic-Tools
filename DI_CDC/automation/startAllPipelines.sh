@@ -30,13 +30,15 @@ for pl in $(echo "${plList}" | jq -r '.[] | @base64'); do
     [[ $(echo $plState |grep -v '^ *$\|SUCCESS\|JOBS_ALREADY_RUNNING\|Starting Pipeline' |wc -l) -gt 0 ]] && exit 1
 done
 
-numOfPl=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name) \(.message)"' |wc -l)
-for ((i=0;i<3;i++));do
-   plState=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name) \(.message)"' |grep "Subscription status is Mirror Continuous. Job of type CDC has status RUNNING" |wc -l) 
-   echo "$plState/$numOfPl subscriptions and pipilines are running".
-   
-  [[ $plState -eq $numOfPl ]] && { exit 0; } || { exit 1; }
-  
-  
-done
-
+echo "Sleeping 10s ..."
+sleep 10
+numOfPl=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"' |wc -l)
+plState=$(curl -sX 'GET'   'http://localhost:6080/api/v1/pipeline/' | jq -r '.[] | "\(.name): \(.message)"' |grep "Subscription status is Mirror Continuous. Job of type CDC has status RUNNING\|Subscription status is Refresh Before Mirror. Job of type CDC has status RUNNING." |wc -l)
+echo
+if [[ $plState = $numOfPl ]];then
+    echo "$plState/$numOfPl pipelines and subscriptions are running."
+    exit 0
+else
+    echo "$plState/$numOfPl pipelines and subscriptions are running."
+    exit 1
+fi
