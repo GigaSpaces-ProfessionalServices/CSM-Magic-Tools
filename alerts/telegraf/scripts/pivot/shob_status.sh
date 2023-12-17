@@ -13,15 +13,10 @@ function get_table_threshold() {
 }
 
 function get_auth() {
-    declare -g AUTH_USER=""
-    declare -g AUTH_PASS=""
-    sec_flag=$(cat $ENV_CONFIG/app.config | grep "app.setup.profile" | cut -d= -f2)
+    sec_flag=$(cat /gigashare/env_config/app.config | grep "app.setup.profile" | cut -d= -f2)
     if [[ $sec_flag != "" ]]; then
-        AUTH_USER=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.username" | cut -d= -f2)
-        AUTH_PASS=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.password" | cut -d= -f2)
-        logger $LOG echo "[INFO] environment secured. extracted username/password from app.config"
-    else
-        logger $LOG echo "[INFO] environment not secured. username/password not set"
+        AUTH_USER=$(cat /gigashare/env_config/app.config | grep "app.manager.security.username" | cut -d= -f2)
+        AUTH_PASS=$(cat /gigashare/env_config/app.config | grep "app.manager.security.password" | cut -d= -f2)
     fi
 }
 
@@ -85,6 +80,8 @@ MANAGER=$(cat /gigashare/env_config/host.yaml | grep -A 1 manager | awk '/host/ 
 BASE_URL="http://${MANAGER}:8090/v2"
 
 # get credentials if env is secured
+AUTH_USER=""
+AUTH_PASS=""
 get_auth
 
 # check if connecion to space available
