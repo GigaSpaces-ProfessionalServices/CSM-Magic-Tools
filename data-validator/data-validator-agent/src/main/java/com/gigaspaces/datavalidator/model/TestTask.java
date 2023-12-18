@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import org.springframework.util.StringUtils;
 
 public class TestTask  implements Serializable  {
 
@@ -134,19 +135,28 @@ public class TestTask  implements Serializable  {
 						}else if(column_type.equalsIgnoreCase("java.sql.Date")) {
 							val = String.valueOf(rs.getDate(1).getTime());
 						}else if( column_type.equalsIgnoreCase("java.time.LocalDateTime")){
-							String dateStr = rs.getString(1);
-							String dateFormat = "yyyy-MM-dd HH:mm:ss";
-							if(dateStr.indexOf("T")>0){
-								dateFormat = "yyyy-MM-dd'T'HH:mm:ss";
-							}
-							logger.info("String val: " + dateStr);
-							logger.info("dateFormat: " + dateStr);
-							SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
-							Date date = sdf.parse(dateStr);
-							val= String.valueOf(date.getTime());
-							logger.info("date final val: " + dateStr);
+                            String dateStr = rs.getString(1);
+                            String dateFormat = "";
+                            // If occurrence count of ":" is 1 then date does not have seconds value
+                            if(StringUtils.countOccurrencesOf(dateStr,":")==1){
+                                dateFormat = "yyyy-MM-dd HH:mm";
+                                if (dateStr.indexOf("T") > 0) {
+                                    dateFormat = "yyyy-MM-dd'T'HH:mm";
+                                }
+                            }else {
+                                dateFormat = "yyyy-MM-dd HH:mm:ss";
+                                if (dateStr.indexOf("T") > 0) {
+                                    dateFormat = "yyyy-MM-dd'T'HH:mm:ss";
+                                }
+                            }
+                            logger.info("String val: " + dateStr);
+                            logger.info("dateFormat: " + dateFormat);
+                            SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+                            Date date = sdf.parse(dateStr);
+                            val= String.valueOf(date.getTime());
+                            logger.info("date final val: " + dateStr);
 
-						}else{
+                        }else{
 							val = rs.getString(1);
 						}
 						logger.info("val:     " + val);
