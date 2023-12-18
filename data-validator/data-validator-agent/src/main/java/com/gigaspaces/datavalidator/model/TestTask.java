@@ -62,10 +62,17 @@ public class TestTask  implements Serializable  {
 						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
 						logger.info("Admin API - Table name: "+measurement.getTableName());
 						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
-						Admin admin = new AdminFactory()
-								.addGroup(measurement.getGsLookupGroup())
-								//.discoverUnmanagedSpaces()
-								.createAdmin();
+                        Admin admin = null;
+                        if(measurement.getUsername()!=null
+                                && !measurement.getUsername().isEmpty()){
+                            admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
+                                    .credentials(measurement.getUsername(), measurement.getPassword())
+                                    .createAdmin();
+                        }else {
+                            admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
+                                    //.discoverUnmanagedSpaces()
+                                    .createAdmin();
+                        }
 						String puName = measurement.getSchemaName().replace("space","service");
 						ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(puName, 1, TimeUnit.MINUTES);
 						if(processingUnit == null){
