@@ -6,7 +6,7 @@
 # DESCRIPTION:
 #   supports unattended or interactive modes
 
-VERSION=1.0.0
+VERSION=0.0.1
 
 function usage() {
 cat << EOF
@@ -21,7 +21,7 @@ USAGE:
 
 DESCRIPTION:
     * microservices deployment operations
-    * interactive 'wizard' like mode using presets to streamline executions
+    * interactive 'wizard-like' mode using presets to streamline executions
     * unattended mode for full automation
     * choose between complete deployment or selected operations for a more granular control of execution
     * supports multi-instance deployments with smart container distribution across grid space nodes
