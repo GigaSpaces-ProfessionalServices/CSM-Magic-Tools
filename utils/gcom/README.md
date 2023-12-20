@@ -10,10 +10,12 @@ gcom -h
 ## Changelog
 
 ### Version 0.0.2
-* 
+* changed container deployment logic per free RAM on host
+* added information to list function
+* bash version verification for supported features
 
 ### Version 0.0.1
-* Initial release
+* initial release
 * microservices deployment operations
 * interactive 'wizard-like' mode using presets to streamline executions
 * unattended mode for full automation

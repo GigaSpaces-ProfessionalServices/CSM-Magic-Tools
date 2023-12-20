@@ -4,9 +4,9 @@
 #   gcom - Gigaspaces Components Orchestration Manager
 # 
 # DESCRIPTION:
-#   supports unattended or interactive modes
+#   supports unattended or interactive gs component deployment
 
-VERSION=0.0.1
+VERSION=0.0.2
 
 function usage() {
 cat << EOF
@@ -32,7 +32,7 @@ COMMANDS:
     deploy      Deploy a processing unit
     kill        Delete containers
     undeploy    Undeploy a processing unit
-    list-gc     List container distribution across spaces
+    list        List space resources accross hosts
     version     Show version
 
 OPTIONS:
@@ -76,8 +76,12 @@ EXAMPLES:
 EOF
 }
 
+function bash_version_ok() {
+    local this_version=$(echo $BASH_VERSION | cut -d. -f1-2)
+    [[ $(echo "$this_version >= $BASH_REQUIRED" | bc -l) == 1 ]] && return 0 || return 1
+}
+
 function print_gs_logo() {
-    #$VERBOSE && clear -x || { clear ; clear ; }
     clear ; clear
     printf '#%.0s' {1..63} ; echo                       # line 1
     echo -n "#" ; printf ' %.0s' {1..61} ; echo "#"     # line 2
@@ -104,6 +108,29 @@ function print_menu_header() {
     printf "\n:: ${header}\n"
     printf '‾%.0s' $(seq "$length")
     printf "\n"
+}
+
+function print_vars() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] MANAGER set to: $MANAGER" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM OF SPACES set to: $NUM_OF_SPACES" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE_PATH set to: $SERVICE_PATH" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE | ZONE set to: $SERVICE" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE_NAME set to: $SERVICE_NAME" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM_OF_CONTAINERS set to: $NUM_OF_CONTAINERS" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] JVM_RAM set to: $JVM_RAM" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] PORT_RANGE set to: $PORT_RANGE" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM_OF_INSTANCES set to: $NUM_OF_INSTANCES" >> $LOG
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] JAR set to: $JAR" >> $LOG
+    if [[ ! -z $DEPLOY_PARAMS ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] DEPLOY_PARAMS set to: $DEPLOY_PARAMS" >> $LOG
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] DEPLOY_PARAMS not set" >> $LOG
+    fi
+    if [[ ! -z $GS_EXT ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] GS_EXT set to: $GS_EXT" >> $LOG
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] GS_EXT not set" >> $LOG
+    fi
 }
 
 function logger() {
@@ -173,15 +200,54 @@ function is_manager_rest_ok() {
     ($port_ok && $rest_ok) && return 0 || return 1
 }
 
-function get_min_gc_space() {
-    local host_list="$1"
-    echo "$host_list" | sort -n | head -n 1 | sed 's/^ *//' | awk '{print $2}'
+function list_resources() {
+    local uri="http://${MANAGER}:8090/v2/containers"
+    echo
+    printf "%-10s | %-15s | %-10s | %-12s | %-12s\n" "Hostname" "IP" "Containers" "Total RAM" "Free RAM"
+    printf '‾%.0s' {1..70} ; echo
+    while read -r line; do
+        h_name=$(echo $line | awk '{print $2}' | sed 's/ //g')
+        h_ip=$(nslookup $h_name | grep 'Address' | awk 'NR==2 {print $2}' | sed 's/ //g')
+        h_cont=$(echo $line | awk '{print $1}' | sed 's/ //g')
+        h_tmem="$(expr $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemTotal=\([^,]*\).*/\1/p') / 1000000) MB"
+        h_fmem="$(expr $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemFree=\([^,]*\).*/\1/p') / 1000000) MB"
+        printf "%-10s   %-15s   %-10s   %-12s   %-12s\n" "$h_name" "$h_ip" "$h_cont" "$h_tmem" "$h_fmem"
+    done < <(curl -sk -u "$AUTH_USER:$AUTH_PASS" $uri | jq -r '.[].id' | sed 's/~.*//g' | sort | uniq -c | sed 's/^ *//')
+    printf '_%.0s' {1..70} ; echo
+    echo
 }
 
-function list_containers_per_host() {
-    local uri="http://${MANAGER}:8090/v2/containers"
-    echo "$(curl -sk "$AUTH_USER:$AUTH_PASS" $uri | \
-    jq -r '.[].id' | sed 's/~.*//g' | sort | uniq -c | sed 's/^ *//')"
+function mem_used_per_space_host() {
+    # build a global meminfo dictionary for each space host
+    # format: [host]:['MemTotal=KB_VAL,MemFree=KB_VAL']
+    space_hosts=$(get_cluster_hosts space)
+    
+    # loop using free instead of /proc/meminfo
+    for h in $space_hosts; do
+        info=$(ssh "$h" 'free -b' | awk 'NR==2 {printf "MemTotal=%s,MemFree=%s", $2, $4}')
+        SPACE_MEM_INFO["$h"]="$info"
+    done
+}
+
+function get_max_free_mem_host() {
+    declare -n free_mem_array="$1"
+    local optimal_host=""
+    local max_free=""
+
+    for h in ${!free_mem_array[*]}; do
+        current=$(echo ${free_mem_array[$h]} | sed -n 's/.*MemFree=\([^,]*\).*/\1/p')
+        if [[ $current -gt $max_free ]]; then
+            max_free=$current
+            optimal_host=$h
+        fi
+    done
+    echo $optimal_host
+}
+
+function check_ram_allocation_availalbe() {
+    # calculate the amount of total requested RAM per host against 
+    # the available RAM per host to see if RAM is available
+    echo "calculating ..."
 }
 
 function get_service() {
@@ -339,36 +405,13 @@ function get_operation() {
     "Deploy PU"
     "Kill containers"
     "Undeploy PU"
-    "List container distribution"
+    "List resources"
     "Quit"
     )
     select opt in "${options[@]}"; do
         [[ $opt == "" ]] && continue || break
     done
     echo "$opt"
-}
-
-function print_vars() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] MANAGER set to: $MANAGER" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM OF SPACES set to: $NUM_OF_SPACES" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE_PATH set to: $SERVICE_PATH" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE | ZONE set to: $SERVICE" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] SERVICE_NAME set to: $SERVICE_NAME" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM_OF_CONTAINERS set to: $NUM_OF_CONTAINERS" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] JVM_RAM set to: $JVM_RAM" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] PORT_RANGE set to: $PORT_RANGE" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] NUM_OF_INSTANCES set to: $NUM_OF_INSTANCES" >> $LOG
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] JAR set to: $JAR" >> $LOG
-    if [[ ! -z $DEPLOY_PARAMS ]]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] DEPLOY_PARAMS set to: $DEPLOY_PARAMS" >> $LOG
-    else
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] DEPLOY_PARAMS not set" >> $LOG
-    fi
-    if [[ ! -z $GS_EXT ]]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] GS_EXT set to: $GS_EXT" >> $LOG
-    else
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] GS_EXT not set" >> $LOG
-    fi
 }
 
 function service_presets() {
@@ -415,46 +458,54 @@ function service_presets() {
         }
     elif [[ $opt == "set" ]]; then
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "NUM_OF_CONTAINERS=")
-        [[ $test != "" ]] && declare -g NUM_OF_CONTAINERS=$(echo "$test" | grep "NUM_OF_CONTAINERS=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g NUM_OF_CONTAINERS=$(echo "$test" | grep "NUM_OF_CONTAINERS=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "JVM_RAM=")
-        [[ $test != "" ]] && declare -g JVM_RAM=$(echo "$test" | grep "JVM_RAM=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g JVM_RAM=$(echo "$test" | grep "JVM_RAM=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "NUM_OF_INSTANCES=")
-        [[ $test != "" ]] && declare -g NUM_OF_INSTANCES=$(echo "$test" | grep "NUM_OF_INSTANCES=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g NUM_OF_INSTANCES=$(echo "$test" | grep "NUM_OF_INSTANCES=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "JAR=")
-        [[ $test != "" ]] && declare -g JAR=$(echo "$test" | grep "JAR=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g JAR=$(echo "$test" | grep "JAR=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "PORT_RANGE=")
-        [[ $test != "" ]] && declare -g PORT_RANGE=$(echo "$test" | grep "PORT_RANGE=" | cut -d= -f2) && set_port_range
+        [[ $test != "" ]] && declare -g PORT_RANGE=$(echo "$test" | grep "PORT_RANGE=" | cut -d= -f2-) && set_port_range
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "GS_EXT=")
-        [[ $test != "" ]] && declare -g GS_EXT=$(echo "$test" | grep "GS_EXT=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g GS_EXT=$(echo "$test" | grep "GS_EXT=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "DEPLOY_PARAMS=")
-        [[ $test != "" ]] && declare -g DEPLOY_PARAMS=$(echo "$test" | grep "DEPLOY_PARAMS=" | cut -d= -f2)
+        [[ $test != "" ]] && declare -g DEPLOY_PARAMS=$(echo "$test" | grep "DEPLOY_PARAMS=" | cut -d= -f2-)
     fi
 }
 
 function undeploy_pu() {
-    echo
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] $GS_EXEC service undeploy $SERVICE_NAME" >> $LOG
+    echo $LOG
     logger $LOG $GS_EXEC service undeploy $SERVICE_NAME
 }
 
 function kill_containers() {
     echo
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] $GS_EXEC container kill --zones=$ZONE" >> $LOG
     logger $LOG $GS_EXEC container kill --zones=$ZONE
 }
 
 function create_containers() {
+    # abort if no mem info found
+    if [[ ${#SPACE_MEM_INFO[@]} == 0 ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] no space hosts memory info found." >> $LOG
+        return
+    fi
+    
     local count=0
-    local server_group="$(list_containers_per_host)"
+    declare -A runtime_mem_info
+    
+    # create a duplicate runtime array from SPACE_MEM_INFO
+    for k in "${!SPACE_MEM_INFO[@]}"; do runtime_mem_info["$k"]="${SPACE_MEM_INFO[$k]}" ; done
+
     echo
     while [[ $count -lt $NUM_OF_CONTAINERS ]]; do
         if [[ $count -ge $NUM_OF_SPACES ]] && [[ $(expr $count % $NUM_OF_SPACES) -eq 0 ]]; then
-            server_group="$(list_containers_per_host)"   # reset servers list for next ittereation
+            # reset runtime array back when count is reached
+            for k in "${!SPACE_MEM_INFO[@]}"; do runtime_mem_info["$k"]="${SPACE_MEM_INFO[$k]}" ; done
         fi
-        local min_gc_space=$(get_min_gc_space "$server_group")
-        echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] $GS_EXEC container create --count=1 --memory=$JVM_RAM --zone=$ZONE $min_gc_space" >> $LOG
-        logger $LOG $GS_EXEC container create --count=1 --memory=$JVM_RAM --zone=$ZONE $min_gc_space
-        server_group=$(echo "$server_group" | grep -v "$min_gc_space")
+        local optimal_host=$(get_max_free_mem_host runtime_mem_info)
+        logger $LOG $GS_EXEC container create --count=1 --memory=$JVM_RAM --zone=$ZONE $optimal_host
+        unset runtime_mem_info["$optimal_host"]       # removing last used host from the list
         ((count++))
     done    
 }
@@ -466,42 +517,41 @@ function deploy_pu() {
         export GS_OPTIONS_EXT="$GS_EXT"
         echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] export GS_OPTIONS_EXT=$GS_EXT" >> $LOG
     fi
-    echo
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] $GS_EXEC service deploy $SERVICE_NAME \
---instances=$NUM_OF_INSTANCES --zones=$ZONE $DEPLOY_PARAMS \
--p minPort=$MIN_PORT -p maxPort=$MAX_PORT -p consul.host=localhost $JAR" >> $LOG
-    
+    echo    
     logger $LOG $GS_EXEC service deploy $SERVICE_NAME \
---instances=$NUM_OF_INSTANCES --zones=$ZONE $DEPLOY_PARAMS \
--p minPort=$MIN_PORT -p maxPort=$MAX_PORT -p consul.host=localhost $JAR
+    --instances=$NUM_OF_INSTANCES --zones=$ZONE $DEPLOY_PARAMS \
+    -p minPort=$MIN_PORT -p maxPort=$MAX_PORT -p consul.host=localhost $JAR
 }
 
-function monitor_service_deployment_status() {
-    local uri="http://${MANAGER}:8090/v2/pus/$SERVICE_NAME"
-    local counter=0
-    local timeout=60
-    local service_ready=false
-    echo -e -n "\nService '$SERVICE' deployment status "
-    while [[ $counter -lt $timeout ]]; do
-        if [[ $(curl -sk "$AUTH_USER:$AUTH_PASS" "${uri}" | jq '.status') == "\"intact\"" ]]; then
-            service_ready=true
-            break
-        else
-            echo -n '.'
-            sleep 1
-            ((counter++))
-        fi
-    done
-    $service_ready && status="Successful" || status="Timed Out"
-    echo $status
-    echo "$(date '+%Y-%m-%d %H:%M:%S') service '$SERVICE' deployment completed with status: $status" >> $LOG
-}
+# function monitor_service_deployment_status() {
+#     local uri="http://${MANAGER}:8090/v2/pus/$SERVICE_NAME"
+#     local counter=0
+#     local timeout=60
+#     local service_ready=false
+#     echo -e -n "\nService '$SERVICE' deployment status "
+#     while [[ $counter -lt $timeout ]]; do
+#         if [[ $(curl -sk "$AUTH_USER:$AUTH_PASS" "${uri}" | jq '.status') == "\"intact\"" ]]; then
+#             service_ready=true
+#             break
+#         else
+#             echo -n '.'
+#             sleep 1
+#             ((counter++))
+#         fi
+#     done
+#     $service_ready && status="Successful" || status="Timed Out"
+#     echo $status
+#     echo "$(date '+%Y-%m-%d %H:%M:%S') service '$SERVICE' deployment completed with status: $status" >> $LOG
+# }
 
 
 
 #
-### MAIN ###
+# # # MAIN # # #
 #
+
+VERBOSE=false
+BASH_REQUIRED=4.4
 GS_ROOT=/dbagiga
 export GS_HOME="$GS_ROOT/gigaspaces-smart-ods"
 GS_LOG_ROOT=/dbagigalogs
@@ -510,7 +560,7 @@ LOG=${GS_LOG_ROOT}/$(basename $0).log
 BASE_DIR=$(dirname $(realpath $0))
 SERVICES_DIR=${BASE_DIR}/services
 SERVICE_PRESETS="service.presets"
-VERBOSE=false
+declare -A SPACE_MEM_INFO
 
 # text styles
 _b=$(tput bold)     # bold text
@@ -529,6 +579,12 @@ _c='\033[0;36m'     # cyan text
 _lc='\033[1;36m'    # light cyan text
 _w='\033[0;37m'     # white text
 _res='\033[0m'      # no colour
+
+# verify bash version compatibility
+if ! bash_version_ok; then
+    echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or newer."
+    exit 1
+fi
 
 # check host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
@@ -574,6 +630,10 @@ if [[ -z $MANAGER ]]; then
     exit
 fi
 
+# initialize creation of SPACE_MEM_INFO
+clear ; echo "Initializing $(basename $0) ..."
+mem_used_per_space_host
+
 # get number of space servers
 NUM_OF_SPACES=$(get_cluster_hosts space | wc -w)
 
@@ -581,7 +641,7 @@ NUM_OF_SPACES=$(get_cluster_hosts space | wc -w)
 if [[ $# -ne 0 ]]; then     # if unattended execution
     while [[ $# -gt 0 ]]; do
         case $1 in
-            full|create|deploy|kill|undeploy|list-gc|version) cmd=$1 ; shift ;;
+            full|create|deploy|kill|undeploy|list|fd-gen|version) cmd=$1 ; shift ;;
             -s) shift ; SERVICE_PATH="$(realpath $(echo $1 | sed 's|/$||'))" ; shift ;;
             -c) shift ; NUM_OF_CONTAINERS=$1 ; shift ;;
             -m) shift ; JVM_RAM=$1 ; shift ;;
@@ -606,6 +666,11 @@ if [[ $# -ne 0 ]]; then     # if unattended execution
         exit
     fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] command: '$cmd'" >> $LOG
+    while [[ ${#SPACE_MEM_INFO[@]} -ne $NUM_OF_SPACES ]]; do
+        echo "waiting for space info..."
+        sleep 0.5
+    done
+    echo "space info recieved. we continue"
     if [[ $cmd == "full" ]]; then
         get_service unattended
         get_num_of_containers unattended
@@ -641,8 +706,8 @@ if [[ $# -ne 0 ]]; then     # if unattended execution
         get_service unattended
         $VERBOSE && print_vars
         undeploy_pu
-    elif [[ $cmd == "list-gc" ]]; then
-        list_containers_per_host
+    elif [[ $cmd == "list" ]]; then
+        list_resources
     elif [[ $cmd == "version" ]]; then
         echo "$VERSION"
     fi
@@ -653,9 +718,15 @@ else                 # if interactive execution
     print_menu_header "Select the operation you wish to execute:"
     op_choice=$(get_operation)
     echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] command: '$op_choice'" >> $LOG
+    while [[ ${#SPACE_MEM_INFO[@]} -ne $NUM_OF_SPACES ]]; do
+        echo "waiting for space info..."
+        sleep 0.1
+    done
+    echo "space info recieved. we continue"
     case $op_choice in
         "Full deployment")
             print_gs_logo ; get_service interactive
+            echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] selected service: '$SERVICE'" >> $LOG
             service_presets init
             if $USE_SERVICE_PRESETS; then
                 service_presets set
@@ -721,10 +792,10 @@ else                 # if interactive execution
             $VERBOSE && print_vars
             undeploy_pu
             ;;
-        "List container distribution")
+        "List resources")
             print_gs_logo
             $VERBOSE && print_vars
-            list_containers_per_host
+            list_resources
             ;;
         "Quit")
             exit 0
