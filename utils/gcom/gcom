@@ -143,6 +143,20 @@ function logger() {
         done >> "$log_file"); } 2>&1
 }
 
+function print_mem_size_human() {
+    local num=$1
+    local d=1000    # common devider
+    local deviders=( $d $(($d**2)) $(($d**3)) )
+    local units=( "KB" "MB" "GB" )
+
+    for ((i=0; i<${#deviders[*]}; i++)); do
+        if [[ $(expr $num / ${deviders[$i]}) -lt 1000 ]]; then
+            echo "$(echo "scale=2 ; $num / ${deviders[$i]}" | bc) ${units[$i]}"
+            break
+        fi
+    done
+}
+
 function is_number() {
     local input="$1"
     [[ "$input" =~ ^[0-9]+$ ]] && echo true || echo false
@@ -203,28 +217,28 @@ function is_manager_rest_ok() {
 function list_resources() {
     local uri="http://${MANAGER}:8090/v2/containers"
     echo
-    printf "%-10s | %-15s | %-10s | %-12s | %-12s\n" "Hostname" "IP" "Containers" "Total RAM" "Free RAM"
-    printf '‾%.0s' {1..70} ; echo
+    printf "%-20s | %-12s | %-10s | %-10s | %-12s\n" "Hostname" "IP" "Containers" "Total RAM" "Available RAM"
+    printf '‾%.0s' {1..77} ; echo
     while read -r line; do
         h_name=$(echo $line | awk '{print $2}' | sed 's/ //g')
         h_ip=$(nslookup $h_name | grep 'Address' | awk 'NR==2 {print $2}' | sed 's/ //g')
-        h_cont=$(echo $line | awk '{print $1}' | sed 's/ //g')
-        h_tmem="$(expr $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemTotal=\([^,]*\).*/\1/p') / 1000000) MB"
-        h_fmem="$(expr $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemFree=\([^,]*\).*/\1/p') / 1000000) MB"
-        printf "%-10s   %-15s   %-10s   %-12s   %-12s\n" "$h_name" "$h_ip" "$h_cont" "$h_tmem" "$h_fmem"
+        cont=$(echo $line | awk '{print $1}' | sed 's/ //g')
+        tmem=$(print_mem_size_human $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemTotal=\([^,]*\).*/\1/p'))
+        amem=$(print_mem_size_human $(echo ${SPACE_MEM_INFO["$h_ip"]} | sed -n 's/.*MemAvailable=\([^,]*\).*/\1/p'))
+        printf "%-20s   %-12s   %-10s   %-10s   %-12s\n" "$h_name" "$h_ip" "$cont" "$tmem" "$amem"
     done < <(curl -sk -u "$AUTH_USER:$AUTH_PASS" $uri | jq -r '.[].id' | sed 's/~.*//g' | sort | uniq -c | sed 's/^ *//')
-    printf '_%.0s' {1..70} ; echo
+    printf '_%.0s' {1..77} ; echo
     echo
 }
 
 function mem_used_per_space_host() {
     # build a global meminfo dictionary for each space host
-    # format: [host]:['MemTotal=KB_VAL,MemFree=KB_VAL']
+    # format: [host]:['MemTotal=Bytes,MemAvailable=Bytes']
     space_hosts=$(get_cluster_hosts space)
     
     # loop using free instead of /proc/meminfo
     for h in $space_hosts; do
-        info=$(ssh "$h" 'free -b' | awk 'NR==2 {printf "MemTotal=%s,MemFree=%s", $2, $4}')
+        info=$(ssh "$h" 'free -b' | awk 'NR==2 {printf "MemTotal=%s,MemAvailable=%s", $2, $7}')
         SPACE_MEM_INFO["$h"]="$info"
     done
 }
@@ -235,7 +249,7 @@ function get_max_free_mem_host() {
     local max_free=""
 
     for h in ${!free_mem_array[*]}; do
-        current=$(echo ${free_mem_array[$h]} | sed -n 's/.*MemFree=\([^,]*\).*/\1/p')
+        current=$(echo ${free_mem_array[$h]} | sed -n 's/.*MemAvailable=\([^,]*\).*/\1/p')
         if [[ $current -gt $max_free ]]; then
             max_free=$current
             optimal_host=$h
@@ -530,7 +544,7 @@ function deploy_pu() {
 #     local service_ready=false
 #     echo -e -n "\nService '$SERVICE' deployment status "
 #     while [[ $counter -lt $timeout ]]; do
-#         if [[ $(curl -sk "$AUTH_USER:$AUTH_PASS" "${uri}" | jq '.status') == "\"intact\"" ]]; then
+#         if [[ $(curl -sk -u "$AUTH_USER:$AUTH_PASS" "${uri}" | jq '.status') == "\"intact\"" ]]; then
 #             service_ready=true
 #             break
 #         else
