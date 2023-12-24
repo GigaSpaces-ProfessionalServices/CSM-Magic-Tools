@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.7
+VERSION=2.6.8
 
 
 function usage() {
@@ -359,7 +359,7 @@ function get_volume_usage(){
 function show_hw_report() {
     # aggregate hardware related data
     local env_type=$1
-    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
+    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude categories from checks
     local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity='/'" "-hw.cpu-load" "-hw.mem-load")
     get_targeted_servers $env_type
     echo
@@ -545,7 +545,7 @@ function run_health_checks() {
     # traverse the different environments
     # and run health checks according to related SERVICES
     local env_type=$1
-    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
+    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude cockpit from checks
     local retval=0
     local is_number='^[0-9]+$'
     get_targeted_servers $env_type
