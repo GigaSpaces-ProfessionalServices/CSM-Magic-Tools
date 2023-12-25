@@ -9,6 +9,10 @@ gcom -h
 
 ## Changelog
 
+### Version 0.1.0
+* menu supports multiple selection of services: ranges and comma separated values
+* added script generator option
+
 ### Version 0.0.2
 * changed container deployment logic per free RAM on host
 * added information to list function
