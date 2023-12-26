@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.8
+VERSION=2.6.9
 
 
 function usage() {
@@ -321,33 +321,52 @@ function get_mem_load() {
 
 function get_volume_usage(){
     # get used capacity for root volume
-    local target_vol=$1
+    local target_vol="$1"
     local host=$2
+    EXCLUDE_MOUNTS="/dev, /sys, /run"    # add comma separated values here
+    
+    # for any volume (default)
+    if [[ $target_vol == '*' ]]; then
+        awk_excluded_mounts="$(echo $EXCLUDE_MOUNTS | sed 's/ //g;s/,/|/g')"
+        ssh $host "df -h | awk 'NR>1'" | while read l; do
+            local line=$(echo "$l" | awk -v exclude="$awk_excluded_mounts" '$6 !~ exclude {print}')
+            [[ $line == "" ]] && continue
+            local hdd_dev="$(echo $line | awk '{print $1}')"
+            local mount_point="$(echo $line | awk '{print $6}')"
+            local hdd_cap=$(echo $line | awk '{print $5}' | sed 's/%//g')
+            if [[ $hdd_cap -ge 90 ]]; then
+                local set_color="${red}"
+                local severity="CRITICAL"
+                $ERR_REPORT && \
+                CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
+            elif [[ $hdd_cap -ge 70 ]]; then
+                local set_color="${yellow}"
+                local severity="WARN"
+            else
+                local set_color="${lgreen}"
+                local severity="INFO"
+            fi
+            logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] used capacity: ${set_color}${hdd_cap}%${reset}, mounted on: ${mount_point}, device: $hdd_dev" "--params")\n" -fs $severity
+        done
     # check if volume exists
-    if [[ $(ssh $host "df -h $target_vol >/dev/null 2>&1" ; echo $?) -eq 0 ]]; then
-        local rstr=$(ssh $host "df -h ${target_vol} | tail -1")
-        local hdd_dev="$(echo $rstr | awk '{print $1}')"
-        local hdd_cap=$(echo $rstr | awk '{print $5}' | sed 's/%//g')
+    elif [[ $(ssh $host "df -h $target_vol >/dev/null 2>&1" ; echo $?) -eq 0 ]]; then
+        local line=$(ssh $host "df -h ${target_vol} | tail -1")
+        local hdd_dev="$(echo $line | awk '{print $1}')"
+        local mount_point="$(echo $line | awk '{print $6}')"
+        local hdd_cap=$(echo $line | awk '{print $5}' | sed 's/%//g')
         if [[ $hdd_cap -ge 90 ]]; then
             local set_color="${red}"
             local severity="CRITICAL"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
-        elif [[ $hdd_cap -ge 90 ]]; then
-            local set_color="${lred}"
-            local severity="ERROR"
-            $ERR_REPORT && \
-            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
         elif [[ $hdd_cap -ge 70 ]]; then
             local set_color="${yellow}"
-            local severity="WARNING"
+            local severity="WARN"
         else
             local set_color="${lgreen}"
             local severity="INFO"
         fi
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] device: $hdd_dev" "--params")\n" -fs INFO
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity: ${set_color}${hdd_cap}%${reset} used" "--params")\n" -s
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity: ${hdd_cap}% used" "--params")\n" -f $severity
+        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] used capacity: ${set_color}${hdd_cap}%${reset}, mounted on: ${mount_point}, device: $hdd_dev" "--params")\n" -fs $severity
     else
         logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' volume does not exist!" "--params")\n" -fs ERROR
         $ERR_REPORT && \
@@ -360,12 +379,12 @@ function show_hw_report() {
     # aggregate hardware related data
     local env_type=$1
     [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude categories from checks
-    local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity='/'" "-hw.cpu-load" "-hw.mem-load")
+    local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity=*" "-hw.cpu-load" "-hw.mem-load")
     get_targeted_servers $env_type
     echo
     # if only '-hw' we use default methods as specified in default_methods array
     if [[ ${#hw_methods[@]} -eq 0 ]]; then
-        for ((i=0; i<${#default_methods[@]}; i++)); do hw_methods[$i]=${default_methods[$i]} ; done
+        for ((i=0; i<${#default_methods[@]}; i++)); do hw_methods[$i]="${default_methods[$i]}" ; done
     fi
     logit --text "$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")\n" -fs INFO
     for host in $SERVER_LIST; do
@@ -373,7 +392,7 @@ function show_hw_report() {
             local method=$(echo $item | cut -d. -f2 | cut -d= -f1)
             local target_vol=$(echo $item | cut -d. -f2 | cut -d= -f2)
             case $method in
-                'capacity')     get_volume_usage $target_vol $host ;;
+                'capacity')     get_volume_usage "$target_vol" $host ;;
                 'cpu-count')    get_cpu_count $host ;;
                 'cpu-load')     get_cpu_load $host ;;
                 'mem-count')    get_mem_count $host ;;
@@ -415,7 +434,7 @@ function check_cr8_status() {
             ((idx++))
         done
         if [[ ${#streams[@]} -eq 0 ]]; then
-            logit --text "[${host}]${R_SPC}|--- No CR8 streams found!\n" -fs WARNING
+            logit --text "[${host}]${R_SPC}|--- No CR8 streams found!\n" -fs WARN
         else
             # print status of streams
             logit --text "[${host}]${R_SPC}|--- Found ${#streams[@]} CR8 streams:\n" -fs INFO
@@ -427,7 +446,7 @@ function check_cr8_status() {
                     logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs INFO
                     logit --state "Active" -fs
                 else
-                    logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs WARNING
+                    logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs WARN
                     logit --state "Inactive" -fs
                 fi
             done
@@ -718,7 +737,7 @@ function run_health_checks() {
 GS_ROOT="/dbagiga"
 LOGS_DIR="/dbagigalogs"
 UTILS_DIR="${GS_ROOT}/utils"
-LOG_FILE="${LOGS_DIR}/sanity/ods_sanity.log"
+LOG_FILE="${LOGS_DIR}/sanity/sanity.log"
 CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
@@ -756,7 +775,7 @@ fi
 
 # abort if conf file is missing
 if [[ ! -e $CONFIG_FILE ]]; then
-    echo "[WARNING] missing '$CONFIG_FILE'" ; exit
+    echo "[WARN] missing '$CONFIG_FILE'" ; exit
 else
     # remove carriage return characters from config file
     sed -i 's/\r$//g' $CONFIG_FILE

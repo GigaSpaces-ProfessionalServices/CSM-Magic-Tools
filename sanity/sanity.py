@@ -254,7 +254,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.1')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.2')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -382,28 +382,6 @@ def get_nb_domain():
                 return value
 
 
-def get_service_space_from_nb(the_service_name):
-    # get northbound host
-    sh_cmd = "/dbagiga/utils/runall/runall.sh -na -l | grep -v '===' | head -1"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    nb_host = the_response.strip("\\n'").strip("b'")
-    nb_hosts = get_host_yaml_servers('nb_applicative')
-    if len(nb_hosts) > 0:
-        port = 22
-        service_active = False
-        for nb_host in nb_hosts:
-            if check_connection(nb_host, port):
-                service_active = True
-                break
-        if not service_active:
-            print(f"ERROR: unable to connect to any NB app server on port {port}")
-            logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
-    ms_conf = "/etc/nginx/conf.d/microservices.conf"
-    sh_cmd = "ssh " + nb_host + " cat " + ms_conf + \
-             " | sed -n '/upstream " + the_service_name + "/,/server/p' | grep -Po '(?<=server).*?(?=max)'"
-    return str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).split(':')
-
-
 def show_grid_info(_step=None):
     try:
         if interactive_mode:
@@ -496,6 +474,7 @@ def run_services_polling(_service_name=None, _step=None):
                 else:
                     cmd = f'curl -sL --max-time {_timeout} \
                         --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                _response=None
                 _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
                 if verbose:
                     print(f"curl line = {l}")
@@ -503,7 +482,7 @@ def run_services_polling(_service_name=None, _step=None):
                     print(f"cmd = {cmd}")
                     print(f"response = {_response}")
                 print_line = f"polling service '{_this_service_name}':"
-                if f"x{_response}x" == 'xx':
+                if f"x{_response}x" == 'xx' or _response == '{"res":[]}':
                     svc_status = 'No Data'
                     svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
                 elif re.search("404", _response):
@@ -683,8 +662,7 @@ def show_hardware_info(_step=None):
             print('\n' * 3)
         _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
         print_title(_title)
-        sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
-            -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
+        sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count -hw.capacity=*"
         subprocess.call([sh_cmd], shell=True)
     except (KeyboardInterrupt, SystemExit):
         print("\n")
