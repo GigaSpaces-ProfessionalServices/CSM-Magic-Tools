@@ -21,129 +21,9 @@ import itertools
 import threading
 import pyfiglet
 import socket
+from glob import glob
 from pathlib import Path
 
-
-def argument_parser():
-    '''
-    argument parser function
-    :return: arguments object/dictionary
-    '''
-    
-    parser = argparse.ArgumentParser(
-        description='description: kill space instances duo - primary and backup',
-        epilog='* please report any issue to alon.segal@gigaspaces.com'
-    )
-    parser = argparse.ArgumentParser()
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('space_name', action="store", help="target the named space")
-    parser.add_argument('-c', action="store", dest="cycles", help="set number of iterations to execute")
-    parser.add_argument('-d', action="store", dest="duration", help="set duration (in seconds) for execution")
-    parser.add_argument('--info', action="store_true", help="show general grid information")
-    parser.add_argument('--status', action="store_true", help="get processing units state for all services")
-    parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
-    parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
-    parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
-    parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.6.5')
-
-    the_arguments = {}
-    ns = parser.parse_args()
-    if ns.space_name:
-        the_arguments['space_name'] = ns.space_name
-    if ns.cycles:
-        the_arguments['cycles'] = ns.cycles
-    if ns.duration:
-        the_arguments['duration'] = ns.duration
-    if ns.info:
-        the_arguments['info'] = True
-    if ns.status:
-        the_arguments['status'] = True
-    if ns.stats:
-        the_arguments['stats'] = True
-    if ns.stress:
-        the_arguments['stress'] = True
-    if ns.service:
-        the_arguments['service'] = ns.service
-    if ns.verbose:
-        the_arguments['verbose'] = True
-    return the_arguments
-
-
-def get_host_yaml_servers(_cluster):
-    """
-    Get DIH hosts from host.yaml
-    :_cluster: name of cluster to filter
-    :return: list of hosts
-    """
-    _hosts = []
-    try:
-        with open(host_yaml, 'r', encoding='utf8') as cfile:
-            ydata = yaml.safe_load(cfile)
-    except FileNotFoundError as e:
-        print('[ERROR] File not found: ', e)
-    except Exception as e:
-        print('[ERROR] An error occurred: ', e)
-    else:
-        _hosts = [h for h in ydata['servers'][_cluster].values()]
-    return _hosts
-
-
-def load_microservices():
-    """
-    Get microservices from config.json
-    :return: list of microservices names
-    """
-    with open(ms_config, 'r', encoding='utf8') as cfile:
-        ydata = json.load(cfile)
-    for y in ydata:
-        yield(y)
-
-
-def blink(_string):
-    return f"\033[30;5m{_string}\033[0m"
-
-
-def is_restful_ok(the_url):
-    """
-    send REST GET query and get the response [200 = OK]
-    :param the_url: url for GET request
-    :return: True / False
-    """
-    
-    try:
-        the_response = requests.get(
-            the_url,
-            auth=(auth['user'], auth['pass']),
-            verify=False,
-            timeout=3
-            )
-    except requests.exceptions.RequestException as e:
-        return False
-    else:
-        if the_response.status_code == 200:
-            return True
-        else:
-            return False
-
-
-def print_title(_string):
-    line = _string + '-' * (rw - len(_string)) + '\n'
-    colorama.init(autoreset=True)
-    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-
-
-def check_connection(_server, _port, _timeout=5):
-    check_port = 1
-    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    a_socket.settimeout(_timeout)
-    try:
-        check_port = a_socket.connect_ex((_server, _port))
-    except socket.error as socerr:
-        print(f"[ERROR] caught exception: {socerr}")
-    a_socket.settimeout(None)
-    return check_port 
-    
 
 class Spinner:
 
@@ -353,26 +233,125 @@ class OdsServiceGrid:
                 return False
 
 
-def get_auth(host):
-    auth_params = {}
-    if THIS_ENV.upper() in ['PRD', 'DR']:
-        odsx_env = 'PRD'
+def argument_parser():
+    '''
+    argument parser function
+    :return: arguments object/dictionary
+    '''
+    
+    parser = argparse.ArgumentParser(
+        description='description: kill space instances duo - primary and backup',
+        epilog='* please report any issue to alon.segal@gigaspaces.com'
+    )
+    parser = argparse.ArgumentParser()
+    required = parser.add_argument_group('required arguments')
+    required.add_argument('space_name', action="store", help="target the named space")
+    parser.add_argument('-c', action="store", dest="cycles", help="set number of iterations to execute")
+    parser.add_argument('-d', action="store", dest="duration", help="set duration (in seconds) for execution")
+    parser.add_argument('--info', action="store_true", help="show general grid information")
+    parser.add_argument('--status', action="store_true", help="get processing units state for all services")
+    parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
+    parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
+    parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
+    parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.2')
+
+    the_arguments = {}
+    ns = parser.parse_args()
+    if ns.space_name:
+        the_arguments['space_name'] = ns.space_name
+    if ns.cycles:
+        the_arguments['cycles'] = ns.cycles
+    if ns.duration:
+        the_arguments['duration'] = ns.duration
+    if ns.info:
+        the_arguments['info'] = True
+    if ns.status:
+        the_arguments['status'] = True
+    if ns.stats:
+        the_arguments['stats'] = True
+    if ns.stress:
+        the_arguments['stress'] = True
+    if ns.service:
+        the_arguments['service'] = ns.service
+    if ns.verbose:
+        the_arguments['verbose'] = True
+    return the_arguments
+
+
+def get_host_yaml_servers(_cluster):
+    """
+    Get DIH hosts from host.yaml
+    :_cluster: name of cluster to filter
+    :return: list of hosts
+    """
+    _hosts = []
+    try:
+        with open(host_yaml, 'r', encoding='utf8') as cfile:
+            ydata = yaml.safe_load(cfile)
+    except FileNotFoundError as e:
+        print('[ERROR] File not found: ', e)
+    except Exception as e:
+        print('[ERROR] An error occurred: ', e)
     else:
-        odsx_env = 'STG'
-    opt_user = "PassProps.UserName"
-    opt_pass = "Password"
-    cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
-          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o PassProps.UserName'
-    sh_cmd = f"ssh {host} '{cmd}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['user'] = the_response.strip("\\n'").strip("b'")
-    cmd = f'/opt/CARKaim/sdk/clipasswordsdk GetPassword ' \
-          f'-p AppDescs.AppID=APPODSUSERSBLL{odsx_env} ' \
-          f'-p Query="Safe=AIMODSUSERSBLL{odsx_env};Folder=;Object=ACCHQudkodsl;" -o Password'
-    sh_cmd = f"ssh {host} '{cmd}'"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    auth_params['pass'] = the_response.strip("\\n'").strip("b'")
+        _hosts = [h for h in ydata['servers'][_cluster].values()]
+    return _hosts
+
+
+def blink(_string):
+    return f"\033[30;5m{_string}\033[0m"
+
+
+def is_restful_ok(the_url):
+    """
+    send REST GET query and get the response [200 = OK]
+    :param the_url: url for GET request
+    :return: True / False
+    """
+    
+    try:
+        the_response = requests.get(
+            the_url,
+            auth=(auth['user'], auth['pass']),
+            verify=False,
+            timeout=3
+            )
+    except requests.exceptions.RequestException as e:
+        return False
+    else:
+        if the_response.status_code == 200:
+            return True
+        else:
+            return False
+
+
+def print_title(_string):
+    line = _string + '-' * (rw - len(_string)) + '\n'
+    colorama.init(autoreset=True)
+    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+
+
+def check_connection(_server, _port, _timeout=5):
+    check_port = 1
+    a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    a_socket.settimeout(_timeout)
+    try:
+        check_port = a_socket.connect_ex((_server, _port))
+    except socket.error as socerr:
+        print(f"[ERROR] caught exception: {socerr}")
+    a_socket.settimeout(None)
+    return check_port == 0
+
+
+def get_auth(app_config):
+    auth_params = {'user': '', 'pass': ''}
+    if is_env_secured():
+        f = open(app_config, 'r')
+        for line in f:
+            if re.search("app.manager.security.username", line):
+                auth_params['user'] = line.strip().replace('\n','').split('=')[1]
+            if re.search("app.manager.security.password", line):
+                auth_params['pass'] = line.strip().replace('\n','').split('=')[1]
     return auth_params
 
 
@@ -395,187 +374,171 @@ def is_backup_active():
                     return backup_active.casefold() == 'y'
 
 
-def test_microservice_e2e(_the_service_name, _the_host, _the_port, _the_json):
-    the_data = _the_json['data']
-    the_headers = _the_json['headers']
-    _debug_ = False
-    if _debug_:
-        print(f"\n\n{_the_service_name}".upper() + f" :: http://{_the_host}:{_the_port}/v1/u1")
-    the_url = f"http://{_the_host}:{_the_port}/v1/u1"
-    
-    if _the_json['method'].lower() == "json":
-        response = requests.get(
-            the_url,
-            json=the_data,
-            auth=(auth['user'], auth['pass']),
-            headers=the_headers
-        )
-    elif _the_json['method'].lower() == "params":
-        response = requests.get(
-            the_url,
-            params=the_data,
-            auth=(auth['user'], auth['pass']),
-            headers=the_headers
-        )
-    if _debug_:
-        print(response.json())
-    return response.status_code
-
-
-def get_service_space_from_nb(the_service_name):
-    # get northbound host
-    sh_cmd = "/dbagiga/utils/runall/runall.sh -na -l | grep -v '===' | head -1"
-    the_response = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout)
-    nb_host = the_response.strip("\\n'").strip("b'")
-    nb_hosts = get_host_yaml_servers('nb_applicative')
-    if len(nb_hosts) > 0:
-        port = 22
-        service_active = False
-        for nb_host in nb_hosts:
-            if check_connection(nb_host, port) == 0:
-                service_active = True
-                break
-        if not service_active:
-            print(f"ERROR: unable to connect to any NB app server on port {port}")
-            logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
-    ms_conf = "/etc/nginx/conf.d/microservices.conf"
-    sh_cmd = "ssh " + nb_host + " cat " + ms_conf + \
-             " | sed -n '/upstream " + the_service_name + "/,/server/p' | grep -Po '(?<=server).*?(?=max)'"
-    return str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).split(':')
+def get_nb_domain():
+    with open(nb_conf_template, 'r', encoding='utf8') as nbconf:
+        for line in nbconf:
+            if re.search("NB_DOMAIN=", line):
+                value = line.strip().replace('\n','').split('=')[1].replace('"','')
+                return value
 
 
 def show_grid_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
-    print_title(_title)
-    logger = logging.getLogger()
-    # display DIH grid information
-    the_info = osg.info()
-    for key, val in the_info.items():
-        print(f"{key:<14}: {val}")
-        logger.info(f"{key:<14}: {val}")
-    spaces_servers = get_host_yaml_servers('space')
-    print(f"{'space servers':<14}: {spaces_servers}")
-    print(f"{'partitions':<14}: {osg.Space.partition_count()}")
-    print(f"{'space name':<14}: {space_name}")
-    print('\n')
-    show_total_objects()
-    logging.shutdown()
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIH INFORMATION '
+        print_title(_title)
+        logger = logging.getLogger()
+        # display DIH grid information
+        the_info = osg.info()
+        for key, val in the_info.items():
+            print(f"{key:<14}: {val}")
+            logger.info(f"{key:<14}: {val}")
+        spaces_servers = get_host_yaml_servers('space')
+        print(f"{'space servers':<14}: {spaces_servers}")
+        print(f"{'partitions':<14}: {osg.Space.partition_count()}")
+        print(f"{'space name':<14}: {space_name}")
+        print('\n')
+        show_total_objects()
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_pu_status(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- OVERALL SERVICES STATUS '
-    print_title(_title)
-    logger = logging.getLogger()
-    the_pu_list = osg.ProcessingUnit.list()
-    colorama.init(autoreset=True)
-    for pu in the_pu_list:
-        time.sleep(0.1)
-        the_status = str(pu['status']).upper()
-        if the_status == "INTACT":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.GREEN}{the_status}':<20}" + u'[\u2713]')
-        if the_status == "SCHEDULED":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.YELLOW}{the_status}':<20}")
-        if the_status == "BROKEN":
-            print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.RED}{the_status}':<20}" + u'[\u2717]')
-        logger.info(f"{pu['name']:<70} status: {pu['status']}")
-    logging.shutdown()
-
-
-def run_services_polling(_step=None):
-    logger = logging.getLogger()
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
-    print_title(_title)
-    if ms_config_data is None:
-        print(f"service polling is unavailable. configuration data required ({ms_config})")
-        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- OVERALL SERVICES STATUS '
+        print_title(_title)
+        logger = logging.getLogger()
+        the_pu_list = osg.ProcessingUnit.list()
+        colorama.init(autoreset=True)
+        for pu in the_pu_list:
+            time.sleep(0.1)
+            the_status = str(pu['status']).upper()
+            if the_status == "INTACT":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.GREEN}{the_status}':<20}" + u'[\u2713]')
+            if the_status == "SCHEDULED":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.YELLOW}{the_status}':<20}")
+            if the_status == "BROKEN":
+                print(f"{pu['name']:<70}{'status:':<10}{f'{Fore.RED}{the_status}':<20}" + u'[\u2717]')
+            logger.info(f"{pu['name']:<70} status: {pu['status']}")
         logging.shutdown()
-        return
-    for s in load_microservices():
-        time.sleep(random.random())
-        show_service_polling(s)
-    logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
-def show_service_polling(the_service_name):
-    logger = logging.getLogger()
-    if ms_config_data is None:
-        print(f"service polling is unavailable. configuration data required ({ms_config})")
-        logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+def run_services_polling(_service_name=None, _step=None):
+    '''
+    function reads lines from microservices/curls file
+    and executes a CURL command for each line
+    '''
+    try:
+        logger = logging.getLogger()
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIGITAL SERVICES POLLING '
+        print_title(_title)
+        if not os.path.exists(ms_config):
+            print(f"service polling is unavailable. configuration data required ({ms_config})")
+            logger.info(f"service polling unavailable. configuration data required ({ms_config})")
+            logging.shutdown()
+            return
+        colorama.init(autoreset=True)
+        svc_status_print = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
+        svc_status = 'Failed'
+        _timeout = 3
+        with open(ms_config, 'r') as r:
+            _lines = r.readlines()
+            for _l in _lines:
+                l = _l.strip()
+                if l == '': continue
+                _this_service_name = l.split('?')[0].split('/')[3]
+                if _service_name != None and _this_service_name != _service_name:
+                    continue
+                if is_env_secured():
+                    cmd = f'curl -sL -u "{auth["user"]}:{auth["pass"]}" --max-time {_timeout} \
+                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                else:
+                    cmd = f'curl -sL --max-time {_timeout} \
+                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                _response=None
+                _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
+                if verbose:
+                    print(f"curl line = {l}")
+                    print(f"service name = {_this_service_name}")
+                    print(f"cmd = {cmd}")
+                    print(f"response = {_response}")
+                print_line = f"polling service '{_this_service_name}':"
+                if f"x{_response}x" == 'xx' or _response == '{"res":[]}':
+                    svc_status = 'No Data'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
+                elif re.search("404", _response):
+                    svc_status = 'Undeployed'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
+                elif re.search("500 Internal Server Error", _response):
+                    svc_status = 'Bad Request'
+                    svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
+                else:
+                    _response = json.loads(_response)
+                    if len(_response["res"]) != 0:
+                        svc_status = 'Successful'
+                        svc_status_print = f"{Fore.GREEN + svc_status:<20}" + u'[\u2713]'
+                print(f"{print_line:<70} {svc_status_print}")
+                logger.info(f"{print_line:<70} {svc_status}")
         logging.shutdown()
-        return
-    connection_params = get_service_space_from_nb(the_service_name)        
-    colorama.init(autoreset=True)
-    svc_status = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
-    svc_log_status = 'Failed'
-    if connection_params == [''] or connection_params[0] == "127.0.0.1":
-        print_line = f"connection to '{the_service_name}'"
-    else:
-        server = connection_params[0]
-        port = int(connection_params[1])
-        if check_connection(server, port) == 0:
-            try:
-                response = test_microservice_e2e(
-                    the_service_name, 
-                    server, 
-                    port, 
-                    ms_config_data[the_service_name]
-                    )
-            except:
-                response = 444
-        if response == 200:
-            svc_status = f"{f'{Fore.GREEN}Successful':<20}"  + u'[\u2713]'
-            svc_log_status = 'Successful'
-        print_line = f"polling service '{the_service_name}':"
-    print(f"{print_line:<70}{svc_status}")
-    logger.info(f"{print_line:<70}{svc_log_status}")
-    logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_cdc_status(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- CDC HEALTH AND FRESHNESS '
-    print_title(_title)
-    show_iidr_subscriptions()
-    show_di_pipeline_info()
-    shob_update()
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- CDC PIPELINES '
+        print_title(_title)
+        #show_iidr_subscriptions()
+        show_di_pipeline_info()
+        #shob_update()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
     
 
 def show_iidr_subscriptions(_step=None):
     print('\n-- [ IIDR SUBSCRIPTIONS ]')
-    servers = get_host_yaml_servers('dataIntegration')
+    servers = get_host_yaml_servers('cdc')
     if len(servers) > 0:
         logger = logging.getLogger()
         port = 10101
         user = "gsods"
         service_active = False
         for server in servers:
-            if check_connection(server, port) == 0:
+            if check_connection(server, port):
                 service_active = True
                 break
         if not service_active:
             print(f"ERROR: unable to connect to any DI server on port {port}")
             logger.error(f"[IIDR] unable to connect to any DI server on port {port}")
         else:
-            as_home = f"/home/{user}/iidr_cdc/as"
+            #as_home = f"/home/{user}/iidr_cdc/as"
+            as_home = f"/giga/iidr/as/bin/chcclp"
             monitor_home = "/dbagiga/di-iidr-watchdog"
             ss_file = "status_subscription.chcclp"
             exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|LEUMI)' | sed 's/Inactive/Ready/g'"
@@ -601,41 +564,38 @@ def show_iidr_subscriptions(_step=None):
 
 
 def show_di_pipeline_info():
-    print('\n-- [ DI PIPELINES ]')
+
+    def get_pipeline_name(pipeline):
+        return pipeline.get('name')
+
     servers = get_host_yaml_servers('dataIntegration')
     if len(servers) > 0:
         logger = logging.getLogger()
         port = 6080
         port_ok, service_ok = False, False
         for server in servers:
-            if check_connection(server, port, 3) == 0:
+            if check_connection(server, port, 3):
                 port_ok = True
                 break
         if not port_ok:
             print(f"ERROR: unable to connect to DI server(s) on port {port}.")
             logger.error("[IIDR] unable to connect to DI server(s) on port {port}.")
         else:
-            try:
-                for server in servers:
-                    url = f"http://{server}:{port}/api/v1/pipeline/"
-                    response_data = requests.get(
-                        url,
-                        auth=(auth['user'], auth['pass']),
-                        verify=False
-                    ).json()
-                    if len(response_data) != 0:
-                        if type(response_data).__name__ != 'list':
-                            break   # if not a list then pipeline is not installed, we break
-                        service_ok = True
-                        break
-            except:
-                pass
+            the_url = f'http://{server}:6080/api/v1/pipeline/'
+            response_data = requests.get(the_url, auth=(auth['user'], auth['pass']), verify=False).json()
+            if len(response_data) != 0 and type(response_data).__name__ == 'list':
+                response_data.sort(key=get_pipeline_name)   # sorted list by pipeline name
+                service_ok = True
             if service_ok:
-                r = response_data[0]
-                for k,v in r.items():
-                    key = f"{k}:"
-                    print(f"   {k:<18} {v}")
-                    logger.info(f"[IIDR] {k:<18} {v}")
+                for p in response_data:
+                    print(f"-- pipelineId: {p['pipelineId']}")
+                    print(f"    name: {p['name']}")
+                    print(f"    message: {p['message']}")
+                    logger.info(f"pipelineId: {p['pipelineId']}")
+                    logger.info(f"name: {p['name']}")
+                    logger.info(f"message: {p['message']}")
+                    print()
+                    time.sleep(0.3)
             else:
                 print(f"ERROR: unable to connect to API on DI server(s).")
                 logger.error("[IIDR] unable to connect to API on DI server(s).")
@@ -659,7 +619,7 @@ def shob_update():
     the_query = 'query?typeName=D2TBD201_SHOB_ODS&columns=D201_ODS_TIMESTAMP'
     the_url = f'{the_base_url}/{the_query}'
     the_headers = {'Content-Type': 'application/json'}
-    if check_connection(server, port) != 0:
+    if not check_connection(server, port):
         print(f"ERROR: unable to establish a connection to '{server}'")
         logger.error(f"[SHOB] unable to establish a connection to '{server}'")
         logging.shutdown()
@@ -694,32 +654,39 @@ def shob_update():
 
 
 def show_hardware_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
-    print_title(_title)
-    sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count \
-        -hw.capacity='/' -hw.capacity='/dbagiga' -hw.capacity='/dbagigalogs'"
-    subprocess.call([sh_cmd], shell=True)
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- DIH HARDWARE STATUS '
+        print_title(_title)
+        sh_cmd = f"{runall_exe} -hw.cpu-count -hw.cpu-load -hw.mem-count -hw.capacity=*"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_health_info(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- MODULES CONNECTIVITY STATUS '
-    print_title(_title)
-    sh_cmd = f"{runall_exe} -a -hc -q"
-    subprocess.call([sh_cmd], shell=True)
-    sh_cmd = f"{runall_exe} -n -hc -q"
-    subprocess.call([sh_cmd], shell=True)
-    sh_cmd = f"{runall_exe} -p -hc -q"
-    subprocess.call([sh_cmd], shell=True)
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- MODULES CONNECTIVITY STATUS '
+        print_title(_title)
+        sh_cmd = f"{runall_exe} -a -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+        sh_cmd = f"{runall_exe} -n -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+        sh_cmd = f"{runall_exe} -p -hc -q"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_total_objects():
@@ -734,60 +701,67 @@ def show_total_objects():
 
 
 def run_stress_test(_step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- SERVICE LOAD TEST '
-    print_title(_title)
-    spinner = Spinner
-    logger = logging.getLogger()
-    rand_id = random.randrange(10000, 99999)
-    report_file = f"{utils_dir}/sanity/k6-{rand_id}.out.report"
-    subprocess.run(f"{k6_test} {rand_id} &", shell=True)
-    print("(!) run '/dbagiga/utils/sanity/k6/k6control.py' in a separate terminal to monitor progress.")
-    with spinner(f'Stress test in progress... ', delay=0.1):
-        while not os.path.exists(report_file):
-            time.sleep(1)
-    print("Stress test completed successfully!\n")
-    with open(report_file, 'r') as r:
-        lines = r.readlines()
-        colorama.init(autoreset=True)
-        for line in lines:
-            line = line.strip()
-            logger.info(line)
-            if "is status" in line:
-                #if '✗' in line:
-                if '\u2717' in line:
-                    print(f"{Fore.RED}{Style.BRIGHT}{line}")
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- SERVICE LOAD TEST '
+        print_title(_title)
+        spinner = Spinner
+        logger = logging.getLogger()
+        rand_id = random.randrange(10000, 99999)
+        report_file = f"{utils_dir}/sanity/k6-{rand_id}.out.report"
+        subprocess.run(f"{k6_test} {rand_id} &", shell=True)
+        print("(!) run '/dbagiga/utils/sanity/k6/k6control.py' in a separate terminal to monitor progress.")
+        with spinner(f'Stress test in progress... ', delay=0.1):
+            while not os.path.exists(report_file):
+                time.sleep(1)
+        print("Stress test completed successfully!\n")
+        with open(report_file, 'r') as r:
+            lines = r.readlines()
+            colorama.init(autoreset=True)
+            for line in lines:
+                line = line.strip()
+                logger.info(line)
+                if "is status" in line:
+                    #if '✗' in line:
+                    if '\u2717' in line:
+                        print(f"{Fore.RED}{Style.BRIGHT}{line}")
+                    else:
+                        print(f"{Fore.GREEN}{Style.BRIGHT}{line}")
+                elif "service:" in line:
+                    print(f"{Back.BLUE}{line}")
+                elif "checks" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+                elif "http_reqs" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
+                elif "vus_max" in line:
+                    print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
                 else:
-                    print(f"{Fore.GREEN}{Style.BRIGHT}{line}")
-            elif "service:" in line:
-                print(f"{Back.BLUE}{line}")
-            elif "checks" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            elif "http_reqs" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            elif "vus_max" in line:
-                print(f"{Fore.BLUE}{Style.BRIGHT}{line}")
-            else:
-                print(line)
-    os.remove(report_file)
-    logging.shutdown()
+                    print(line)
+        os.remove(report_file)
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def show_recovery_report(script, _step=None):
-    if interactive_mode:
-        os.system('clear')
-        print(pyfiglet.figlet_format("     Sanity", font='slant'))
-    else:
-        print('\n' * 3)
-    _title = f'-- [ STEP {_step} ] --- PARTITIONS INTEGRITY REPORT '
-    print_title(_title)
-    sh_cmd = f"{script} {space_name} -u -i 0.1"
-    subprocess.call([sh_cmd], shell=True)
-
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- PARTITIONS INTEGRITY REPORT '
+        print_title(_title)
+        sh_cmd = f"{script} {space_name} -u -i 0.1"
+        subprocess.call([sh_cmd], shell=True)
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
 
 
 def run_sanity_routine():
@@ -828,9 +802,11 @@ if __name__ == '__main__':
     if os.path.exists(os.environ['ENV_CONFIG']):
         host_yaml = f"{os.environ['ENV_CONFIG']}/host.yaml"
         app_config = f"{os.environ['ENV_CONFIG']}/app.config"
+        nb_conf_template = f"{os.environ['ENV_CONFIG']}/nb/applicative/nb.conf.template"
     elif os.path.exists(ENV_CONFIG_BACKUP):
         host_yaml = f"{ENV_CONFIG_BACKUP}/host.yaml"
         app_config = f"{ENV_CONFIG_BACKUP}/app.config"
+        nb_conf_template = f"{ENV_CONFIG_BACKUP}//nb/applicative/nb.conf.template"
         print("(!) NFS mount is not accessible. using backup location for 'host.yaml' and 'app.config'.")
     else:
         print("ERROR: no 'host.yaml' and 'app.config' source is available. cannnot continue!")
@@ -844,10 +820,16 @@ if __name__ == '__main__':
     recmon_script = f"{utils_dir}/recovery_monitor/recovery_monitor.py"
     defualt_port = 8090
     k6_test = f"{utils_dir}/sanity/run_k6.sh"
-    ms_config = f"{gs_root}/microservices/config.json"
+    ms_config = f"{gs_root}/microservices/curls"
+    ssl_root = gs_root + "/ssl"
 
     # set display report width
     rw = 100
+
+    proxy = {
+        "http": "http://132.66.251.5:8080",
+        "https": "http://132.66.251.5:8080"
+    }
 
     try: 
         # creating logger
@@ -869,12 +851,15 @@ if __name__ == '__main__':
             )
         logger = logging.getLogger()
         logger.info('Sanity started.')
+        
         # disable insecure request warning
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         arguments = argument_parser()
         subprocess.run(['clear'])
+        
         # present title
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        
         # check REST status and set operational manager
         managers = get_host_yaml_servers('manager')
         if len(managers) == 0:
@@ -883,12 +868,11 @@ if __name__ == '__main__':
             logger.error("[ERROR] manager servers not found. aborting!")
             logging.shutdown()
             exit(1)
+        
         # configure authentication
-        auth = {}
-        if is_env_secured():
-            auth = get_auth(managers[0])
-        else:
-            auth['user'], auth['pass'] = '', ''
+        auth = get_auth(f"{os.environ['ENV_CONFIG']}/app.config")
+        
+        # get REST available host
         rest_ok_hosts = []
         for mgr in managers:
             url = f'http://{mgr}:{defualt_port}/v2/spaces'
@@ -916,6 +900,7 @@ if __name__ == '__main__':
         verbose = False
         cycles_passed = 0
         total_cycles = 1
+        
         ### parse arguments ###
         # check if 'space_name' is valid
         space_name = arguments['space_name']
@@ -931,7 +916,8 @@ if __name__ == '__main__':
             'show_health_info',
             #'run_stress_test',
             ]
-        # if HA is on we add recovery monitor report step
+        
+        # if HA is active we add recovery monitor report step
         backup_active = is_backup_active()
         headers = {'Accept': 'application/json'}
         the_url = f"http://{manager}:{defualt_port}/v2/internal/spaces/{space_name}/utilization"
@@ -946,12 +932,6 @@ if __name__ == '__main__':
             logger.info('Sanity complete.')
             logging.shutdown()
             exit(1)
-        # load microservice config
-        if os.path.exists(ms_config):
-            with open(ms_config, 'r', encoding='utf8') as msc:
-                ms_config_data = json.load(msc)
-        else:
-            ms_config_data = None
         if 'verbose' in arguments:
             verbose = True
         if 'cycles' in arguments:
@@ -972,6 +952,26 @@ if __name__ == '__main__':
         if 'service' in arguments:
             polling = True
             service_name = arguments['service']
+        
+        # setup SSL certificates
+        try:
+            cert_file = glob(f"{ssl_root}/cert/*")[0]
+        except:
+            cert_file = ""
+        try:
+            key_file = glob(f"{ssl_root}/key/*")[0]
+        except:
+            key_file = ""
+        try:
+            ca_file = glob(f"{ssl_root}/ca/*")[0]
+        except:
+            ca_file = ""
+    
+        if verbose:
+            print(f"cert_file = {cert_file}")
+            print(f"key_file = {key_file}")
+            print(f"ca_file = {ca_file}")
+        
         ### execute operations ###
         # if both cycles and duration requested we abort
         if cycles and duration:
@@ -992,7 +992,7 @@ if __name__ == '__main__':
                     if service_name.lower() == 'all':
                         run_services_polling()
                     else:
-                        show_service_polling(service_name)
+                        run_services_polling(service_name)
                     print()
                     time_passed = int(time.time() - started)
                 logger.info('Sanity complete.')
@@ -1003,7 +1003,7 @@ if __name__ == '__main__':
                     if service_name.lower() == 'all':
                         run_services_polling()
                     else:
-                        show_service_polling(service_name)
+                        run_services_polling(service_name)
                     print()
                     cycles_passed += 1
                 logger.info('Sanity complete.')
@@ -1081,3 +1081,4 @@ if __name__ == '__main__':
             exit(0)
     except (KeyboardInterrupt, SystemExit):
         print("\n")
+        exit
