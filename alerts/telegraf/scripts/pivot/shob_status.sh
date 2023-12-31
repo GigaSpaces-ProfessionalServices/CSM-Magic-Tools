@@ -78,26 +78,36 @@ GILBOASYNC=3600
 # get a manager
 MANAGER=$(cat /gigashare/env_config/host.yaml | grep -A 1 manager | awk '/host/ {print $3}' | tail -1)
 BASE_URL="http://${MANAGER}:8090/v2"
+SHOB_COOKIE=/tmp/.shob_cookie
 
 # get credentials if env is secured
 AUTH_USER=""
 AUTH_PASS=""
 get_auth
 
+# cache login
+[[ -e $SHOB_COOKIE ]] && rm -f $SHOB_COOKIE
+curl --user $AUTH_USER:$AUTH_PASS --cookie-jar $SHOB_COOKIE $BASE_URL
+if [[ ! -e $SHOB_COOKIE ]]; then
+    echo "error: could not build auth cache file"
+    exit 1
+fi
+
 # check if connecion to space available
-if [[ $(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces") == "Connect failed" ]]; then
+if [[ $(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces") == "Connect failed" ]]; then
     echo "Connection failed."
     exit
 fi
 
 # check if connecion returns data
-if [[ $(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces") == "" ]]; then
+if [[ $(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces") == "" ]]; then
     echo "No freshness data is currently available."
     exit
 fi
 
 # get space name
-SPACE_ID=$(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
+SPACE_ID=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
+#SPACE_ID=$(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
 
 # initialize shob data array
 shob_info=()
@@ -119,18 +129,18 @@ while read -r value; do
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
     $verbose && echo "$source_name | $table_name | threshold=$th | timestamp = $time_stamp_hr | now = $(date +%s) | time_diff = $time_diff"
-done< <(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces/${SPACE_ID}/query?typeName=SHOB_GA&maxResults=100" | jq --raw-output '.results[] | "\(.values)"')
+done< <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/query?typeName=SHOB_GA&maxResults=100" | jq --raw-output '.results[] | "\(.values)"')
 
 # get CDC object data - build a list of shob related objects (= ZZ_META_DI_TIMESTAMP field)
 shob_objects=""
-objectTypesMetadata=$(curl -u "$AUTH_USER:$AUTH_PASS" -ks ${BASE_URL}/spaces/${SPACE_ID}/objectsTypeInfo | jq -r '.objectTypesMetadata[]')
+objectTypesMetadata=$(curl --cookie $SHOB_COOKIE -ks ${BASE_URL}/spaces/${SPACE_ID}/objectsTypeInfo | jq -r '.objectTypesMetadata[]')
 while read -r obj; do
     [[ $obj == "SHOB_GA" ]] && continue
     has_zz_meta_di_timestamp=$(echo $objectTypesMetadata | \
     jq -r "select(.objectName == \"$obj\") | .schema" | \
     jq '. | any(.name == "ZZ_META_DI_TIMESTAMP")')
     $has_zz_meta_di_timestamp && shob_objects+=" $obj"
-done < <(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces/${SPACE_ID}/statistics/types" | jq --raw-output 'keys[]' | grep -v "java.lang.Object" | sort -n)
+done < <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/statistics/types" | jq --raw-output 'keys[]' | grep -v "java.lang.Object" | sort -n)
 
 # calculate CDC timestamps and generate influx data
 source_name="CDC"
@@ -138,7 +148,7 @@ for table_name in $shob_objects; do
     params="withExplainPlan=false&ramOnly=true"
     query="SELECT%20MAX(ZZ_META_DI_TIMESTAMP)%20FROM%20%22${table_name}%22&${params}"
     uri="internal/spaces/dih-tau-space/expressionquery?expression=${query}"
-    zz_time=$(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/${uri}")
+    zz_time=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/${uri}")
     time_stamp=$(echo $(echo "$zz_time" | jq -r '.results[].values[0]') / 1000 | bc)
     time_stamp_hr=$(date -d @${time_stamp} +"%Y-%m-%dT%H:%M:%SZ")
     th=$(get_table_threshold $table_name)
@@ -150,5 +160,7 @@ done
 
 # output influx data
 for i in "${shob_info[@]}"; do echo "$i" ; done
+
+rm -f $SHOB_COOKIE
 
 exit
