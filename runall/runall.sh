@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.6
+VERSION=2.6.9
 
 
 function usage() {
@@ -93,7 +93,7 @@ function logit() {
                 "Passed") log_text="${lgreen}${log_text}${reset}" ;;
                 "Failed") log_text="${lred}${log_text}${reset}" ;;
                 "Up") log_text="${lgreen}${log_text}${reset}" ;;
-                "Down") log_text="${yellow}${log_text}${reset}" ;;
+                "Down") log_text="${lred}${log_text}${reset}" ;;
                 "Active") log_text="${lgreen}${log_text}${reset}" ;;
                 "Inactive") log_text="${lred}${log_text}${reset}" ;;
                 "Leader") log_text="${lblue}${log_text}${reset}" ;;
@@ -138,11 +138,12 @@ function get_targeted_servers() {
      local SERVER_GROUP=(
         "space"             # [0]
         "manager"           # [1]
-        "dataIntegration"   # [2]
-        "nb_applicative"    # [3]
-        "nb_management"     # [4]
-        "pivot"             # [5]
-        "cockpit"           # [6]
+        "cdc"               # [2]
+        "dataIntegration"   # [3]
+        "nb_applicative"    # [4]
+        "nb_management"     # [5]
+        "pivot"             # [6]
+        "cockpit"           # [7]
     )
     case $1 in
         -l) list_all_servers ; exit ;;
@@ -155,17 +156,17 @@ function get_targeted_servers() {
         -c) local env_preffix="_c_"
             local srv_group=(${SERVER_GROUP[2]}) ;;
         -d) local env_preffix="_d_"
-            local srv_group=(${SERVER_GROUP[2]}) ;;
-        -na) local env_preffix="_na_"
             local srv_group=(${SERVER_GROUP[3]}) ;;
-        -nm) local env_preffix="_nm_"
+        -na) local env_preffix="_na_"
             local srv_group=(${SERVER_GROUP[4]}) ;;
-        -n) local env_preffix="_n_"
-            local srv_group=(${SERVER_GROUP[3]} ${SERVER_GROUP[4]}) ;;
-        -p) local env_preffix="_p_"
+        -nm) local env_preffix="_nm_"
             local srv_group=(${SERVER_GROUP[5]}) ;;
-        -cp) local env_preffix="_cp_"
+        -n) local env_preffix="_n_"
+            local srv_group=(${SERVER_GROUP[4]} ${SERVER_GROUP[5]}) ;;
+        -p) local env_preffix="_p_"
             local srv_group=(${SERVER_GROUP[6]}) ;;
+        -cp) local env_preffix="_cp_"
+            local srv_group=(${SERVER_GROUP[7]}) ;;
         -A) local env_preffix="_A_"
             local srv_group=${SERVER_GROUP[@]} ;;
         *)
@@ -320,33 +321,52 @@ function get_mem_load() {
 
 function get_volume_usage(){
     # get used capacity for root volume
-    local target_vol=$1
+    local target_vol="$1"
     local host=$2
+    EXCLUDE_MOUNTS="/dev, /sys, /run"    # add comma separated values here
+    
+    # for any volume (default)
+    if [[ $target_vol == '*' ]]; then
+        awk_excluded_mounts="$(echo $EXCLUDE_MOUNTS | sed 's/ //g;s/,/|/g')"
+        ssh $host "df -h | awk 'NR>1'" | while read l; do
+            local line=$(echo "$l" | awk -v exclude="$awk_excluded_mounts" '$6 !~ exclude {print}')
+            [[ $line == "" ]] && continue
+            local hdd_dev="$(echo $line | awk '{print $1}')"
+            local mount_point="$(echo $line | awk '{print $6}')"
+            local hdd_cap=$(echo $line | awk '{print $5}' | sed 's/%//g')
+            if [[ $hdd_cap -ge 90 ]]; then
+                local set_color="${red}"
+                local severity="CRITICAL"
+                $ERR_REPORT && \
+                CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
+            elif [[ $hdd_cap -ge 70 ]]; then
+                local set_color="${yellow}"
+                local severity="WARN"
+            else
+                local set_color="${lgreen}"
+                local severity="INFO"
+            fi
+            logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] used capacity: ${set_color}${hdd_cap}%${reset}, mounted on: ${mount_point}, device: $hdd_dev" "--params")\n" -fs $severity
+        done
     # check if volume exists
-    if [[ $(ssh $host "df -h $target_vol >/dev/null 2>&1" ; echo $?) -eq 0 ]]; then
-        local rstr=$(ssh $host "df -h ${target_vol} | tail -1")
-        local hdd_dev="$(echo $rstr | awk '{print $1}')"
-        local hdd_cap=$(echo $rstr | awk '{print $5}' | sed 's/%//g')
+    elif [[ $(ssh $host "df -h $target_vol >/dev/null 2>&1" ; echo $?) -eq 0 ]]; then
+        local line=$(ssh $host "df -h ${target_vol} | tail -1")
+        local hdd_dev="$(echo $line | awk '{print $1}')"
+        local mount_point="$(echo $line | awk '{print $6}')"
+        local hdd_cap=$(echo $line | awk '{print $5}' | sed 's/%//g')
         if [[ $hdd_cap -ge 90 ]]; then
             local set_color="${red}"
             local severity="CRITICAL"
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
-        elif [[ $hdd_cap -ge 90 ]]; then
-            local set_color="${lred}"
-            local severity="ERROR"
-            $ERR_REPORT && \
-            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity level: $severity"
         elif [[ $hdd_cap -ge 70 ]]; then
             local set_color="${yellow}"
-            local severity="WARNING"
+            local severity="WARN"
         else
             local set_color="${lgreen}"
             local severity="INFO"
         fi
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] device: $hdd_dev" "--params")\n" -fs INFO
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity: ${set_color}${hdd_cap}%${reset} used" "--params")\n" -s
-        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' capacity: ${hdd_cap}% used" "--params")\n" -f $severity
+        logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] used capacity: ${set_color}${hdd_cap}%${reset}, mounted on: ${mount_point}, device: $hdd_dev" "--params")\n" -fs $severity
     else
         logit --text "$(text_align "[${host}]${R_SPC}[STORAGE] '${target_vol}' volume does not exist!" "--params")\n" -fs ERROR
         $ERR_REPORT && \
@@ -358,13 +378,13 @@ function get_volume_usage(){
 function show_hw_report() {
     # aggregate hardware related data
     local env_type=$1
-    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
-    local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity='/'" "-hw.cpu-load" "-hw.mem-load")
+    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude categories from checks
+    local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity=*" "-hw.cpu-load" "-hw.mem-load")
     get_targeted_servers $env_type
     echo
     # if only '-hw' we use default methods as specified in default_methods array
     if [[ ${#hw_methods[@]} -eq 0 ]]; then
-        for ((i=0; i<${#default_methods[@]}; i++)); do hw_methods[$i]=${default_methods[$i]} ; done
+        for ((i=0; i<${#default_methods[@]}; i++)); do hw_methods[$i]="${default_methods[$i]}" ; done
     fi
     logit --text "$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")\n" -fs INFO
     for host in $SERVER_LIST; do
@@ -372,7 +392,7 @@ function show_hw_report() {
             local method=$(echo $item | cut -d. -f2 | cut -d= -f1)
             local target_vol=$(echo $item | cut -d. -f2 | cut -d= -f2)
             case $method in
-                'capacity')     get_volume_usage $target_vol $host ;;
+                'capacity')     get_volume_usage "$target_vol" $host ;;
                 'cpu-count')    get_cpu_count $host ;;
                 'cpu-load')     get_cpu_load $host ;;
                 'mem-count')    get_mem_count $host ;;
@@ -414,7 +434,7 @@ function check_cr8_status() {
             ((idx++))
         done
         if [[ ${#streams[@]} -eq 0 ]]; then
-            logit --text "[${host}]${R_SPC}|--- No CR8 streams found!\n" -fs WARNING
+            logit --text "[${host}]${R_SPC}|--- No CR8 streams found!\n" -fs WARN
         else
             # print status of streams
             logit --text "[${host}]${R_SPC}|--- Found ${#streams[@]} CR8 streams:\n" -fs INFO
@@ -426,7 +446,7 @@ function check_cr8_status() {
                     logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs INFO
                     logit --state "Active" -fs
                 else
-                    logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs WARNING
+                    logit --text "$(text_align "[${host}]${R_SPC}CR8 stream '${s_name}' status")" -fs WARN
                     logit --state "Inactive" -fs
                 fi
             done
@@ -437,32 +457,17 @@ function check_cr8_status() {
 
 function check_dns_resolve() {
     # check if dns resolution is correct
-    local the_host=$1
-    local lookup_name=""
-    local lookup_ip=""
-    local lookup_name=$(nslookup -timeout=3 $the_host | grep -v "#53" | awk '/Address/ {print $2}')
-    if [[ $lookup_name == "" ]]; then
-        local lookup_ip=$(nslookup -timeout=3 $the_host | sed '/^$/d' | sed 's/.*name = //' | sed 's/\.$//g')
-    fi
-    if [[ $lookup_name == "" && $lookup_ip == "" ]]; then
+    local host_name=$1
+    local host_ip=$(nslookup -timeout=3 $host_name | grep -v "#53" | awk '/Address/ {print $2}')
+    if [[ $host_ip != "" ]]; then
+        local lookup=$(nslookup -timeout=3 $host_ip | sed '/^$/d' | sed 's/.*name = //' | cut -d. -f1)
+        if [[ $lookup = "" ]]; then
+            local err=1
+        else
+            [[ "${lookup^^}" == "${host_name^^}" ]] && local err=0 || local err=1
+        fi
+    else
         local err=1
-    elif [[ $lookup_name != ""  ]]; then
-        local rev_lookup=$(nslookup -timeout=3 $lookup_name | sed '/^$/d' | sed 's/.*name = //' | sed 's/\.$//g')
-        if [[ $rev_lookup != "$the_host" ]]; then
-            local rev_lookup=$(nslookup -timeout=3 $lookup_name | sed '/^$/d' | sed 's/.*name = //' | cut -d. -f1)
-        fi
-        if [[ $rev_lookup = "" ]]; then
-            local err=1
-        else
-            [[ "${rev_lookup^^}" == "${the_host^^}" ]] && local err=0 || local err=1
-        fi
-    elif [[ $lookup_ip != ""  ]]; then
-        local rev_lookup=$(nslookup -timeout=3 $lookup_ip | grep -v "#53" | awk '/Address/ {print $2}')
-        if [[ $rev_lookup = "" ]]; then
-            local err=1
-        else
-            [[ "${rev_lookup^^}" == "${the_host^^}" ]] && local err=0 || local err=1
-        fi
     fi
     echo $err
 }
@@ -533,16 +538,14 @@ function check_time() {
 function print_errors_report() {
     # display errors report and clean up temporary files
     printf "\n\n"
-    printf '#%.0s' {1..31}
-    echo -ne "  ERRORS SUMMARY  "
-    printf '#%.0s' {1..32}
-    printf "\n"
-    printf '#%.0s' {1..81}
+    printf '#%.0s' {1..34}
+    echo -ne "  SUMMARY  "
+    printf '#%.0s' {1..34}
     printf "\n\n"
     if [[ ${#ERRORS[@]} -gt 0 ]]; then
         for ((i=0; i<${#ERRORS[@]}+1; i++)); do echo "${ERRORS[$i]}" ; done
     else
-        echo -e "\nNo errors found!"
+        echo -e "\n${white}No issues found!${reset}"
     fi
     unset ERRORS
 }
@@ -561,7 +564,7 @@ function run_health_checks() {
     # traverse the different environments
     # and run health checks according to related SERVICES
     local env_type=$1
-    [[ $env_type == "-cp" ]] && return  # exclude cockpit from checks
+    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude cockpit from checks
     local retval=0
     local is_number='^[0-9]+$'
     get_targeted_servers $env_type
@@ -582,16 +585,16 @@ function run_health_checks() {
         local net_fail=false
         logit --text "[${host}]${H_SPC}Basic network connectivity\n" -fs "INFO"
         # check dns
-        local retval=$(check_dns_resolve $host)
-        if [[ $retval == 0 ]]; then
-            logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs INFO
-            logit --state "Passed" -fs
-        else
-            logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs ERROR
-            logit --state "Failed" -fs
-            $ERR_REPORT && \
-            CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
-        fi
+        #local retval=$(check_dns_resolve $host)
+        #if [[ $retval == 0 ]]; then
+        #    logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs INFO
+        #    logit --state "Passed" -fs
+        #else
+        #    logit --text "$(text_align "[${host}]${R_SPC}DNS resolution")" -fs ERROR
+        #    logit --state "Failed" -fs
+        #    $ERR_REPORT && \
+        #    CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}DNS resolution"
+        #fi
         # check remote services
         for svc in $S_R; do
             local net_fail=false
@@ -755,6 +758,7 @@ purple='\033[0;35m'     # purple text
 lpurple='\033[1;35m'    # light purple text
 cyan='\033[0;36m'       # cyan text
 lcyan='\033[1;36m'      # light cyan text
+white='\033[0;37m'      # white text
 reset='\033[0m'         # no colour
 ### text spacers ###
 H_SPC="    "      # header spacer
@@ -771,7 +775,7 @@ fi
 
 # abort if conf file is missing
 if [[ ! -e $CONFIG_FILE ]]; then
-    echo "[WARNING] missing '$CONFIG_FILE'" ; exit
+    echo "[WARN] missing '$CONFIG_FILE'" ; exit
 else
     # remove carriage return characters from config file
     sed -i 's/\r$//g' $CONFIG_FILE
