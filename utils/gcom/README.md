@@ -9,6 +9,9 @@ gcom -h
 
 ## Changelog
 
+### Version 0.1.4
+* removed clear screen for unattended execution
+
 ### Version 0.1.0
 * menu supports multiple selection of services: ranges and comma separated values
 * added script generator option

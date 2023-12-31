@@ -6,7 +6,7 @@
 # DESCRIPTION:
 #   supports unattended or interactive gs component deployment
 
-VERSION=0.1.0
+VERSION=0.1.4
 
 function usage() {
 cat << EOF
@@ -330,7 +330,7 @@ function mem_used_per_space_host() {
     
     # loop using free instead of /proc/meminfo
     for h in $space_hosts; do
-        info=$(ssh "$h" 'free -b' | awk 'NR==2 {printf "MemTotal=%s,MemAvailable=%s", $2, $4}')
+        info=$(ssh "$h" 'free -b' | awk 'NR==2 {printf "MemTotal=%s,MemAvailable=%s", $2, $7}')
         SPACE_MEM_INFO["$h"]="$info"
     done
 }
@@ -517,7 +517,7 @@ function generate_custom_script() {
 
 function service_presets() {
     local opt=$1
-    [[ ! -z $2 ]] && [[ $2 == "--silent" ]] && local silent=true
+    [[ ! -z $2 ]] && [[ $2 == "--silent" ]] && local silent=true || silent=false
     if [[ $opt == "init" ]]; then
         $silent || print_menu_header "REVIEW PRESETS" "Presets are available for selected service(s):"
         $silent || echo "[SERVICE NAME: $SERVICE]"
@@ -582,7 +582,7 @@ function undeploy_pu() {
     if [[ -n JAVA_HOME ]] && [[ $(rpm -qa | grep java | head -1) != "" ]]; then
         export JAVA_HOME="$(which java | sed 's;bin/java;;g')"
     fi
-    logger $LOG $GS_EXEC service undeploy $SERVICE_NAME
+    logger $LOG $GS_EXEC --username $AUTH_USER --password $AUTH_PASS service undeploy $SERVICE_NAME
 }
 
 function kill_containers() {
@@ -590,7 +590,7 @@ function kill_containers() {
     if [[ -n JAVA_HOME ]] && [[ $(rpm -qa | grep java | head -1) != "" ]]; then
         export JAVA_HOME="$(which java | sed 's;bin/java;;g')"
     fi
-    logger $LOG $GS_EXEC container kill --zones=$ZONE
+    logger $LOG $GS_EXEC --username $AUTH_USER --password $AUTH_PASS container kill --zones=$ZONE
 }
 
 function create_containers() {
@@ -617,7 +617,7 @@ function create_containers() {
             for k in "${!SPACE_MEM_INFO[@]}"; do runtime_mem_info["$k"]="${SPACE_MEM_INFO[$k]}" ; done
         fi
         local optimal_host=$(get_max_free_mem_host runtime_mem_info)
-        logger $LOG $GS_EXEC container create --count=1 --memory=$JVM_RAM --zone=$ZONE $optimal_host
+        logger $LOG $GS_EXEC --username $AUTH_USER --password $AUTH_PASS container create --count=1 --memory=$JVM_RAM --zone=$ZONE $optimal_host
         unset runtime_mem_info["$optimal_host"]       # removing last used host from the list
         ((count++))
     done    
@@ -636,7 +636,7 @@ function deploy_pu() {
         echo "$(date '+%Y-%m-%d %H:%M:%S') [EXEC] export GS_OPTIONS_EXT=$GS_EXT" >> $LOG
     fi
     
-    logger $LOG $GS_EXEC service deploy $SERVICE_NAME \
+    logger $LOG $GS_EXEC --username $AUTH_USER --password $AUTH_PASS service deploy $SERVICE_NAME \
     --instances=$NUM_OF_INSTANCES --zones=$ZONE $DEPLOY_PARAMS \
     -p minPort=$MIN_PORT -p maxPort=$MAX_PORT -p consul.host=localhost $JAR
 }
@@ -659,6 +659,7 @@ SERVICE_PRESETS="service.presets"
 declare -A SPACE_MEM_INFO
 declare -a SERVICES_PATHS
 GEN_SCRIPT="/tmp/$(basename $0)_autogen_$(date '+%Y%m%d')-$RANDOM.sh"
+PREREQUISITES="jq"  # space separated commands
 
 # text styles
 _b=$(tput bold)     # bold text
@@ -678,11 +679,23 @@ _lc='\033[1;36m'    # light cyan text
 _w='\033[0;37m'     # white text
 _res='\033[0m'      # no colour
 
-# verify bash version compatibility
+# show usage without initializing
+[[ $1 == '-h' ]] && usage && exit
+
+# check prerequisites
+prereqs_ok=true
+# bash version
 if ! bash_version_ok; then
-    echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or newer."
-    exit 1
+    prereqs_ok=false
+    echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or above."
 fi
+for cmd in $PREREQUISITES; do
+    if ! command -v $cmd &> /dev/null; then
+        prereqs_ok=false
+        echo "[ERROR] missing prerequisite '$cmd'."
+    fi
+done
+$prereqs_ok || exit 1
 
 # check host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
@@ -712,9 +725,6 @@ if [[ $1 == '-v' ]]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] verbose mode: ON" >> $LOG
 fi
 
-# show usage without initializing
-[[ $1 == '-h' ]] && usage && exit
-
 # get credentials if env is secured
 get_auth
 
@@ -732,7 +742,8 @@ if [[ -z $MANAGER ]]; then
 fi
 
 # initialize creation of SPACE_MEM_INFO
-clear ; echo "Starting $(basename $0) ..."
+echo "starting $(basename $0) ..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] starting $(basename $0)" >> $LOG
 mem_used_per_space_host
 echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] space info acquired" >> $LOG
 
@@ -968,5 +979,7 @@ exit
 
 
 ### TO BE DONE ###
+# - remove clear screen for unattended mode
 # - calculate and warn against exceeding available memory
 # - menu navigation enhancements (ESC / Go back)
+# - add option to bulk change defaults
