@@ -1,7 +1,9 @@
 package com.gigaspaces.datavalidator.utils;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import com.gigaspaces.datavalidator.model.MeasurementRequestModel;
@@ -18,6 +20,8 @@ public class JDBCUtils {
         aggregation_functions.add("sum");
     }
     private static Logger logger = Logger.getLogger(JDBCUtils.class.getName());
+
+    private static final Map<String, Connection> connectionPool = new HashMap<>();
     
     public static Connection getConnection(MeasurementRequestModel measurement)
 			throws ReflectiveOperationException, ReflectiveOperationException, ClassNotFoundException, SQLException {
@@ -35,6 +39,17 @@ public class JDBCUtils {
 
 		Connection connection = null;
 		String connectionString = "";
+
+        if(connectionPool.containsKey(measurement.getDataSourceIdentifierKey())){
+            logger.info("Found in Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
+            connection = connectionPool.get(measurement.getDataSourceIdentifierKey());
+            if(!connection.isClosed()){
+                logger.info("Connection is still Open for Key: "+measurement.getDataSourceIdentifierKey());
+                return connection;
+            }else{
+                connection=null;
+            }
+        }
 
 		switch (dataSourceType) {
 
@@ -114,7 +129,8 @@ public class JDBCUtils {
 			logger.info("DataSource ConnectionString for " + measurement.getDataSourceType() + " :" + connectionString);
 			connection = DriverManager.getConnection(connectionString, username, password);
 		}
-
+        logger.info("Created New Connection for Key: "+measurement.getDataSourceIdentifierKey());
+        connectionPool.put(measurement.getDataSourceIdentifierKey(),connection);
 		return connection;
 	}
 

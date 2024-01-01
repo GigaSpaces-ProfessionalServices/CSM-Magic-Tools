@@ -155,6 +155,9 @@ public class MeasurementRequestModel {
         this.gsLookupGroup = gsLookupGroup;
     }
 
+    public String getDataSourceIdentifierKey(){
+        return dataSourceType +"|"+ dataSourceHostIp +"|"+ dataSourcePort +"|"+ schemaName +"|"+ username +"|"+ password;
+    }
     @Override
     public String toString() {
         return "MeasurementRequestModel{" +
