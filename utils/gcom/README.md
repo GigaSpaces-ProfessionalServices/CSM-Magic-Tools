@@ -9,6 +9,14 @@ gcom -h
 
 ## Changelog
 
+### Next versions changes
+* calculate and warn against exceeding available memory
+* add option to bulk change defaults
+
+### Version 0.2.0
+* removed clear screen for unattended mode
+* added wizard-like dictionary based menu with categories tree
+
 ### Version 0.1.4
 * removed clear screen for unattended execution
 
