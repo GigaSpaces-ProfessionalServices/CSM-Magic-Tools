@@ -254,7 +254,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.3')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.4')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -460,22 +460,29 @@ def run_services_polling(_service_name=None, _step=None):
         svc_status_print = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
         svc_status = 'Failed'
         _timeout = 3
+
+        # get nb domain
+        nb_domain = get_nb_domain()
+
         with open(ms_config, 'r') as r:
             _lines = r.readlines()
             for _l in _lines:
                 l = _l.strip()
                 if l == '': continue
-                _this_service_name = l.split('?')[0].split('/')[3]
+                _url_elements = l.split('/')[3::]
+                _this_service_name = _url_elements[0]
+                _url = '/'.join(_url_elements)
+                _this_uri = f"'https://{nb_domain}:8443/{_url}'"
                 if _service_name != None and _this_service_name != _service_name:
                     continue
                 if is_env_secured():
-                    cmd = f'curl -sL -u {auth["user"]}:{auth["pass"]} --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} ' + f"'{l}'"
+                    cmd = f'curl -sL -u {auth["user"]}:{auth["pass"]} --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} {_this_uri}'
                 else:
-                    cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} ' + f"'{l}'"
+                    cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} {_this_uri}'
                 _response=None
                 _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
                 if verbose:
-                    print(f"curl line = {l}")
+                    print(f"curl line = {_this_uri}")
                     print(f"service name = {_this_service_name}")
                     print(f"cmd = {cmd}")
                     print(f"response = {_response}")
@@ -586,7 +593,7 @@ def show_di_pipeline_info():
                 service_ok = True
             if service_ok:
                 for p in response_data:
-                    print(f"-- pipelineId: {p['pipelineId']}")
+                    print(f"{Fore.YELLOW}-- pipelineId: {p['pipelineId']}{Style.RESET_ALL}")
                     print(f"    name: {p['name']}")
                     print(f"    message: {p['message']}")
                     logger.info(f"pipelineId: {p['pipelineId']}")
@@ -804,7 +811,7 @@ if __name__ == '__main__':
     elif os.path.exists(ENV_CONFIG_BACKUP):
         host_yaml = f"{ENV_CONFIG_BACKUP}/host.yaml"
         app_config = f"{ENV_CONFIG_BACKUP}/app.config"
-        nb_conf_template = f"{ENV_CONFIG_BACKUP}//nb/applicative/nb.conf.template"
+        nb_conf_template = f"{ENV_CONFIG_BACKUP}/nb/applicative/nb.conf.template"
         print("(!) NFS mount is not accessible. using backup location for 'host.yaml' and 'app.config'.")
     else:
         print("ERROR: no 'host.yaml' and 'app.config' source is available. cannnot continue!")
