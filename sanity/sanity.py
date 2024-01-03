@@ -254,7 +254,7 @@ def argument_parser():
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
     parser.add_argument('--poll', action="store", dest="service", help="poll named service data")
     parser.add_argument('--verbose', action="store_true", help="increase script verbosity")
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.2')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s v1.7.3')
 
     the_arguments = {}
     ns = parser.parse_args()
@@ -469,11 +469,9 @@ def run_services_polling(_service_name=None, _step=None):
                 if _service_name != None and _this_service_name != _service_name:
                     continue
                 if is_env_secured():
-                    cmd = f'curl -sL -u "{auth["user"]}:{auth["pass"]}" --max-time {_timeout} \
-                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                    cmd = f'curl -sL -u {auth["user"]}:{auth["pass"]} --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} ' + f"'{l}'"
                 else:
-                    cmd = f'curl -sL --max-time {_timeout} \
-                        --key {key_file} --cert {cert_file} --cacert {ca_file} "{l}"'
+                    cmd = f'curl -sL --max-time {_timeout} --key {key_file} --cert {cert_file} --cacert {ca_file} ' + f"'{l}'"
                 _response=None
                 _response = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE).stdout.decode()
                 if verbose:
