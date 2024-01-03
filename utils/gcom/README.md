@@ -9,9 +9,11 @@ gcom -h
 
 ## Changelog
 
-### Next versions changes
+### Next versions planned changes
 * calculate and warn against exceeding available memory
-* add option to bulk change defaults
+
+### Version 0.2.1
+* added option to bulk change presets defaults
 
 ### Version 0.2.0
 * removed clear screen for unattended mode

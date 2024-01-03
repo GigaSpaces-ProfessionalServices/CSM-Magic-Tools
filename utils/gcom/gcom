@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.0
+VERSION=0.2.1
 
 
 function usage() {
@@ -714,7 +714,32 @@ function service_presets() {
 
 
 function update_defaults() {
-    echo "Change default values... [TBD]"
+    
+    function change_presets_param() {
+        local key=$1
+        local value=$2
+        find $SERVICES_DIR -mindepth 1 -maxdepth 1 -type d | while read d; do
+            SERVICE_PATH="$d"
+            get_services unattended
+            [[ ! -e $SERVICE_PATH/$SERVICE_PRESETS ]] && service_presets init --silent
+            sed -i "s/$key=.*/$key=$value/" $SERVICE_PATH/$SERVICE_PRESETS
+        done
+    }
+
+    declare -a params=("Number of Instances" "JVM Memory" "Number of Containers")    
+    print_menu_header "PARAMETERS" "Choose one or more parameters(s) you want to change:"
+    print_menu_items --in params[@] --out user_selections -m
+
+    for index in ${user_selections[@]}; do
+        case $index in
+            1)  get_num_of_instances interactive
+                change_presets_param NUM_OF_INSTANCES $NUM_OF_INSTANCES ;;
+            2)  get_memory_allocation interactive
+                change_presets_param JVM_RAM $JVM_RAM ;;
+            3)  get_num_of_containers interactive
+                change_presets_param NUM_OF_CONTAINERS $NUM_OF_CONTAINERS ;;
+        esac
+    done
 }
 
 function undeploy_pu() {
