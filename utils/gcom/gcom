@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.1
+VERSION=0.2.2
 
 
 function usage() {
@@ -742,6 +742,63 @@ function update_defaults() {
     done
 }
 
+
+function list_services() {
+    local uri="http://${MANAGER}:8090/v2/pus"
+    local deployed_services=""
+    local available_services=""
+    declare -A all_services
+    
+    # create list of deployed services
+    while read -r ds; do
+        deployed_services+="${ds} "
+    done < <(curl -sk -u "$AUTH_USER:$AUTH_PASS" $uri | jq -r '.[] | select(.processingUnitType == "stateless") | .name' | grep "_service$" | sed 's/ //g')
+    deployed_services=$(echo $deployed_services | sed 's/ $//')
+
+    # create list of available services
+    for s in ${AVAILABLE_SERVICES[@]}; do
+        s_name="$(echo $s | tr '[:upper:]' '[:lower:]')_service"
+        available_services+="$s_name "
+    done
+    available_services=$(echo $available_services | sed 's/ $//')
+
+    for ds in $deployed_services; do
+        if [[ "$available_services" == *"$ds"* ]] ; then
+            all_services[$ds]="deployed:available"
+        else
+            all_services[$ds]="deployed:unavailable"
+        fi
+    done
+
+    for as in $available_services; do
+        if [[ "$deployed_services" == *"$as"* ]] ; then
+            continue
+        else
+            all_services[$as]="undeployed:available"
+        fi
+    done
+
+     echo
+    printf "%-40s | %-12s | %-18s\n" "Service Name" "Is Deployed" "Available in GCOM"
+    printf '‾%.0s' {1..75} ; echo
+    for key in ${!all_services[@]}; do
+        if [[ "$(echo ${all_services["$key"]} | cut -d: -f1)" == "deployed" ]] ; then
+            remote="YES"
+        else
+            remote="NO"
+        fi
+        if [[ "$(echo ${all_services["$key"]} | cut -d: -f2)" == "available" ]] ; then
+            local="YES"
+        else
+            local="NO"
+        fi
+        printf "%-40s   %-12s   %-18s\n" "$key" "$remote" "$local"
+    done
+    printf '_%.0s' {1..75} ; echo
+    echo
+}
+
+
 function undeploy_pu() {
     # try to set JAVA_HOME
     if [[ -n JAVA_HOME ]] && [[ $(rpm -qa | grep java | head -1) != "" ]]; then
@@ -936,6 +993,7 @@ declare -A menu_items=(
         [1.5]="name=Deploy PU,type=action,exec=deploy_pu_routine,desc=Deploy a PU only"
     [2]="name=Information,type=menu,exec=,desc=Get DIH information"
         [2.1]="name=List Resources,type=action,exec=list_resources,desc=List space resource distribution"
+        [2.2]="name=List Services,type=action,exec=list_services,desc=List deployed and available services"
     [3]="name=Configuration,type=menu,exec=,desc=Configure gcom"
         [3.1]="name=Update Defaults,type=action,exec=update_defaults,desc=Change gcom default configuration (TBD)"
     [4]="name=Tools,type=menu,exec=,desc=Additional gcom tools and utilities"
@@ -1108,6 +1166,11 @@ else
             echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] command: '$action_name'" >> $LOG
             if [[ $exec_action == "list_resources" ]]; then
                 list_resources
+                unset wizard_selections[$((${#wizard_selections[@]} - 1))]
+                pause ; echo
+                continue
+            elif [[ $exec_action == "list_services" ]]; then
+                list_services
                 unset wizard_selections[$((${#wizard_selections[@]} - 1))]
                 pause ; echo
                 continue

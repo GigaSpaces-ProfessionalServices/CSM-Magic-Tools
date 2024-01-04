@@ -12,6 +12,9 @@ gcom -h
 ### Next versions planned changes
 * calculate and warn against exceeding available memory
 
+### Version 0.2.2
+* added services list under Information category
+
 ### Version 0.2.1
 * added option to bulk change presets defaults
 
