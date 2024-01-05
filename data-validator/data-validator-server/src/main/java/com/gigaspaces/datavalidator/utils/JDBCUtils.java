@@ -4,9 +4,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
-import com.gigaspaces.datavalidator.model.Agent;
 import com.gigaspaces.datavalidator.model.DataSource;
 import com.gigaspaces.datavalidator.model.Measurement;
 
@@ -20,7 +20,7 @@ public class JDBCUtils {
         aggregation_functions.add("max");
         aggregation_functions.add("sum");
     }
-    private static Logger logger = Logger.getLogger(JDBCUtils.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(JDBCUtils.class.getName());
     
     public static Connection getConnection(Measurement measurement)
 			throws ReflectiveOperationException, ReflectiveOperationException, ClassNotFoundException, SQLException {
@@ -83,7 +83,7 @@ public class JDBCUtils {
 
 			break;
 		}
-		logger.info("DataSource ConnectionString for " + dataSource + " :" + connectionString);
+		logger.debug("DataSource ConnectionString for " + dataSource + " :" + connectionString);
 		connection = DriverManager.getConnection(connectionString, username, password);
 
 		return connection;
@@ -133,7 +133,7 @@ public class JDBCUtils {
 
 			break;
 		}
-		logger.info("DataSource ConnectionString for " + dataSource + " :" + connectionString);
+		logger.debug("DataSource ConnectionString for " + dataSource + " :" + connectionString);
 		connection = DriverManager.getConnection(connectionString, username, password);
 	
 		return connection;

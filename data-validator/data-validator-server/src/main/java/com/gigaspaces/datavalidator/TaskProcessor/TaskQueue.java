@@ -3,16 +3,12 @@ package com.gigaspaces.datavalidator.TaskProcessor;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.logging.Logger;
 
 import com.gigaspaces.datavalidator.model.TestTask;
 
 public class TaskQueue {
 	
-    protected static Logger logger = Logger.getLogger(TaskQueue.class.getName());
     private static PriorityBlockingQueue<TestTask> taskQueue;
 
 

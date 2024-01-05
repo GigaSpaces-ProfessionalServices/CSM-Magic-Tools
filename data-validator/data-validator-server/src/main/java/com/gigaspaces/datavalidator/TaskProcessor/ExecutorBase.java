@@ -5,7 +5,8 @@ import org.springframework.stereotype.Component;
 import com.gigaspaces.datavalidator.db.service.TestTaskService;
 import com.gigaspaces.datavalidator.model.TestTask;
 import javax.annotation.PostConstruct;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 @Component
 public class ExecutorBase {
@@ -15,7 +16,7 @@ public class ExecutorBase {
 	@Autowired
 	TaskWorker taskWorker;
 	
-	protected Logger logger = Logger.getLogger(this.getClass().getName());
+	protected Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
 	@PostConstruct
 	public void atStartup() {
@@ -24,13 +25,13 @@ public class ExecutorBase {
 		taskWorker.setNumThreads(5);
 		Thread worker = new Thread(taskWorker);
 		worker.start();
-		logger.info("###### Worker startup ok");
+		logger.debug("###### Worker startup ok");
 		initDb();
 
 	}
 
 	public void initDb() {
-		logger.info("Initialisation of Measurement and TestTask");
+		logger.debug("Initialisation of Measurement and TestTask");
 		for (TestTask testTask : testTaskService.getAllPendingTask()) {
 			TaskQueue.setTask(testTask);
 		}

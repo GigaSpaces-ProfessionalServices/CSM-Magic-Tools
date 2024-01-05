@@ -6,9 +6,7 @@
 package com.gigaspaces.datavalidator.db.service;
 
 import java.util.List;
-import java.util.logging.Logger;
 
-import com.gigaspaces.datavalidator.model.Agent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.gigaspaces.datavalidator.db.dao.MeasurementDao;
@@ -23,7 +21,6 @@ import com.gigaspaces.datavalidator.model.Measurement;
 @Service
 public class MeasurementService {
 
-	private static Logger logger = Logger.getLogger(MeasurementService.class.getName());
 
 	@Autowired
 	private MeasurementDao measurementDao;
@@ -93,11 +90,8 @@ public class MeasurementService {
 		Measurement measurement=measurementDao.getById(parseLong);
 		if(measurement != null) {
 			dataSourceId = measurement.getDataSourceId();
-			logger.info("dataSourceId: " + dataSourceId);
 			DataSource dataSource = dataSourceService.getDataSource(dataSourceId);
-			logger.info("dataSource: " + dataSource);
 			//Agent agent = dataSourceAgentAssignmentService.getAgentByDataSource(dataSourceId);
-			logger.info("AAgent: " + dataSource.getAgent());
 			//dataSource.setAgent(agent);
 			measurement.setDataSource(dataSource);
 		}

@@ -1,7 +1,8 @@
 package com.gigaspaces.datavalidator.TaskProcessor;
 
 import java.util.concurrent.*;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -15,7 +16,7 @@ public class TaskWorker implements Runnable {
 	@Autowired
 	private TestTaskService odsxTaskDaoService;
 	
-	private Logger logger = Logger.getLogger(this.getClass().getName());
+	private Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 	private int numThreads;
 	private static ExecutorService executor;
 	private static CompletionService<TestTask> pool;
@@ -39,11 +40,11 @@ public class TaskWorker implements Runnable {
 			if (st != null) {
 				if (System.currentTimeMillis() >= st.getTime()) {
 					String result = st.executeTask();
-					logger.info("TaskWorker::Id:Result: " + st.getUuid() + ":" + result);
+					logger.debug("TaskWorker::Id:Result: " + st.getUuid() + ":" + result);
 					odsxTaskDaoService.update(st);
 					CompleteTaskQueue.setTask(st);
 				} else {
-					logger.info("TaskWorker:: Adding task back to Queue :" + st.getUuid()+" "+st.getType()+" ["+st.getMeasurementIds()+"] ");
+					logger.debug("TaskWorker:: Adding task back to Queue :" + st.getUuid()+" "+st.getType()+" ["+st.getMeasurementIds()+"] ");
 					TaskQueue.setTask(st);
 				}
 			}

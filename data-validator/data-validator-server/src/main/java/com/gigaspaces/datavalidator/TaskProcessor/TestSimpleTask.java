@@ -2,10 +2,8 @@ package com.gigaspaces.datavalidator.TaskProcessor;
 
 import java.io.Serializable;
 import java.util.concurrent.Callable;
-import java.util.logging.Logger;
 
 public class TestSimpleTask implements Callable<TestSimpleTask>, Serializable {
-    protected Logger logger = Logger.getLogger(this.getClass().getName());
     private String id;
     private long time;
     private String result;

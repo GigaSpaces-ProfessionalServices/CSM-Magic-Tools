@@ -18,19 +18,16 @@ import org.openspaces.core.space.SpaceProxyConfigurer;
 import java.io.Serializable;
 import java.sql.*;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 
 public class TestTask  implements Serializable  {
 
-	private static Logger logger = Logger.getLogger(TestTask.class.getName());
+	private static Logger logger =LoggerFactory.getLogger(TestTask.class);
 
 	private String uuid;
 	private String result = null;
@@ -51,26 +48,28 @@ public class TestTask  implements Serializable  {
 		try {
 				if (measurement != null) {
 					//DataSource dataSource = measurement.getDataSource();
-					logger.info("Executing task id: " + uuid);
+					logger.debug("Executing task id: " + uuid);
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
 
 					if(measurement.getDataSourceType().equals("gigaspaces")
 							&& measurement.getFieldName().equals("*")
 							&& whereCondition.equals("")){
-						logger.info("### Admin API: Fetching record count ###");
-						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
-						logger.info("Admin API - Table name: "+measurement.getTableName());
-						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
+						logger.debug("### Admin API: Fetching record count ###");
+						logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+						logger.debug("Admin API - Table name: "+measurement.getTableName());
+						logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
                         Admin admin = null;
                         if(measurement.getUsername()!=null
                                 && !measurement.getUsername().isEmpty()){
                             admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
                                     .credentials(measurement.getUsername(), measurement.getPassword())
+                                    .addLocator(measurement.getDataSourceHostIp())
                                     .createAdmin();
                         }else {
                             admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
                                     //.discoverUnmanagedSpaces()
+                                    .addLocator(measurement.getDataSourceHostIp())
                                     .createAdmin();
                         }
 						String puName = measurement.getSchemaName().replace("space","service");
@@ -81,36 +80,39 @@ public class TestTask  implements Serializable  {
 							return this.result;
 						}
 						Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
-						logger.info("Admin API - Space: "+space.toString());
+						logger.debug("Admin API - Space: "+space.toString());
 						for(SpaceInstance se: space.getInstances()){
 							while(se.getMode().equals(SpaceMode.NONE)){
 								Thread.sleep(400);
 							}
 						}
 						Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
-						logger.info("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
+						logger.debug("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
 
 
 						Integer count = countPerClassName.get(measurement.getTableName());
 						this.result = String.valueOf(count);
 						this.query = "N/A";
-						logger.info("### Admin API: Count="+this.result);
+						logger.debug("### Admin API: Count="+this.result);
 						return this.result;
 					}
 					String column_type=null;
 					if(measurement.getDataSourceType().equals("gigaspaces")){
-						logger.info("### NN Admin API: Fetching Column Type ###");
-						logger.info("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
-						logger.info("Admin API - Table name: "+measurement.getTableName());
-						logger.info("Admin API - Connecting Space: "+measurement.getSchemaName());
+						logger.debug("### NN Gigaspaces Proxy: Fetching Column Type ###");
+                        logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+                        logger.debug("Admin API - GS Locator: "+measurement.getDataSourceHostIp());
+						logger.debug("Admin API - Table name: "+measurement.getTableName());
+						logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
 
-						GigaSpace gigaSpace = new GigaSpaceConfigurer(new SpaceProxyConfigurer(measurement.getSchemaName()).lookupGroups(measurement.getGsLookupGroup())).gigaSpace();
+						GigaSpace gigaSpace = new GigaSpaceConfigurer(new SpaceProxyConfigurer(measurement.getSchemaName())
+                                .lookupGroups(measurement.getGsLookupGroup())
+                                .lookupLocators(measurement.getDataSourceHostIp())).gigaSpace();
 						GigaSpaceTypeManager gigaSpaceTypeManager = gigaSpace.getTypeManager();
 						SpaceTypeDescriptor typeManager = gigaSpaceTypeManager.getTypeDescriptor(measurement.getTableName());
 						SpacePropertyDescriptor fixedProperty = typeManager.getFixedProperty(measurement.getFieldName());
 						column_type = fixedProperty.getTypeDisplayName();
 
-						logger.info("Admin API - columnTypeSpace: " + column_type
+						logger.debug("Gigaspaces Proxy - columnTypeInSpace: " + column_type
 								+" for column name: "+measurement.getFieldName()
 								+" from table name: "+measurement.getTableName());
 					}
@@ -120,7 +122,7 @@ public class TestTask  implements Serializable  {
 					String query = JDBCUtils.buildQuery(measurement.getDataSourceType(), measurement.getFieldName(),
 							measurement.getType(), measurement.getTableName(),
 							Long.parseLong(measurement.getLimitRecords()), whereCondition);
-					logger.info("query: " + query);
+					logger.debug("query: " + query);
 					ResultSet rs = st.executeQuery(query);
 
 					if(!measurement.getDataSourceType().equals("gigaspaces")) {
@@ -129,12 +131,12 @@ public class TestTask  implements Serializable  {
 						try {
 							column_type = rsmd.getColumnClassName(1);
 						} catch (Exception e) {
-							logger.warning("Error in getting column data type so assuming string");
+							logger.error("Error in getting column data type so assuming string");
 						}
 					}
 					String val = "";
 					while (rs.next()) {
-						logger.info("Column Type:     " + column_type);
+						logger.debug("Column Type:     " + column_type);
 						if(column_type!=null
 								&& (column_type.equalsIgnoreCase("java.sql.Timestamp"))
 						){
@@ -156,17 +158,17 @@ public class TestTask  implements Serializable  {
                                     dateFormat = "yyyy-MM-dd'T'HH:mm:ss";
                                 }
                             }
-                            logger.info("String val: " + dateStr);
-                            logger.info("dateFormat: " + dateFormat);
+                            logger.debug("String val: " + dateStr);
+                            logger.debug("dateFormat: " + dateFormat);
                             SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
                             Date date = sdf.parse(dateStr);
                             val= String.valueOf(date.getTime());
-                            logger.info("date final val: " + dateStr);
+                            logger.debug("date final val: " + dateStr);
 
                         }else{
 							val = rs.getString(1);
 						}
-						logger.info("val:     " + val);
+						logger.debug("val:     " + val);
 					}
 					this.result = String.valueOf(val);
 					this.query = query;
@@ -178,7 +180,7 @@ public class TestTask  implements Serializable  {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.info(e.getMessage());
+			logger.error(e.getMessage());
 			this.errorSummary = e.getMessage();
 			this.result = "FAIL";
 			return this.result;

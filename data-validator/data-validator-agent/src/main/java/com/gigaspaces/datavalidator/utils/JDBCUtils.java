@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 import com.gigaspaces.datavalidator.model.MeasurementRequestModel;
 import com.microsoft.sqlserver.jdbc.SQLServerDataSource;
@@ -19,7 +20,7 @@ public class JDBCUtils {
         aggregation_functions.add("max");
         aggregation_functions.add("sum");
     }
-    private static Logger logger = Logger.getLogger(JDBCUtils.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(JDBCUtils.class.getName());
 
     private static final Map<String, Connection> connectionPool = new HashMap<>();
     
@@ -41,10 +42,10 @@ public class JDBCUtils {
 		String connectionString = "";
 
         if(connectionPool.containsKey(measurement.getDataSourceIdentifierKey())){
-            logger.info("Found in Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
+            logger.debug("Found in Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
             connection = connectionPool.get(measurement.getDataSourceIdentifierKey());
             if(!connection.isClosed()){
-                logger.info("Connection is still Open for Key: "+measurement.getDataSourceIdentifierKey());
+                logger.debug("Connection is still Open for Key: "+measurement.getDataSourceIdentifierKey());
                 return connection;
             }else{
                 connection=null;
@@ -55,13 +56,8 @@ public class JDBCUtils {
 
 		case "gigaspaces":
 			Class.forName("com.j_spaces.jdbc.driver.GDriver");
-//			connectionString = "jdbc:gigaspaces:url:jini://" + dataSourceHostIp + ":" + dataSourcePort + "/*/"
-//					+ schemaName;
 			connectionString = "jdbc:gigaspaces:v3://" + dataSourceHostIp + ":" + dataSourcePort + "/"
 					+ schemaName;
-//			if(gslookupGroup!=null && gslookupGroup.length()>0){
-//				connectionString += "?groups="+ gslookupGroup;
-//			}
 			break;
 
 		case "mysql":
@@ -87,49 +83,18 @@ public class JDBCUtils {
 			ds.setAuthenticationScheme(authenticationScheme);
 			ds.setDatabaseName(schemaName);
 
-			//
 			if(authenticationScheme.equals("MSSQL")){
 				//ds.setPortNumber(dataSourcePort);
 				ds.setUser(username);
 				ds.setPassword(password);
 			}
-
-			//
-
-			logger.info("######## MS SQL Data Source: ########");
-			logger.info("dataSourceHostIp: "+dataSourceHostIp);
-			logger.info("integratedSecurity: "+integratedSecurity);
-			logger.info("authenticationScheme: "+authenticationScheme);
-			logger.info("schemaName: "+schemaName);
-			if(authenticationScheme.equals("MSSQL")){
-				logger.info("username: "+username);
-				logger.info("password: "+password);
-			}
-			logger.info("############################");
-
 			connection = ds.getConnection();
-
-
-			/*Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver").newInstance();
-			connectionString = "jdbc:sqlserver://" + dataSourceHostIp + ":" + dataSourcePort + ";DatabaseName="+ schemaName + ";";
-
-			if (integratedSecurity != null && integratedSecurity.trim().length() > 0) {
-				connectionString = connectionString + "integratedSecurity=" + integratedSecurity + ";";
-			}
-			if (authenticationScheme != null && authenticationScheme.trim().length() > 0) {
-				connectionString = connectionString + "authenticationScheme=" + authenticationScheme + ";";
-			}
-			if (properties != null && properties.trim().length() > 0) {
-				connectionString = connectionString + properties;
-			}*/
-
 			break;
 		}
 		if(!dataSourceType.equals("ms-sql")) {
-			logger.info("DataSource ConnectionString for " + measurement.getDataSourceType() + " :" + connectionString);
 			connection = DriverManager.getConnection(connectionString, username, password);
 		}
-        logger.info("Created New Connection for Key: "+measurement.getDataSourceIdentifierKey());
+        logger.debug("Created New Connection for Key: "+measurement.getDataSourceIdentifierKey());
         connectionPool.put(measurement.getDataSourceIdentifierKey(),connection);
 		return connection;
 	}

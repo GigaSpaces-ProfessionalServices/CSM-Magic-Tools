@@ -1,27 +1,15 @@
 package com.gigaspaces.datavalidator.controller;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationConfig;
 import com.gigaspaces.datavalidator.model.*;
 import com.gigaspaces.datavalidator.utils.EncryptionDecryptionUtils;
-import oadd.org.codehaus.jackson.annotate.JsonMethod;
-/*
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonMethod;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
-*/
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
-import java.util.logging.Logger;
 
 @RestController
 public class AgentController {
-
-    private Logger logger = Logger.getLogger(this.getClass().getName());
 
     @PostMapping(path = "/measurement/run", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public String runMeasurement(

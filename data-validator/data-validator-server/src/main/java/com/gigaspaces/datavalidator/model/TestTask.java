@@ -6,7 +6,6 @@ import com.gigaspaces.datavalidator.utils.EncryptionDecryptionUtils;
 import com.gigaspaces.datavalidator.utils.InfluxDBUtils;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
 import com.gigaspaces.datavalidator.utils.NetClientPost;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
@@ -19,11 +18,12 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class TestTask  implements Serializable  {
 
-	private static Logger logger = Logger.getLogger(TestTask.class.getName());
+	private static Logger logger = LoggerFactory.getLogger(TestTask.class.getName());
 
 	//private long id;
 	private String uuid;
@@ -82,19 +82,19 @@ public class TestTask  implements Serializable  {
 		Measurement measurement2 = null;
 
 		try {
-			logger.info("testType:  "+testType);
+			logger.debug("testType:  "+testType);
 			if (testType != null && testType.equals("Measure")) {
 
 				Measurement measurement = measurementList.get(0);
 				if (measurement != null) {
 					DataSource dataSource = measurement.getDataSource();
-					logger.info("Executing task id: " + uuid);
+					logger.debug("Executing task id: " + uuid);
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
 
-					logger.info("DataSource: "+dataSource);
-					logger.info("Agent: "+dataSource.getAgent());
-					logger.info("Agent Host: "+dataSource.getAgent().getHostIp());
+					logger.debug("DataSource: "+dataSource);
+					logger.debug("Agent: "+dataSource.getAgent());
+					logger.debug("Agent Host: "+dataSource.getAgent().getHostIp());
 					String endPoint = "http://"+dataSource.getAgent().getHostIp()+":3223/measurement/run";
 					String data= "{" +
 							"\"measurementId\":\""+measurement.getId()+"\"" +
@@ -135,14 +135,14 @@ public class TestTask  implements Serializable  {
 					String query = JDBCUtils.buildQuery(dataSource.getDataSourceType(), measurement.getFieldName(),
 							measurement.getType(), measurement.getTableName(),
 							Long.parseLong(measurement.getLimitRecords()), whereCondition);
-					logger.info("query: " + query);
+					logger.debug("query: " + query);
 					// st = conn.createStatement();
 					ResultSet rs = st.executeQuery(query);
 
 					String val = "";
 					while (rs.next()) {
 						val = rs.getString(1);
-						logger.info("val:     " + val);
+						logger.debug("val:     " + val);
 					}
 					this.result = String.valueOf(val);*/
 				} else {
@@ -167,13 +167,13 @@ public class TestTask  implements Serializable  {
 					Statement statement1 = conn1.createStatement();
 					String query1 = JDBCUtils.buildQuery(dataSource1.getDataSourceType(), measurement1.getFieldName(),
 							test1, measurement1.getTableName(), Long.parseLong(limitRecords), whereCondition);
-					logger.info("query1: " + query1);
+					logger.debug("query1: " + query1);
 					ResultSet resultSet1 = statement1.executeQuery(query1);
 
 					float val1 = 0;
 					while (resultSet1.next()) {
 						val1 = resultSet1.getFloat(1);
-						logger.info("val1:     " + val1);
+						logger.debug("val1:     " + val1);
 					}*/
 
 					String endPoint = "http://"+dataSource1.getAgent().getHostIp()+":3223/measurement/run";
@@ -197,7 +197,7 @@ public class TestTask  implements Serializable  {
 							"}";
 
 					String response1=NetClientPost.send(endPoint,data);
-					logger.info("response1: "+response1);
+					logger.debug("response1: "+response1);
 					JsonObject testTaskResponse1 = (JsonObject) JsonParser.parseString(response1);
 					response1 = testTaskResponse1.get("result").getAsString();
 					this.errorSummary = testTaskResponse1.get("errorSummary").getAsString();
@@ -209,18 +209,18 @@ public class TestTask  implements Serializable  {
 					Statement statement2 = conn2.createStatement();
 					String query2 = JDBCUtils.buildQuery(dataSource2.getDataSourceType(), measurement2.getFieldName(),
 							test2, measurement2.getTableName(), Long.parseLong(limitRecords), whereCondition);
-					logger.info("query2: " + query2);
+					logger.debug("query2: " + query2);
 					ResultSet resultSet2 = statement2.executeQuery(query2);
 
 					float val2 = 0;
 					while (resultSet2.next()) {
 						val2 = resultSet2.getFloat(1);
-						logger.info("val2:     " + val2);
+						logger.debug("val2:     " + val2);
 					}*/
 
-					logger.info("DataSource2: "+dataSource2);
-					logger.info("Agent2: "+dataSource2.getAgent());
-					logger.info("Agent2 Host: "+dataSource2.getAgent().getHostIp());
+					logger.debug("DataSource2: "+dataSource2);
+					logger.debug("Agent2: "+dataSource2.getAgent());
+					logger.debug("Agent2 Host: "+dataSource2.getAgent().getHostIp());
 					String endPoint2 = "http://"+dataSource2.getAgent().getHostIp()+":3223/measurement/run";
 					String data2= "{" +
 							"\"measurementId\":\""+measurement2.getId()+"\"" +
@@ -243,7 +243,7 @@ public class TestTask  implements Serializable  {
 							"}";
 
 					String response2=NetClientPost.send(endPoint2,data2);
-					logger.info("response2: "+response2);
+					logger.debug("response2: "+response2);
 					JsonObject testTaskResponse2 = (JsonObject) JsonParser.parseString(response2);
 					response2 = testTaskResponse2.get("result").getAsString();
 					this.query += " | "+testTaskResponse2.get("query").getAsString();
@@ -255,7 +255,7 @@ public class TestTask  implements Serializable  {
 							this.result = "PASS";
 							this.summary = "Results matched. "+dataSource1.getDataSourceType()+"-Result: "+response1 +"  "+dataSource2.getDataSourceType()+"-Result: "+response2;
 						} else {
-							logger.info("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + response1
+							logger.debug("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + response1
 									+ ", DataSource2 Result: " + response2);
 							this.result = "FAIL";
 							this.errorSummary = "Results not matched. "+dataSource1.getDataSourceType()+"-Result: "+response1 +"  "+dataSource2.getDataSourceType()+"-Result: "+response2;
@@ -280,7 +280,7 @@ public class TestTask  implements Serializable  {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.info(e.getMessage());
+			logger.debug(e.getMessage());
 			this.errorSummary = e.getMessage();
 			this.result = "FAIL";
 			return this.result;
@@ -292,7 +292,7 @@ public class TestTask  implements Serializable  {
 				this.errorSummary = "Measurement not available";
 			}
 		}
-		logger.info("In TestTask Last line: "+this.result);
+		logger.debug("In TestTask Last line: "+this.result);
 		return this.result;
 	}
 	public String executeTaskOld() {
@@ -308,7 +308,7 @@ public class TestTask  implements Serializable  {
 				Measurement measurement = measurementList.get(0);
 				if (measurement != null) {
 					DataSource dataSource = measurement.getDataSource();
-					logger.info("Executing task id: " + uuid);
+					logger.debug("Executing task id: " + uuid);
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
 
@@ -317,14 +317,14 @@ public class TestTask  implements Serializable  {
 					String query = JDBCUtils.buildQuery(dataSource.getDataSourceType(), measurement.getFieldName(),
 							measurement.getType(), measurement.getTableName(),
 							Long.parseLong(measurement.getLimitRecords()), whereCondition);
-					logger.info("query: " + query);
+					logger.debug("query: " + query);
 					// st = conn.createStatement();
 					ResultSet rs = st.executeQuery(query);
 
 					String val = "";
 					while (rs.next()) {
 						val = rs.getString(1);
-						logger.info("val:     " + val);
+						logger.debug("val:     " + val);
 					}
 					this.result = String.valueOf(val);
 				} else {
@@ -349,13 +349,13 @@ public class TestTask  implements Serializable  {
 					Statement statement1 = conn1.createStatement();
 					String query1 = JDBCUtils.buildQuery(dataSource1.getDataSourceType(), measurement1.getFieldName(),
 							test1, measurement1.getTableName(), Long.parseLong(limitRecords), whereCondition);
-					logger.info("query1: " + query1);
+					logger.debug("query1: " + query1);
 					ResultSet resultSet1 = statement1.executeQuery(query1);
 
 					float val1 = 0;
 					while (resultSet1.next()) {
 						val1 = resultSet1.getFloat(1);
-						logger.info("val1:     " + val1);
+						logger.debug("val1:     " + val1);
 					}
 
 					Connection conn2 = JDBCUtils.getConnection(measurement2);
@@ -363,18 +363,18 @@ public class TestTask  implements Serializable  {
 					Statement statement2 = conn2.createStatement();
 					String query2 = JDBCUtils.buildQuery(dataSource2.getDataSourceType(), measurement2.getFieldName(),
 							test2, measurement2.getTableName(), Long.parseLong(limitRecords), whereCondition);
-					logger.info("query2: " + query2);
+					logger.debug("query2: " + query2);
 					ResultSet resultSet2 = statement2.executeQuery(query2);
 
 					float val2 = 0;
 					while (resultSet2.next()) {
 						val2 = resultSet2.getFloat(1);
-						logger.info("val2:     " + val2);
+						logger.debug("val2:     " + val2);
 					}
 					if (val1 == val2) {
 						this.result = "PASS";
 					} else {
-						logger.info("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + val1
+						logger.debug("==> Test Result: FAIL, Test type: " + test1 + ", DataSource1 Result: " + val1
 								+ ", DataSource2 Result: " + val2);
 						this.result = "FAIL";
 						this.errorSummary = "Results not matched. Result-1: "+val1 +"  Result-2: "+val2;
@@ -389,7 +389,7 @@ public class TestTask  implements Serializable  {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.info(e.getMessage());
+			logger.debug(e.getMessage());
 			this.errorSummary = e.getMessage();
 			this.result = "FAIL";
 			return this.result;

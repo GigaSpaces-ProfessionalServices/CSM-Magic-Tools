@@ -6,11 +6,12 @@ import org.influxdb.dto.Point;
 import org.influxdb.dto.Pong;
 
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public class InfluxDBUtils {
 
-    private static Logger logger = Logger.getLogger(InfluxDBUtils.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(InfluxDBUtils.class.getName());
 
     private static InfluxDB influxDB;
 
@@ -20,9 +21,9 @@ public class InfluxDBUtils {
     public static void write(String database, String measurement, String tabEnv, String tagObjType, String state, String host){
         Pong response = influxDB.ping();
         if (response.getVersion().equalsIgnoreCase("unknown")) {
-            logger.info("Error pinging InfluxDB server.");
+            logger.error("Error pinging InfluxDB server.");
         }else{
-            logger.info("InfluxDB connected successfully");
+            logger.debug("InfluxDB connected successfully");
         }
         influxDB.createDatabase(database);
         int result = 0; // 0=fail , 1=pass

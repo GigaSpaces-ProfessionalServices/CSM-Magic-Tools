@@ -39,9 +39,7 @@ public class NetClientPost {
                     (conn.getInputStream())));
 
             String output;
-            System.out.println("Output from Server .... \n");
             while ((output = br.readLine()) != null) {
-                System.out.println(output);
                 response.append(output);
             }
             conn.disconnect();

@@ -2,12 +2,10 @@ package com.gigaspaces.datavalidator.controller;
 
 import com.gigaspaces.datavalidator.TaskProcessor.CompleteTaskQueue;
 import com.gigaspaces.datavalidator.TaskProcessor.TaskQueue;
-import com.gigaspaces.datavalidator.db.HibernateProxyTypeAdapter;
 import com.gigaspaces.datavalidator.db.InfluxDbProperties;
 import com.gigaspaces.datavalidator.db.service.*;
 import com.gigaspaces.datavalidator.model.*;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonMethod;
@@ -17,11 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.util.*;
-import java.util.logging.Logger;
-
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 @RestController
 public class ValidateController {
 
@@ -36,7 +33,7 @@ public class ValidateController {
     @Autowired
     private InfluxDbProperties influxDbProperties;
     
-    private Logger logger = Logger.getLogger(this.getClass().getName());
+    private Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     @GetMapping("/measurement/compare/{measurementId1}/{measurementId2}")
     public Map<String,String> compareMeasurement(@PathVariable String measurementId1
@@ -65,8 +62,6 @@ public class ValidateController {
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
                 objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
                 String jsonTask = objectMapper.writeValueAsString(task);
-                logger.info("task result: "+task.getResult());
-                logger.info("task result2: "+result);
                 response.put("response", jsonTask);
 
             }else{
@@ -76,7 +71,7 @@ public class ValidateController {
                 task =new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
                         ,"Compare", measurementList,influxdbResultStore,influxDbProperties);
                 TaskQueue.setTask(task);
-                logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
+                logger.debug("Task scheduled and will be executed at "+calScheduledTime.getTime());
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
                 objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
@@ -147,7 +142,7 @@ public class ValidateController {
                 calScheduledTime.add(Calendar.MINUTE, executionTime);
                 task = new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
                         ,"Measure", measurementList,false,influxDbProperties);
-                logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
+                logger.debug("Task scheduled and will be executed at "+calScheduledTime.getTime());
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
                 objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
@@ -168,18 +163,14 @@ public class ValidateController {
     public String runTest(@PathVariable long measurementId)
     {
         JsonObject response = new JsonObject();
-        logger.info("========RUN TEST START");
         Measurement measurementObj = measurementService.getMeasurement(measurementId);
         if(measurementObj == null){
             response.addProperty("result","Test with id="+measurementId+" not found");
             return response.toString();
         }
         Map<String, String> map = runMeasurement(String.valueOf(measurementId), 0);
-        logger.info("========RUN TEST END");
-
         Gson gson =new Gson();
         TestTask testTask = gson.fromJson(map.get("response"),TestTask.class);
-        logger.info("Test Task: "+testTask);
 
         response.addProperty("result",testTask.getResult());
         response.addProperty("query",testTask.getQuery());
@@ -200,7 +191,6 @@ public class ValidateController {
         JsonObject response = new JsonObject();
         Gson gson =new Gson();
 
-        logger.info("========RUN TEST START");
         Measurement measurementObj1 = measurementService.getMeasurement(id1);
         if(measurementObj1 == null){
             response.addProperty("result","Test with id="+id1+" not found");
@@ -213,9 +203,7 @@ public class ValidateController {
         }
 
         Map<String, String> map = compareMeasurement(String.valueOf(id1),String.valueOf(id2), 0,true);
-        logger.info("========RUN TEST END");
         TestTask testTask = gson.fromJson(map.get("response"),TestTask.class);
-        logger.info("Test Task: "+testTask);
 
         response.addProperty("result",testTask.getResult());
         response.addProperty("query",testTask.getQuery());
@@ -303,26 +291,10 @@ public class ValidateController {
 
     @GetMapping("/measurement/list")
     public Map<String,String> getMeasurementList(){
-        logger.info("In MeasurementList");
         Map<String,String> response = new HashMap<>();
         List<Measurement> measurementList = measurementService.getActiveMeasurement();
-        logger.info("measurementList size: "+measurementList.size());
         Collections.sort(measurementList, (left, right) -> Math.toIntExact(left.getId() - right.getId()));
-        //Gson gson = new Gson();
-        //GsonBuilder b = new GsonBuilder();
-        //b.registerTypeAdapterFactory(HibernateProxyTypeAdapter.FACTORY);
-        //Gson gson = b.create();
-        //String jsonTaskList = gson.toJson(measurementList);
-        //response.put("response", jsonTaskList);
 
-        for (Measurement m : measurementList) {
-            logger.info("M id:"+m.getId());
-            logger.info("M->D id: "+m.getDataSource().getDataSourceHostIp());
-            logger.info("M->D->A id: "+m.getDataSource().getAgent().getId());
-            for(DataSource ds: m.getDataSource().getAgent().getDataSources()){
-                logger.info("loop::M->D->A->D : "+ds.getId());
-            }
-        }
         String jsonTaskList = null;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -330,6 +302,7 @@ public class ValidateController {
             objectMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
             jsonTaskList = objectMapper.writeValueAsString(measurementList);
         } catch (IOException e) {
+            logger.error(e.getMessage());
             e.printStackTrace();
         }
         response.put("response",jsonTaskList );
@@ -377,7 +350,7 @@ public class ValidateController {
             task=new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
                     ,testType, measurementList,false,influxDbProperties);
             TaskQueue.setTask(task);
-            logger.info("Task scheduled and will be executed at "+calScheduledTime.getTime());
+            logger.debug("Task scheduled and will be executed at "+calScheduledTime.getTime());
             response.put("response", "scheduled");
 
         }
@@ -420,18 +393,6 @@ public class ValidateController {
     public Map<String,String> getDatasourceList(){
         Map<String,String> response = new HashMap<>();
         List<DataSource> dataSourceList = dataSourceService.getActiveDataSources();
-        logger.info("datasourceList size: "+dataSourceList.size());
-        //Gson gson = new Gson();
-        /*
-        gson with new type descriptor
-
-        GsonBuilder b = new GsonBuilder();
-        b.registerTypeAdapterFactory(HibernateProxyTypeAdapter.FACTORY);
-        Gson gson = b.create();
-        String jsonTaskList = gson.toJson(dataSourceList);
-         */
-        //==========
-
         List<Properties> dataSourcePropList = new ArrayList<>();
         for(DataSource dataSource: dataSourceList) {
             Properties properties = new Properties();
@@ -489,15 +450,15 @@ public class ValidateController {
         	dataSource.setStatus(ModelConstant.DELETED);
             dataSourceService.update(dataSource);
             // Update measurement status to Inactive as data source is deleted
-            logger.info("Update measurement status to Inactive as data source is deleted");
+            logger.debug("Update measurement status to Inactive as data source is deleted");
             for (Measurement measurement : measurementService.getAll()) {
                 if(measurement.getDataSource().getId() == dataSource.getId()){
                     measurement.setStatus(ModelConstant.INACTIVE);
                     measurementService.update(measurement);
-                    logger.info("Updated measurement");
+                    logger.debug("Updated measurement");
                 }
             }
-            logger.info("Remove data source from agent as data source is deleted");
+            logger.debug("Remove data source from agent as data source is deleted");
             // Remove data source from agent as data source is deleted
             for (Agent agent : agentService.getActiveAgents()) {
                 if(agent.getDataSources().contains(dataSource)) {
@@ -663,9 +624,6 @@ public class ValidateController {
     public Map<String,String> getAgentList(){
         Map<String,String> response = new HashMap<>();
         List<Agent> agentList = agentService.getActiveAgents();
-        logger.info("agentList size: "+agentList.size());
-        //Gson gson = new Gson();
-        //String jsonTaskList = gson.toJson(agentList);
         String jsonTaskList="";
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -701,7 +659,7 @@ public class ValidateController {
     public Map<String,String> getAgentAndDataSourceList(){
         Map<String,String> response = new HashMap<>();
         List<DataSourceAgentAssignment> dataSourceAgentAssignmentsList = dataSourceAgentAssignmentService.getActiveDataSourceAgents();
-        logger.info("dataSourceAgentAssignmentsList size: "+dataSourceAgentAssignmentsList.size());
+        logger.debug("dataSourceAgentAssignmentsList size: "+dataSourceAgentAssignmentsList.size());
         Map<Agent,List<DataSource>> agentWiseDS = new HashMap<>();
         List<Properties> agentDSList = new ArrayList<>();
         Agent agent =null;

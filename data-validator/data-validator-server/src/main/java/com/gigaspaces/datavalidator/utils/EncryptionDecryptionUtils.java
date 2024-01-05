@@ -28,22 +28,17 @@ public class EncryptionDecryptionUtils {
         myEncryptionScheme = DESEDE_ENCRYPTION_SCHEME;
         try {
             arrayBytes = myEncryptionKey.getBytes(UNICODE_FORMAT);
-            System.out.println("myEncryptionKey: "+myEncryptionKey );
-            System.out.println("arrayBytes: "+arrayBytes);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         try {
             ks = new DESedeKeySpec(arrayBytes);
-            System.out.println("ks:  "+ks);
         } catch (InvalidKeyException e) {
             e.printStackTrace();
         }
         try {
             skf = SecretKeyFactory.getInstance(myEncryptionScheme);
-            System.out.println("skf: "+skf);
             cipher = Cipher.getInstance(myEncryptionScheme);
-            System.out.println("cipher: "+cipher);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
@@ -51,7 +46,6 @@ public class EncryptionDecryptionUtils {
         }
         try {
             key = skf.generateSecret(ks);
-            System.out.println("key: "+key);
         } catch (InvalidKeySpecException e) {
             e.printStackTrace();
         }
