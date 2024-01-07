@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.2
+VERSION=0.2.3
 
 
 function usage() {
@@ -57,7 +57,7 @@ OPTIONS:
 
 EXAMPLES:
     unattended full deployment
-        $(basename $0) full -s <SERVICE_PATH> -c <NUM_OF_CONTAINERS> -m <JVM_RAM> -i <NUM_OF_INSTANCES> -j <JAR_PATH>
+        $(basename $0) full -s <SERVICE_PATH> -c <NUM_OF_CONTAINERS> -m <JVM_RAM> -i <NUM_OF_INSTANCES> -j <JAR_PATH> -p <PORT-RANGE>
     
     unattended undeploy pu only
         $(basename $0) undeploy -s <SERVICE_PATH>
@@ -69,7 +69,7 @@ EXAMPLES:
         $(basename $0) create -s <SERVICE_PATH> -c <NUM_OF_CONTAINERS> -m <JVM_RAM>
     
     unattended deploy pu only
-        $(basename $0) deploy -s <SERVICE_PATH> -i <NUM_OF_INSTANCES> -j <JAR_PATH> 
+        $(basename $0) deploy -s <SERVICE_PATH> -i <NUM_OF_INSTANCES> -j <JAR_PATH> -p <PORT-RANGE>
     
     unattended deploy pu only with additional options GS_OPTIONS_EXT using placeholder [ZONE]
         $(basename $0) deploy -s <SERVICE_PATH> -i <NUM_OF_INSTANCES> -j <JAR_PATH> -o "-Xlog:gc*:file=/tmp/[ZONE]_gc_%p.log:time,level"
@@ -107,27 +107,6 @@ function print_gs_logo() {
     printf '#%.0s' {1..80} ; echo ; echo                       # line 8
 }
 
-function print_gs_logo2() {
-    clear ; clear
-    printf '#%.0s' {1..63} ; echo                       # line 1
-    echo -n "#" ; printf ' %.0s' {1..61} ; echo "#"     # line 2
-    echo -n "#" ; printf ' %.0s' {1..6}                 # line 3
-    echo -n -e "${_lr}*${_res} ${_lg}/${_res} * "       # line 3
-    printf ' %.0s' {1..49} ; echo "#"                   # line 3
-    echo -n "#" ; printf ' %.0s' {1..3}                             # line 4
-    echo -n -e "${_lb}/${_res} ${_lr}/${_res} ${_lg}/${_res} / * "  # line 4
-    printf ' %.0s' {1..18} ; echo -n "- G.C.O.M -"                  # line 4
-    printf ' %.0s' {1..19} ; echo "#"                               # line 4
-    echo -n -e "#  / ${_o}/${_res} ${_lg}/${_res} ${_b}/${_res} ${_b}/${_res}"     # line 5
-    echo -n "    Gigaspaces Components Orchestration Manager"                       # line 5
-    printf ' %.0s' {1..3} ; echo "#"                                               # line 5
-    echo -n "#" ; printf ' %.0s' {1..3}                                     # line 6
-    echo -n -e "${_o}/${_res} ${_b}/${_res} ${_b}/${_res} ${_b}*${_res}"    # line 6
-    printf ' %.0s' {1..51} ; echo "#"                                       # line 6
-    echo -n "#" ; printf ' %.0s' {1..61} ; echo "#"     # line 7
-    printf '#%.0s' {1..63} ; echo ; echo                       # line 8
-}
-
 
 function print_menu_header() {
     local key="$1"
@@ -141,12 +120,9 @@ function print_menu_header() {
 
 
 function pause() {
-    echo ; read -s -n 1 -p "press ENTER to continue, ESC to quit " key
-    if [[ $key == $'\e' ]] ; then
-        echo -e "\n\n"
-        exit 0
-    fi
+    echo ; read -s -p "Press ENTER to continue "
 }
+
 
 function menu_builder(){
     declare -ga current_menu_names=()
@@ -265,6 +241,7 @@ function print_menu_items() {
     echo -e "\n${_y}[0]${_res} Quit / Back\n"
 
     if [[ $select_mode == 'single' ]]; then
+        unset num
         while true; do
             read -p "#? " num
             if [[ $num == 0 ]]; then
@@ -277,11 +254,13 @@ function print_menu_items() {
                 target_array+=($num)
                 break
             else
-                echo "invalid input! select between 0-${#source_array[@]}"
+                [[ ${#source_array[@]} -gt 1 ]] && range="1-${#source_array[@]}" || range="1"
+                echo "invalid input! select between 0 or $range"
             fi
         done
     elif [[ $select_mode == 'multiple' ]]; then
         input_valid=false
+        unset choices
         until $input_valid; do
             read -p "#? " choices
             choices=$(echo $choices | sed 's/ *//g;s/,/ /g')  # convert to list
@@ -307,7 +286,8 @@ function print_menu_items() {
                     input_valid=true
                     continue
                 else
-                    echo "invalid input! select between 0-${#source_array[@]}"
+                    [[ ${#source_array[@]} -gt 1 ]] && range="1-${#source_array[@]}" || range="1"
+                    echo "invalid input! select between 0 or $range"
                     input_valid=false
                     break
                 fi
@@ -484,8 +464,9 @@ function warn_incompatible_ram_allocation() {
 
 function get_services() {
     local mode=$1   # interactive | unattended
+    local section_name=$2
     if [[ $mode == "interactive" ]]; then
-        print_menu_header "SERVICES" "Choose service(s) from the list:"
+        print_menu_header "$section_name" "Choose service(s) from the list:"
         print_menu_items --in AVAILABLE_SERVICES[@] --out user_selections -m
     fi
     if [[ $mode == "unattended" ]]; then
@@ -569,8 +550,7 @@ function get_jar_file() {
     if [[ $mode == "interactive" ]]; then
         print_menu_header "RESOURCE" "Select a jar file for deployment(s):"
         print_menu_items --in AVAILABLE_JARS[@] --out user_selections
-    fi
-    if [[ $mode == "unattended" ]]; then
+    elif [[ $mode == "unattended" ]]; then
         if [[ -z $JAR ]]; then
             echo -e "\n[ERROR] missing path to jar file. use -h for help."
             exit 1
@@ -604,14 +584,15 @@ function set_port_range() {
                 return
             fi
         done
-    fi
-    min_port=$(echo $PORT_RANGE | cut -d- -f1 | sed 's/ *//g')
-    max_port=$(echo $PORT_RANGE | cut -d- -f2 | sed 's/ *//g')
-    if $(is_number $min_port) && $(is_number $max_port); then
-        declare -g MIN_PORT=$min_port
-        declare -g MAX_PORT=$max_port
-    else
-        echo "[ERROR] invalid port"
+    elif [[ $mode == "unattended" ]]; then
+        min_port=$(echo $PORT_RANGE | cut -d- -f1 | sed 's/ *//g')
+        max_port=$(echo $PORT_RANGE | cut -d- -f2 | sed 's/ *//g')
+        if $(is_number $min_port) && $(is_number $max_port); then
+            declare -g MIN_PORT=$min_port
+            declare -g MAX_PORT=$max_port
+        else
+            echo "[ERROR] invalid port"
+        fi
     fi
 }
 
@@ -629,11 +610,12 @@ function set_gs_options_ext() {
         print_menu_header "GS_OPTIONS_EXT" "Enter additional JVM options (ENTER to skip):"
         read -p "#? " ext_opt
         [[ ! -z $ext_opt ]] && declare -g GS_EXT=$ext_opt
-    fi
-    if [[ ! -z $GS_EXT ]]; then
-        GS_EXT=$(echo "$GS_EXT" | sed "s/\[ZONE\]/$ZONE/g")
-        GS_EXT=$(echo "$GS_EXT" | sed "s/\[SERVICE\]/$SERVICE/g")
-        GS_EXT=$(echo "$GS_EXT" | sed "s/\[SERVICE_NAME\]/$SERVICE_NAME/g")
+    elif [[ $mode == "unattended" ]]; then
+        if [[ ! -z $GS_EXT ]]; then
+            GS_EXT=$(echo "$GS_EXT" | sed "s/\[ZONE\]/$ZONE/g")
+            GS_EXT=$(echo "$GS_EXT" | sed "s/\[SERVICE\]/$SERVICE/g")
+            GS_EXT=$(echo "$GS_EXT" | sed "s/\[SERVICE_NAME\]/$SERVICE_NAME/g")
+        fi
     fi
 }
 
@@ -704,7 +686,7 @@ function service_presets() {
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "JAR=")
         [[ $test != "" ]] && declare -g JAR=$(echo "$test" | grep "JAR=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "PORT_RANGE=")
-        [[ $test != "" ]] && declare -g PORT_RANGE=$(echo "$test" | grep "PORT_RANGE=" | cut -d= -f2-) && set_port_range
+        [[ $test != "" ]] && declare -g PORT_RANGE=$(echo "$test" | grep "PORT_RANGE=" | cut -d= -f2-) && set_port_range unattended
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "GS_EXT=")
         [[ $test != "" ]] && declare -g GS_EXT=$(echo "$test" | grep "GS_EXT=" | cut -d= -f2-)
         local test=$(cat $SERVICE_PATH/$SERVICE_PRESETS | grep "DEPLOY_PARAMS=")
@@ -721,7 +703,8 @@ function update_defaults() {
         find $SERVICES_DIR -mindepth 1 -maxdepth 1 -type d | while read d; do
             SERVICE_PATH="$d"
             get_services unattended
-            [[ ! -e $SERVICE_PATH/$SERVICE_PRESETS ]] && service_presets init --silent
+            #[[ ! -e $SERVICE_PATH/$SERVICE_PRESETS ]] && service_presets init --silent
+            service_presets init --silent
             sed -i "s/$key=.*/$key=$value/" $SERVICE_PATH/$SERVICE_PRESETS
         done
     }
@@ -739,6 +722,19 @@ function update_defaults() {
             3)  get_num_of_containers interactive
                 change_presets_param NUM_OF_CONTAINERS $NUM_OF_CONTAINERS ;;
         esac
+    done
+}
+
+
+function list_current_service_presets() {
+    local presets="  "
+    for s in ${AVAILABLE_SERVICES[@]}; do
+        echo
+        echo "[ $s ]"
+        local c=$(grep "CONTAINERS" $SERVICES_DIR/$s/$SERVICE_PRESETS)
+        local j=$(grep "JVM" $SERVICES_DIR/$s/$SERVICE_PRESETS)
+        local i=$(grep "INSTANCES" $SERVICES_DIR/$s/$SERVICE_PRESETS)
+        echo "    ${c}, ${j}, ${i}"
     done
 }
 
@@ -868,21 +864,28 @@ function deploy_pu() {
 
 
 function full_deployment_routine() {
-    service_presets init
-    if $USE_SERVICE_PRESETS; then
-        service_presets set
-    else
-        get_num_of_containers interactive
-        get_memory_allocation interactive
-        get_num_of_instances interactive
-        get_jar_file interactive
-        JAR="${SERVICE_PATH}/${AVAILABLE_JARS[${current_menu_names[0]}]}"
-        set_port_range interactive
-        set_gs_additional_deploy_params
-        set_gs_options_ext interactive
-        service_presets update
+    local mode=$1
+    if [[ $mode == "interactive" ]] ; then
+        service_presets init
+        $USE_SERVICE_PRESETS && service_presets set
+    elif [[ $mode == "unattended" ]] ; then
+        get_services $mode
+        USE_SERVICE_PRESETS=false
     fi
-    print_gs_logo
+    if ! $USE_SERVICE_PRESETS ; then
+        get_num_of_containers $mode
+        get_memory_allocation $mode
+        get_num_of_instances $mode
+        get_jar_file $mode
+        [[ $mode == "interactive" ]] && JAR="${SERVICE_PATH}/${AVAILABLE_JARS[$((${user_selections[0]}-1))]}"
+        set_port_range $mode
+        [[ $mode == "interactive" ]] && set_gs_additional_deploy_params
+        set_gs_options_ext $mode
+        if [[ $mode == "interactive" ]] ; then
+            service_presets $mode
+            print_gs_logo
+        fi
+    fi
     $VERBOSE && print_vars
     echo -e "\nInitializing $action_name for service: '$SERVICE' ..."
     undeploy_pu
@@ -893,15 +896,22 @@ function full_deployment_routine() {
 
 
 function create_containers_routine() {
-    service_presets init
-    if $USE_SERVICE_PRESETS; then
-        service_presets set
-    else
-        get_num_of_containers interactive
-        get_memory_allocation interactive
-        service_presets update
+    local mode=$1
+    if [[ $mode == "interactive" ]] ; then
+        service_presets init
+        $USE_SERVICE_PRESETS && service_presets set
+    elif [[ $mode == "unattended" ]] ; then
+        get_services $mode
+        USE_SERVICE_PRESETS=false
     fi
-    print_gs_logo
+    if ! $USE_SERVICE_PRESETS ; then
+        get_num_of_containers $mode
+        get_memory_allocation $mode
+        if [[ $mode == "interactive" ]] ; then
+            service_presets $mode
+            print_gs_logo
+        fi
+    fi
     $VERBOSE && print_vars
     echo -e "\nInitializing $action_name for service: '$SERVICE' ..."
     create_containers
@@ -909,19 +919,26 @@ function create_containers_routine() {
 
 
 function deploy_pu_routine() {
-    service_presets init
-    if $USE_SERVICE_PRESETS; then
-        service_presets set            
-    else
-        get_num_of_instances interactive
-        get_jar_file interactive
-        JAR="${SERVICE_PATH}/${AVAILABLE_JARS[${current_menu_names[0]}]}"
-        set_port_range interactive
-        set_gs_additional_deploy_params
-        set_gs_options_ext interactive
-        service_presets update
+    local mode=$1
+    if [[ $mode == "interactive" ]] ; then
+        service_presets init
+        $USE_SERVICE_PRESETS && service_presets set
+    elif [[ $mode == "unattended" ]] ; then
+        get_services $mode
+        USE_SERVICE_PRESETS=false
     fi
-    print_gs_logo
+    if ! $USE_SERVICE_PRESETS ; then
+        get_num_of_instances $mode
+        get_jar_file $mode
+        [[ $mode == "interactive" ]] && JAR="${SERVICE_PATH}/${AVAILABLE_JARS[$((${user_selections[0]}-1))]}"
+        set_port_range $mode
+        [[ $mode == "interactive" ]] && set_gs_additional_deploy_params
+        set_gs_options_ext $mode
+        if [[ $mode == "interactive" ]] ; then
+            service_presets $mode
+            print_gs_logo
+        fi
+    fi
     $VERBOSE && print_vars
     echo -e "\nInitializing $action_name for service: '$SERVICE' ..."
     deploy_pu
@@ -929,7 +946,12 @@ function deploy_pu_routine() {
 
 
 function kill_containers_routine() {
-    print_gs_logo
+    local mode=$1
+    if [[ $mode == "interactive" ]] ; then
+        print_gs_logo
+    elif [[ $mode == "unattended" ]] ; then
+        get_services $mode
+    fi
     $VERBOSE && print_vars
     echo -e "\nInitializing $action_name for service: '$SERVICE' ..."
     kill_containers
@@ -937,7 +959,12 @@ function kill_containers_routine() {
 
 
 function undeploy_pu_routine() {
-    print_gs_logo
+    local mode=$1
+    if [[ $mode == "interactive" ]] ; then
+        print_gs_logo
+    elif [[ $mode == "unattended" ]] ; then
+        get_services $mode
+    fi
     $VERBOSE && print_vars
     echo -e "\nInitializing $action_name for service: '$SERVICE' ..."
     undeploy_pu
@@ -989,13 +1016,14 @@ declare -A menu_items=(
         [1.1]="name=Full Deployment,type=action,exec=full_deployment_routine,desc=Run complete deployment"
         [1.2]="name=Undeploy PU,type=action,exec=undeploy_pu_routine,desc=Undeploy a PU only"
         [1.3]="name=Create Containers,type=action,exec=create_containers_routine,desc=Create containers only"
-        [1.4]="name=Delete Containers,type=action,exec=kill_containers_routine,desc=Delete containers only"
+        [1.4]="name=Kill Containers,type=action,exec=kill_containers_routine,desc=Remove containers only"
         [1.5]="name=Deploy PU,type=action,exec=deploy_pu_routine,desc=Deploy a PU only"
     [2]="name=Information,type=menu,exec=,desc=Get DIH information"
         [2.1]="name=List Resources,type=action,exec=list_resources,desc=List space resource distribution"
         [2.2]="name=List Services,type=action,exec=list_services,desc=List deployed and available services"
+        [2.3]="name=List Service Presets,type=action,exec=list_current_service_presets,desc=List service presets"
     [3]="name=Configuration,type=menu,exec=,desc=Configure gcom"
-        [3.1]="name=Update Defaults,type=action,exec=update_defaults,desc=Change gcom default configuration (TBD)"
+        [3.1]="name=Update Defaults,type=action,exec=update_defaults,desc=Change gcom default configuration"
     [4]="name=Tools,type=menu,exec=,desc=Additional gcom tools and utilities"
         [4.1]="name=Script Generator,type=action,exec=generate_custom_script,desc=Generate a full deployment gcom script"
 )
@@ -1035,10 +1063,10 @@ if ! bash_version_ok; then
     prereqs_ok=false
     echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or above."
 fi
-for cmd in $PREREQUISITES; do
-    if ! command -v $cmd &> /dev/null; then
+for package in $PREREQUISITES; do
+    if ! command -v $package &> /dev/null; then
         prereqs_ok=false
-        echo "[ERROR] missing prerequisite '$cmd'."
+        echo "[ERROR] missing prerequisite '$package'."
     fi
 done
 $prereqs_ok || exit 1
@@ -1094,46 +1122,15 @@ if $UNATTENDED; then
         SERVICE_PATH="${SERVICES_PATHS[$i]}"
         case $cmd in
             "full")
-                get_services unattended
-                get_num_of_containers unattended
-                get_memory_allocation unattended
-                get_num_of_instances unattended
-                get_jar_file unattended
-                set_port_range
-                set_gs_options_ext
-                $VERBOSE && print_vars
-                echo -e "\n>> Deploying service '${SERVICE}'"
-                undeploy_pu
-                kill_containers
-                create_containers
-                deploy_pu
-                ;;
+                full_deployment_routine unattended ;;
             "create")
-                get_services unattended
-                get_num_of_containers unattended
-                get_memory_allocation unattended
-                $VERBOSE && print_vars
-                create_containers
-                ;;
+                create_containers_routine unattended ;;
             "deploy")
-                get_services unattended
-                get_num_of_instances unattended
-                get_jar_file unattended
-                set_port_range
-                set_gs_options_ext
-                $VERBOSE && print_vars
-                deploy_pu
-                ;;
+                deploy_pu_routine unattended ;;
             "kill")
-                get_services unattended
-                $VERBOSE && print_vars
-                kill_containers
-                ;;
+                kill_containers_routine unattended ;;
             "undeploy")
-                get_services unattended
-                $VERBOSE && print_vars
-                undeploy_pu
-                ;;
+                undeploy_pu_routine unattended ;;
         esac
     done
 else
@@ -1149,7 +1146,8 @@ else
         action_name=""
         action_type=""
         exec_action=""
-    
+        abort_script_generator=false
+
         print_gs_logo
         menu_builder    # generate current_menu_names[@]
         print_menu_items --in current_menu_names[@] --out wizard_selections --desc current_menu_descriptions[@] -a
@@ -1164,17 +1162,18 @@ else
         
         if [[ $action_type == "action" ]]; then
             echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] command: '$action_name'" >> $LOG
-            if [[ $exec_action == "list_resources" ]]; then
-                list_resources
-                unset wizard_selections[$((${#wizard_selections[@]} - 1))]
-                pause ; echo
-                continue
-            elif [[ $exec_action == "list_services" ]]; then
-                list_services
-                unset wizard_selections[$((${#wizard_selections[@]} - 1))]
-                pause ; echo
-                continue
-            elif [[ $exec_action == "generate_custom_script" ]]; then
+            case $exec_action in
+                "list_resources"|\
+                "list_current_service_presets"|\
+                "update_defaults"|\
+                "list_services")
+                    $exec_action
+                    unset wizard_selections[$((${#wizard_selections[@]} - 1))]
+                    pause ; echo
+                    continue
+                    ;;
+            esac
+            if [[ $exec_action == "generate_custom_script" ]]; then
                 print_gs_logo
                 print_menu_header "SCRIPT GENERATOR" "Generate unattended execution script"
                 echo -e "[NOTE]\n"
@@ -1182,36 +1181,59 @@ else
                 echo "Only default parameters will be used for services."
                 while true; do
                     unset answer
-                    echo ; read -p "Proceed? [Y/n] " answer
+                    read -p "Proceed? [Y/n] " answer
                     [[ -z $answer ]] && answer=y
                     case ${answer,,} in
                         y*) break ;;
-                        n*) exit ;;
+                        n*) abort_script_generator=true ; break ;;
                         *) echo "invalid input. type 'Y' or 'n' or press ENTER" ;;
                     esac
                 done
-            elif [[ $exec_action == "update_defaults" ]]; then
-                update_defaults
+                if ! $abort_script_generator ; then
+                    echo -e "\n\nReset defaults for all services before generation (Recommended)?"
+                    while true; do
+                        unset answer
+                        read -p "Proceed? [Y/n] " answer
+                        [[ -z $answer ]] && answer=y
+                        case ${answer,,} in
+                            y*) update_defaults ; break ;;
+                            n*) break ;;
+                            *) echo "invalid input. type 'Y' or 'n' or press ENTER" ;;
+                        esac
+                    done
+                fi
+            fi
+            if $abort_script_generator ; then
                 unset wizard_selections[$((${#wizard_selections[@]} - 1))]
-                pause ; echo
                 continue
             fi
             # excute operations for selected service(s)
-            get_services interactive
+            if [[ $exec_action == "generate_custom_script" ]]; then
+                get_services interactive "SCRIPT GENERATOR"
+            else
+                get_services interactive SERVICES
+            fi
             for index in ${user_selections[@]}; do
                 SERVICE_PATH="$SERVICES_DIR/${AVAILABLE_SERVICES[$((index-1))]}"
                 SERVICE=$(echo $(basename "$SERVICE_PATH") | tr '[:upper:]' '[:lower:]')
                 ZONE=$SERVICE
                 SERVICE_NAME="${SERVICE}_service"
-                echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] selected service: '$SERVICE'" >> $LOG
-                AVAILABLE_JARS=($(find $SERVICE_PATH -mindepth 1 -maxdepth 1 -type f -name "*.jar" -exec basename {} \;))
-                $exec_action
-                pause ; echo
+                if [[ $exec_action == "generate_custom_script" ]]; then
+                    service_presets init --silent
+                    service_presets set
+                    generate_custom_script
+                else
+                    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] selected service: '$SERVICE'" >> $LOG
+                    AVAILABLE_JARS=($(find $SERVICE_PATH -mindepth 1 -maxdepth 1 -type f -name "*.jar" -exec basename {} \;))
+                    $exec_action "interactive"
+                    pause ; echo
+                fi
             done
             unset wizard_selections[$((${#wizard_selections[@]} - 1))]
             # post execution
             if [[ $exec_action == "generate_custom_script" ]]; then
                 echo -e "\n\n* Automated script generated as '$GEN_SCRIPT'\n"
+                pause ; echo
             fi
         fi
     done
