@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.4
+VERSION=0.2.5
 
 
 function usage() {
@@ -1013,7 +1013,7 @@ SERVICES_DIR=${BASE_DIR}/services
 SERVICE_PRESETS="service.presets"
 declare -A SPACE_MEM_INFO
 declare -a SERVICES_PATHS
-PREREQUISITES="jq"  # space separated commands
+PREREQUISITES="jq nc bc"  # space separated commands
 
 # text styles
 _b=$(tput bold)     # bold text
@@ -1083,19 +1083,25 @@ fi
 # check prerequisites
 prereqs_ok=true
 
-# bash version
+# get bash version
 this_version=$(echo $BASH_VERSION | cut -d. -f1-2)
-if [[ $(echo "$this_version >= $BASH_REQUIRED" | bc -l) -ne 1 ]] ; then
-    prereqs_ok=false
-    echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or above."
-fi
+
 for package in $PREREQUISITES; do
     if ! command -v $package &> /dev/null; then
         prereqs_ok=false
         echo "[ERROR] missing prerequisite '$package'."
     fi
 done
-$prereqs_ok || exit 1
+if ! $prereqs_ok ; then
+    echo "[INFO] for Debian/Ubuntu try: 'apt-get install <PACKAGE_NAME>'"
+    echo "[INFO] for Redhat/CentOS try: 'yum install <PACKAGE_NAME>'"
+    exit 1
+fi
+
+if [[ $(echo "$this_version >= $BASH_REQUIRED" | bc -l) -ne 1 ]] ; then
+    echo "[ERROR] incompatible BASH version. must be ${BASH_REQUIRED} or above."
+    exit 1
+fi
 
 # check host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
