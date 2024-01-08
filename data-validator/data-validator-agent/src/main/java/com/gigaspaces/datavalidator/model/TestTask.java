@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 
-public class TestTask  implements Serializable  {
+public class    TestTask  implements Serializable  {
 
 	private static Logger logger =LoggerFactory.getLogger(TestTask.class);
 
@@ -58,16 +58,20 @@ public class TestTask  implements Serializable  {
 						logger.debug("### Admin API: Fetching record count ###");
 						logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
 						logger.debug("Admin API - Table name: "+measurement.getTableName());
-						logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
+                        logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
+                        logger.debug("Admin API - GS Locator: "+measurement.getDataSourceHostIp());
+
                         Admin admin = null;
                         if(measurement.getUsername()!=null
                                 && !measurement.getUsername().isEmpty()){
-                            admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
+                            admin = new AdminFactory()
+                                    //.addGroup(measurement.getGsLookupGroup())
                                     .credentials(measurement.getUsername(), measurement.getPassword())
                                     .addLocator(measurement.getDataSourceHostIp())
                                     .createAdmin();
-                        }else {
-                            admin = new AdminFactory().addGroup(measurement.getGsLookupGroup())
+                        }else{
+                            admin = new AdminFactory()
+                                    //.addGroup(measurement.getGsLookupGroup())
                                     //.discoverUnmanagedSpaces()
                                     .addLocator(measurement.getDataSourceHostIp())
                                     .createAdmin();
@@ -94,6 +98,7 @@ public class TestTask  implements Serializable  {
 						this.result = String.valueOf(count);
 						this.query = "N/A";
 						logger.debug("### Admin API: Count="+this.result);
+                        admin.close();
 						return this.result;
 					}
 					String column_type=null;
