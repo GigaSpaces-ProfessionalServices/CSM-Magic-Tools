@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.5
+VERSION=0.2.6
 
 
 function usage() {
@@ -638,14 +638,30 @@ function set_gs_options_ext() {
 
 
 function generate_custom_script() {
+    local type=$1    
     if [[ ! -e $GEN_SCRIPT ]]; then
         echo '#!/bin/bash' > $GEN_SCRIPT
         echo -e "\n# $(basename $0) automated script\n" >> $GEN_SCRIPT
-    fi
+    fi    
     echo "# service: $(basename ${SERVICE_PATH})" >> $GEN_SCRIPT
-    echo -e "$(realpath $0) full -s ${SERVICE_PATH} -j ${JAR} -c ${NUM_OF_CONTAINERS} -m ${JVM_RAM} -i ${NUM_OF_INSTANCES} -p 8113-8311\n" >> $GEN_SCRIPT
-    sleep 0.1
-    echo "automated service '$SERVICE' complete."
+    case "$type" in
+        full)
+            echo -e "$(realpath $0) $type -s ${SERVICE_PATH} -j ${JAR} -c ${NUM_OF_CONTAINERS} -m ${JVM_RAM} -i ${NUM_OF_INSTANCES} -p 8113-8311\n" >> $GEN_SCRIPT
+            ;;
+        create)
+            echo -e "$(realpath $0) $type -s ${SERVICE_PATH} -j ${JAR} -c ${NUM_OF_CONTAINERS} -m ${JVM_RAM}\n" >> $GEN_SCRIPT
+            ;;
+        deploy)
+            echo -e "$(realpath $0) $type -s ${SERVICE_PATH} -j ${JAR} -i ${NUM_OF_INSTANCES} -p 8113-8311\n" >> $GEN_SCRIPT
+            ;;
+        kill)
+            echo -e "$(realpath $0) $type -s ${SERVICE_PATH}\n" >> $GEN_SCRIPT
+            ;;
+        undeploy)
+            echo -e "$(realpath $0) $type -s ${SERVICE_PATH}\n" >> $GEN_SCRIPT
+            ;;
+    esac
+    echo " $SERVICE"
 }
 
 
@@ -1049,7 +1065,12 @@ declare -A menu_items=(
     [3]="name=Configuration,type=menu,exec=,desc=Configure gcom"
         [3.1]="name=Update Defaults,type=action,exec=update_defaults,desc=Change gcom default configuration"
     [4]="name=Tools,type=menu,exec=,desc=Additional gcom tools and utilities"
-        [4.1]="name=Script Generator,type=action,exec=generate_custom_script,desc=Generate a full deployment gcom script"
+        [4.1]="name=Generate GCOM Script,type=menu,exec=,desc=Generate an unattended GCOM script"
+            [4.1.1]="name=Full Deployment,type=action,exec=generate_custom_script full,desc=Generate a Full Deployment script"
+            [4.1.2]="name=Undeploy PU,type=action,exec=generate_custom_script undeploy,desc=Generate an Undeploy only script"
+            [4.1.3]="name=Create Containers,type=action,exec=generate_custom_script create,desc=Generate a Create only script"
+            [4.1.4]="name=Kill Containers,type=action,exec=generate_custom_script kill,desc=Generate a Kill Containers only script"
+            [4.1.5]="name=Deploy PU,type=action,exec=generate_custom_script deploy,desc=Generate a Deploy only script"
 )
 
 
@@ -1205,12 +1226,10 @@ else
                     continue
                     ;;
             esac
-            if [[ $exec_action == "generate_custom_script" ]]; then
+            if [[ $exec_action == *"generate_custom_script"* ]]; then
                 print_gs_logo
                 print_menu_header "SCRIPT GENERATOR" "Generate unattended execution script"
-                echo -e "[NOTE]\n"
-                echo "A single script will be generated for selected service(s)."
-                echo "Only default parameters will be used for services."
+                echo -e "[NOTE] A single script with default parameters will be generated for selected service(s).\n"
                 while true; do
                     unset answer
                     read -p "Proceed? [Y/n] " answer
@@ -1240,9 +1259,11 @@ else
                 continue
             fi
             # excute operations for selected service(s)
-            if [[ $exec_action == "generate_custom_script" ]]; then
-                GEN_SCRIPT="/tmp/$(basename $0)_autogen_$(date '+%Y%m%d')-$RANDOM.sh"
+            if [[ $exec_action == *"generate_custom_script"* ]]; then
+                GEN_TYPE="$(echo $exec_action | awk '{print $2}')"
+                GEN_SCRIPT="/tmp/$(basename $0)_${GEN_TYPE}_$(date '+%Y%m%d')-$RANDOM.sh"
                 get_services interactive "SCRIPT GENERATOR"
+                echo "Generating a '$GEN_TYPE' GCOM script for service(s):"
             else
                 get_services interactive SERVICES
             fi
@@ -1251,10 +1272,10 @@ else
                 SERVICE=$(echo $(basename "$SERVICE_PATH") | tr '[:upper:]' '[:lower:]')
                 ZONE=$SERVICE
                 SERVICE_NAME="${SERVICE}_service"
-                if [[ $exec_action == "generate_custom_script" ]]; then
+                if [[ $exec_action == *"generate_custom_script"* ]]; then
                     service_presets init --silent
                     service_presets set
-                    generate_custom_script
+                    $exec_action
                 else
                     echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] selected service: '$SERVICE'" >> $LOG
                     AVAILABLE_JARS=($(find $SERVICE_PATH -mindepth 1 -maxdepth 1 -type f -name "*.jar" -exec basename {} \;))
@@ -1264,7 +1285,7 @@ else
             done
             unset wizard_selections[$((${#wizard_selections[@]} - 1))]
             # post execution
-            if [[ $exec_action == "generate_custom_script" ]]; then
+            if [[ $exec_action == *"generate_custom_script"* ]]; then
                 echo -e "\n\n* Automated script generated as '$GEN_SCRIPT'\n"
                 pause ; echo
             fi
