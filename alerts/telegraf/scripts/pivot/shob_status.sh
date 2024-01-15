@@ -67,6 +67,9 @@ SHOB_TABLES=([STUD.KR_KURS]=18000 \
 [STUD.TL_SEM]=86400 \
 [STUD.TB_917_SHANA]=86400 \
 [STUD.TL_MOED_TZIUN]=3600 \
+[STUD.TL_KVUTZA]=3600 \
+[STUD.TM_MECHKAR]=18000 \
+[STUD.TM_SEGEL]=18000 \
 )
 
 # special vaule for GilboaSync dbo.Portal_Calendary_View table
@@ -131,6 +134,8 @@ while read -r value; do
     $verbose && echo "$source_name | $table_name | threshold=$th | timestamp = $time_stamp_hr | now = $(date +%s) | time_diff = $time_diff"
 done< <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/query?typeName=SHOB_GA&maxResults=100" | jq --raw-output '.results[] | "\(.values)"')
 
+
+
 # get CDC object data - build a list of shob related objects (= ZZ_META_DI_TIMESTAMP field)
 shob_objects=""
 objectTypesMetadata=$(curl --cookie $SHOB_COOKIE -ks ${BASE_URL}/spaces/${SPACE_ID}/objectsTypeInfo | jq -r '.objectTypesMetadata[]')
@@ -144,9 +149,10 @@ done < <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/statisti
 
 # calculate CDC timestamps and generate influx data
 source_name="CDC"
+field="ZZ_META_DI_TIMESTAMP"
 for table_name in $shob_objects; do
     params="withExplainPlan=false&ramOnly=true"
-    query="SELECT%20MAX(ZZ_META_DI_TIMESTAMP)%20FROM%20%22${table_name}%22&${params}"
+    query="SELECT%20${field}%20from%20%22${table_name}%22%20WHERE%20${field}%20%3C%209999999999999%20limit%201&${params}"
     uri="internal/spaces/dih-tau-space/expressionquery?expression=${query}"
     zz_time=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/${uri}")
     time_stamp=$(echo $(echo "$zz_time" | jq -r '.results[].values[0]') / 1000 | bc)
