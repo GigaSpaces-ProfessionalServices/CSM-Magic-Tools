@@ -1,5 +1,29 @@
 #!/bin/bash
 
+
+function get_cluster_hosts {
+    local cluster_name=$1
+    local prefix=$2
+    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
+        ${ENV_CONFIG}/host.yaml |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        }
+    }' | while read line; do
+        [[ "$line" =~ .*"${cluster_name}_host".* ]] && \
+        echo $line | sed 's/ *//g' | sed 's/"//g' | cut -d= -f2
+    done
+}
+
+
 function get_table_threshold() {
     local tbl=$1
 
@@ -118,12 +142,15 @@ fi
 BASE_URL="http://${MANAGER}:8090/v2"
 SHOB_COOKIE=/tmp/.shob_cookie
 
-# cache login
-[[ -e $SHOB_COOKIE ]] && rm -f $SHOB_COOKIE
-curl --user $AUTH_USER:$AUTH_PASS --cookie-jar $SHOB_COOKIE $BASE_URL
-if [[ ! -e $SHOB_COOKIE ]]; then
-    echo "error: could not build auth cache file"
-    exit 1
+
+if [[ $AUTH_USER != "" ]] ; then
+    # cache login
+    [[ -e $SHOB_COOKIE ]] && rm -f $SHOB_COOKIE
+    curl --user $AUTH_USER:$AUTH_PASS --cookie-jar $SHOB_COOKIE $BASE_URL
+    if [[ ! -e $SHOB_COOKIE ]]; then
+        echo "error: could not build auth cache file"
+        exit 1
+    fi
 fi
 
 # check if connecion to space available
@@ -140,7 +167,6 @@ fi
 
 # get space name
 SPACE_ID=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
-#SPACE_ID=$(curl -u "$AUTH_USER:$AUTH_PASS" -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
 
 # initialize shob data array
 shob_info=()
