@@ -1,6 +1,23 @@
 #!/bin/bash
 
 
+function usage() {
+cat << EOF
+
+$(basename $0)
+Copyright (C) 2024 Gigaspace Inc. by Alon Segal.
+
+USAGE:
+    $(basename $0) Options
+
+OPTIONS:
+    --all       report for all types of PU
+    --stateful    report only for stateful PU status
+    --stateless   report only for stateless PU status
+EOF
+}
+
+
 function get_cluster_hosts {
     local cluster_name=$1
     local prefix=$2
@@ -58,6 +75,18 @@ ENV_CONFIG="/gigashare/env_config"
 AUTH_USER=""
 AUTH_PASS=""
 
+# parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+              --all) TYPE="all" ; break ;;
+         --stateful) TYPE="stateful" ; break ;;
+        --stateless) TYPE="stateless" ; break ;;
+                -h*) usage ; exit ;;
+                  *) echo -e "\n[ERROR] missing command! (--all | --stateful | --stateless)"
+                     exit ;;
+    esac
+done
+
 # check host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
     echo "[ERROR] host.yaml not found. aborting!"
@@ -104,18 +133,10 @@ if [[ $(curl --cookie $SHOB_COOKIE -sk "${BASE_URL}/spaces") == "" ]]; then
     exit
 fi
 
-# parse arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        stateful) TYPE="stateful" ; break ;;
-        stateless) TYPE="stateless" ; break ;;
-    esac
-done
-
 # initialize data array
 pu_info=()
 
-if [[ -z $TYPE ]] ; then
+if [[ $TYPE == "all" ]] ; then
     while read pu_name; do
         json_data=$(curl --cookie $SHOB_COOKIE -sk $BASE_URL/pus/$pu_name)
         pu_status=$(echo $json_data | jq '.status' | sed 's/"//g')
