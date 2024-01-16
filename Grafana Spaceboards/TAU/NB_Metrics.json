@@ -16,7 +16,7 @@
   "editable": true,
   "gnetId": 8531,
   "graphTooltip": 0,
-  "iteration": 1696425550111,
+  "iteration": 1705334162299,
   "links": [],
   "panels": [
     {
@@ -33,9 +33,9 @@
       "repeat": "hosts",
       "scopedVars": {
         "hosts": {
-          "selected": false,
-          "text": "gstest-manager1",
-          "value": "gstest-manager1"
+          "selected": true,
+          "text": "gstest-manager3",
+          "value": "gstest-manager3"
         }
       },
       "title": "NGINX SERVICE STATUS - $hosts",
@@ -91,9 +91,9 @@
       "pluginVersion": "7.3.7",
       "scopedVars": {
         "hosts": {
-          "selected": false,
-          "text": "gstest-manager1",
-          "value": "gstest-manager1"
+          "selected": true,
+          "text": "gstest-manager3",
+          "value": "gstest-manager3"
         }
       },
       "targets": [
@@ -218,9 +218,9 @@
       "pluginVersion": "7.3.7",
       "scopedVars": {
         "hosts": {
-          "selected": false,
-          "text": "gstest-manager1",
-          "value": "gstest-manager1"
+          "selected": true,
+          "text": "gstest-manager3",
+          "value": "gstest-manager3"
         }
       },
       "targets": [
@@ -354,9 +354,9 @@
       "pluginVersion": "7.3.7",
       "scopedVars": {
         "hosts": {
-          "selected": false,
-          "text": "gstest-manager1",
-          "value": "gstest-manager1"
+          "selected": true,
+          "text": "gstest-manager3",
+          "value": "gstest-manager3"
         }
       },
       "targets": [
@@ -492,1103 +492,7 @@
       "pluginVersion": "7.3.7",
       "scopedVars": {
         "hosts": {
-          "selected": false,
-          "text": "gstest-manager1",
-          "value": "gstest-manager1"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'consul-template.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "consul-template.service"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Consul-template Service STATUS",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "datasource": "xap",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 4
-      },
-      "id": 80,
-      "panels": [],
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 52,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager2",
-          "value": "gstest-manager2"
-        }
-      },
-      "title": "NGINX SERVICE STATUS - $hosts",
-      "type": "row"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "dtdurations"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 0,
-        "y": 5
-      },
-      "id": 81,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 72,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager2",
-          "value": "gstest-manager2"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "system",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "uptime"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "SYSTEM UPTIME",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "3"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 4,
-        "y": 5
-      },
-      "id": 82,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 49,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager2",
-          "value": "gstest-manager2"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'nginx.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "nginx.service"
-            }
-          ]
-        }
-      ],
-      "title": "NGINX STATUS",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "1"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 8,
-        "y": 5
-      },
-      "id": 83,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 74,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager2",
-          "value": "gstest-manager2"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'consul.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "consul.service"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Consul Service STATUS",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "1"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 12,
-        "y": 5
-      },
-      "id": 84,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 76,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager2",
-          "value": "gstest-manager2"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'consul-template.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "consul-template.service"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Consul-template Service STATUS",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "datasource": "xap",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 85,
-      "panels": [],
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 52,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager3",
-          "value": "gstest-manager3"
-        }
-      },
-      "title": "NGINX SERVICE STATUS - $hosts",
-      "type": "row"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "dtdurations"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 0,
-        "y": 9
-      },
-      "id": 86,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 72,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager3",
-          "value": "gstest-manager3"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "system",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "uptime"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "SYSTEM UPTIME",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "3"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 4,
-        "y": 9
-      },
-      "id": 87,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 49,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager3",
-          "value": "gstest-manager3"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'nginx.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "nginx.service"
-            }
-          ]
-        }
-      ],
-      "title": "NGINX STATUS",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "1"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 8,
-        "y": 9
-      },
-      "id": 88,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 74,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
-          "text": "gstest-manager3",
-          "value": "gstest-manager3"
-        }
-      },
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "systemd_units",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT max(\"active_code\") FROM \"systemd_units\" WHERE (\"host\" =~ /^$hosts$/ AND \"name\" = 'consul.service') AND $timeFilter GROUP BY time(10s) fill(none) ORDER BY time DESC LIMIT 1",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "max"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "host",
-              "operator": "=~",
-              "value": "/^$hosts$/"
-            },
-            {
-              "condition": "AND",
-              "key": "name",
-              "operator": "=",
-              "value": "consul.service"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Consul Service STATUS",
-      "type": "stat"
-    },
-    {
-      "cacheTimeout": null,
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [
-            {
-              "id": 0,
-              "op": "=",
-              "text": "Up",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 1,
-              "op": "=",
-              "text": "Down",
-              "to": "10",
-              "type": 2,
-              "value": "1"
-            }
-          ],
-          "nullValueMode": "connected",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
-              },
-              {
-                "color": "#d44a3a",
-                "value": 4
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 12,
-        "y": 9
-      },
-      "id": 89,
-      "interval": null,
-      "links": [],
-      "maxDataPoints": 100,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value"
-      },
-      "pluginVersion": "7.3.7",
-      "repeatIteration": 1696425550111,
-      "repeatPanelId": 76,
-      "repeatedByRow": true,
-      "scopedVars": {
-        "hosts": {
-          "selected": false,
+          "selected": true,
           "text": "gstest-manager3",
           "value": "gstest-manager3"
         }
@@ -1657,7 +561,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 16
       },
       "id": 13,
       "panels": [],
@@ -1677,7 +581,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 17
       },
       "id": 78,
       "options": {
@@ -1768,7 +672,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 15
+        "y": 19
       },
       "hideTimeOverride": false,
       "id": 36,
@@ -1809,8 +713,8 @@
           "measurement": "nginx_access_log",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT count(\"request\") FROM \"nginx_access_log\" WHERE (\"host\" =~ /^$host$/ AND \"resp_code\" = '200') AND $timeFilter GROUP BY time($__interval) fill(null)",
-          "rawQuery": false,
+          "query": "SELECT count(\"request\") FROM \"nginx_access_log\" WHERE (\"host\" =~ /^$hosts$/ AND \"resp_code\" = '200') AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1888,7 +792,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 15
+        "y": 19
       },
       "id": 56,
       "interval": null,
@@ -2003,7 +907,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 15
+        "y": 19
       },
       "id": 57,
       "interval": null,
@@ -2118,7 +1022,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 15
+        "y": 19
       },
       "id": 58,
       "interval": null,
@@ -2217,11 +1121,11 @@
               },
               {
                 "color": "rgba(237, 129, 40, 0.89)",
-                "value": 3
+                "value": 3000
               },
               {
                 "color": "#d44a3a",
-                "value": 4
+                "value": 10000
               }
             ]
           },
@@ -2233,7 +1137,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 15
+        "y": 19
       },
       "id": 53,
       "interval": null,
@@ -2348,7 +1252,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 18
+        "y": 22
       },
       "id": 40,
       "interval": null,
@@ -2463,7 +1367,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 18
+        "y": 22
       },
       "id": 45,
       "interval": null,
@@ -2574,7 +1478,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 18
+        "y": 22
       },
       "id": 39,
       "interval": null,
@@ -2685,7 +1589,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 18
+        "y": 22
       },
       "id": 42,
       "interval": null,
@@ -2802,7 +1706,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 18
+        "y": 22
       },
       "id": 54,
       "interval": null,
@@ -2917,7 +1821,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "id": 41,
       "interval": null,
@@ -3032,7 +1936,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 21
+        "y": 25
       },
       "id": 55,
       "interval": null,
@@ -3118,7 +2022,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 28
       },
       "id": 79,
       "options": {
@@ -3175,7 +2079,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 30
       },
       "id": 62,
       "panels": [],
@@ -3200,7 +2104,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 31
       },
       "hiddenSeries": false,
       "id": 60,
@@ -3474,7 +2378,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 37
       },
       "hiddenSeries": false,
       "hideTimeOverride": false,
@@ -3824,7 +2728,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 43
       },
       "hiddenSeries": false,
       "id": 32,
@@ -3968,7 +2872,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 49
       },
       "hiddenSeries": false,
       "id": 31,
@@ -4298,7 +3202,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 55
       },
       "hiddenSeries": false,
       "id": 8,
@@ -4598,7 +3502,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 61
       },
       "hiddenSeries": false,
       "id": 64,
@@ -4839,7 +3743,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 67
       },
       "hiddenSeries": false,
       "id": 68,
@@ -4976,7 +3880,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 73
       },
       "hiddenSeries": false,
       "hideTimeOverride": false,
@@ -5180,8 +4084,8 @@
       {
         "current": {
           "selected": false,
-          "text": "InfluxDB",
-          "value": "InfluxDB"
+          "text": "",
+          "value": ""
         },
         "datasource": null,
         "error": null,
@@ -5202,8 +4106,8 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "text": "All",
-          "value": "$__all"
+          "text": "gstest-manager3",
+          "value": "gstest-manager3"
         },
         "datasource": "InfluxDB",
         "definition": "",
@@ -5228,7 +4132,7 @@
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
