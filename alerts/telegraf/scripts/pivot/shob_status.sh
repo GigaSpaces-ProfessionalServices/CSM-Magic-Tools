@@ -52,7 +52,7 @@ function is_manager_rest_ok() {
     local rest_ok=false
 
     # check port
-    nc -z $m 8090 && port_ok=true
+    nc -z $the_manager 8090 && port_ok=true
     
     # check rest
     local rest="http://${the_manager}:8090/v2/index.html"
