@@ -12,12 +12,31 @@ function get_table_threshold() {
     echo "null"
 }
 
+
 function get_auth() {
     sec_flag=$(cat /gigashare/env_config/app.config | grep "app.setup.profile" | cut -d= -f2)
     if [[ $sec_flag != "" ]]; then
         AUTH_USER=$(cat /gigashare/env_config/app.config | grep "app.manager.security.username" | cut -d= -f2)
         AUTH_PASS=$(cat /gigashare/env_config/app.config | grep "app.manager.security.password" | cut -d= -f2)
     fi
+}
+
+
+function is_manager_rest_ok() {
+    local the_manager=$1
+    local port_ok=false
+    local rest_ok=false
+
+    # check port
+    nc -z $m 8090 && port_ok=true
+    
+    # check rest
+    local rest="http://${the_manager}:8090/v2/index.html"
+    local status_code=$(curl -u "$AUTH_USER:$AUTH_PASS" \
+    --write-out '%{http_code}' --silent --output /dev/null "$rest")
+    [[ $status_code -eq 200 ]] && rest_ok=true
+    
+    ($port_ok && $rest_ok) && return 0 || return 1
 }
 
 # tables thresholds dictionary
@@ -78,15 +97,26 @@ GILBOASYNC=3600
 # set verbosity
 [[ $1 == '-v' ]] && verbose=true || verbose=false
 
-# get a manager
-MANAGER=$(cat /gigashare/env_config/host.yaml | grep -A 1 manager | awk '/host/ {print $3}' | tail -1)
-BASE_URL="http://${MANAGER}:8090/v2"
-SHOB_COOKIE=/tmp/.shob_cookie
-
 # get credentials if env is secured
 AUTH_USER=""
 AUTH_PASS=""
 get_auth
+
+# get manager host
+for m in $(get_cluster_hosts "manager"); do
+    if is_manager_rest_ok $m ; then
+        MANAGER=$m
+        break
+    fi
+done
+if [[ -z $MANAGER ]]; then
+    echo "[ERROR] no avaialable managers found!"
+    exit
+fi
+
+# get a manager
+BASE_URL="http://${MANAGER}:8090/v2"
+SHOB_COOKIE=/tmp/.shob_cookie
 
 # cache login
 [[ -e $SHOB_COOKIE ]] && rm -f $SHOB_COOKIE
@@ -167,6 +197,7 @@ done
 # output influx data
 for i in "${shob_info[@]}"; do echo "$i" ; done
 
+# delete session cookie
 rm -f $SHOB_COOKIE
 
 exit
