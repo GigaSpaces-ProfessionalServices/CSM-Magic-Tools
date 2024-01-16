@@ -8,7 +8,7 @@ function get_cluster_hosts {
     sed -ne "s|^\($s\):|\1|" \
         -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
         -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
-        ${ODSXARTIFACTS}/odsx/host.yaml |
+        ${ENV_CONFIG}/host.yaml |
     awk -F$fs '{
         indent = length($1)/2;
         vname[indent] = $2;
@@ -23,42 +23,72 @@ function get_cluster_hosts {
     done
 }
 
-function set_credentials {
-	local flag=$(echo $ODSXARTIFACTS | cut -d / -f 3)
-	[[ ${flag} == 'prd' || ${flag} == 'dr' ]] && env_suffix='PRD' || env_suffix='STG'
-	# get available manager
-	for h in $(get_cluster_hosts "manager"); do
-		if [[ $(nc -z $h 22) -eq 0 ]]; then
-			manager="$h"
-			break
-		fi
-	done
-	sdk_path="/opt/CARKaim/sdk/clipasswordsdk"
-	appdescs_appid="AppDescs.AppID=APPODSUSERSBLL${env_suffix}"
-	query="Query='Safe=AIMODSUSERSBLL${env_suffix};Folder=;Object=ACCHQudkodsl;'"
-	case $1 in
-		'usr') option="PassProps.UserName" ;;
-		'pwd') option="Password" ;;
-	esac
-	ssh ${manager} "$sdk_path GetPassword -p $appdescs_appid -p $query -o $option"
+function get_auth() {
+    sec_flag=$(cat $ENV_CONFIG/app.config | grep "app.setup.profile" | cut -d= -f2)
+    if [[ $sec_flag != "" ]]; then
+        declare -g AUTH_USER=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.username" | cut -d= -f2)
+        declare -g AUTH_PASS=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.password" | cut -d= -f2)
+    else
+		declare -g AUTH_USER=""
+		declare -g AUTH_PASS=""
+	fi
 }
 
-BASEURL=https://<NB_MNG_FARM>:<V2_PORT>
-SPACE="bllservice"
-vusr=$(set_credentials usr)
-vpwd=$(set_credentials pwd)
+function is_manager_rest_ok() {
+    local the_manager=$1
+    local port_ok=false
+    local rest_ok=false
 
-splitter() {
-	sed -e 's/,/\n/g' | grep $SPACE | \
-	sed -e s'/.*'$SPACE'~//g' -e 's/_/ /g' -e 's/"//g'
+    # check port
+    nc -z $the_manager 8090 && port_ok=true
+    
+    # check rest
+    local rest="http://${the_manager}:8090/v2/index.html"
+    local status_code=$(curl -u "$AUTH_USER:$AUTH_PASS" \
+    --write-out '%{http_code}' --silent --output /dev/null "$rest")
+    [[ $status_code -eq 200 ]] && rest_ok=true
+    
+    ($port_ok && $rest_ok) && return 0 || return 1
 }
 
-DEFINED=$(curl -ks -u "${vusr}:${vpwd}" $BASEURL/v2/pus/$SPACE | jq -r '.instances' | splitter)
-REAL=$(curl -ks -u "${vusr}:${vpwd}" $BASEURL/v2/containers | jq -r '.[].instances?' | splitter)
+function splitter() {
+	sed -e 's/,/\n/g' | grep $SPACE_PU | sed -e s'/.*'$SPACE_PU'~//g' -e 's/_/ /g' -e 's/"//g'
+}
 
-echo -e "${DEFINED}\n$REAL" | sort -V | \
-awk '
-BEGIN	{
+#
+# # # MAIN # # #
+#
+
+ENV_CONFIG="/gigashare/env_config"
+
+# check host.yaml exists
+if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
+    echo "[ERROR] host.yaml not found. aborting!"
+    exit
+fi
+
+# get security credentials
+get_auth
+
+# get manager host
+for m in $(get_cluster_hosts "manager"); do
+    if is_manager_rest_ok $m ; then
+        MANAGER=$m
+        break
+    fi
+done
+if [[ -z $MANAGER ]]; then
+    echo "[ERROR] no avaialable managers found!"
+    exit
+fi
+
+BASE_URL="http://${MANAGER}:8090/v2"
+SPACE_PU="dih-tau-service"
+DEFINED=$(curl -sk -u "${AUTH_USER}:${AUTH_PASS}" $BASE_URL/pus/$SPACE_PU | jq -r '.instances' | splitter)
+REAL=$(curl -sk -u "${AUTH_USER}:${AUTH_PASS}" $BASE_URL/containers | jq -r '.[].instances?' | splitter)
+
+echo -e "${DEFINED}\n$REAL" | sort -V | awk \
+'BEGIN	{
 	old = 0 ;
 	count = 0 ;
 }
