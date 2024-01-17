@@ -28,10 +28,7 @@ function get_auth() {
     if [[ $sec_flag != "" ]]; then
         declare -g AUTH_USER=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.username" | cut -d= -f2)
         declare -g AUTH_PASS=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.password" | cut -d= -f2)
-    else
-		declare -g AUTH_USER=""
-		declare -g AUTH_PASS=""
-	fi
+    fi
 }
 
 function is_manager_rest_ok() {
@@ -60,6 +57,9 @@ function splitter() {
 #
 
 ENV_CONFIG="/gigashare/env_config"
+SPACE_PU="dih-tau-service"
+AUTH_USER=""
+AUTH_PASS=""
 
 # check host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
@@ -83,7 +83,6 @@ if [[ -z $MANAGER ]]; then
 fi
 
 BASE_URL="http://${MANAGER}:8090/v2"
-SPACE_PU="dih-tau-service"
 DEFINED=$(curl -sk -u "${AUTH_USER}:${AUTH_PASS}" $BASE_URL/pus/$SPACE_PU | jq -r '.instances' | splitter)
 REAL=$(curl -sk -u "${AUTH_USER}:${AUTH_PASS}" $BASE_URL/containers | jq -r '.[].instances?' | splitter)
 

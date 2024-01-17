@@ -63,6 +63,14 @@ function is_manager_rest_ok() {
     ($port_ok && $rest_ok) && return 0 || return 1
 }
 
+#
+# # # MAIN # # #
+#
+
+ENV_CONFIG="/gigashare/env_config"
+AUTH_USER=""
+AUTH_PASS=""
+
 # tables thresholds dictionary
 # * using bash v4.x associative array
 declare -A SHOB_TABLES
@@ -122,8 +130,6 @@ GILBOASYNC=3600
 [[ $1 == '-v' ]] && verbose=true || verbose=false
 
 # get credentials if env is secured
-AUTH_USER=""
-AUTH_PASS=""
 get_auth
 
 # get manager host
@@ -138,7 +144,6 @@ if [[ -z $MANAGER ]]; then
     exit
 fi
 
-# get a manager
 BASE_URL="http://${MANAGER}:8090/v2"
 SHOB_COOKIE=/tmp/.shob_cookie
 
