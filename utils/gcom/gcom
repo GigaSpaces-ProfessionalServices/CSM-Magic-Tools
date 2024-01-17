@@ -7,7 +7,7 @@
 #   supports unattended or interactive gs component deployment
 
 
-VERSION=0.2.6
+VERSION=0.2.7
 
 
 function usage() {
@@ -249,7 +249,7 @@ function print_menu_items() {
                 break
             else
                 [[ ${#source_array[@]} -gt 1 ]] && range="1-${#source_array[@]}" || range="1"
-                echo "invalid input! select between 0 or $range"
+                echo "invalid input! select 0 or $range"
             fi
         done
     elif [[ $select_mode == 'multiple' ]]; then
