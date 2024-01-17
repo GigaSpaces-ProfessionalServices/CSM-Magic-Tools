@@ -19,6 +19,7 @@ public class MeasurementRequestModel {
     private String properties;
     private String authenticationScheme;
     private String gsLookupGroup;
+    private boolean keepConnectionOpen;
     
     public MeasurementRequestModel() {
     }
@@ -155,29 +156,27 @@ public class MeasurementRequestModel {
         this.gsLookupGroup = gsLookupGroup;
     }
 
+    public boolean isKeepConnectionOpen() {
+        return keepConnectionOpen;
+    }
+
+    public void setKeepConnectionOpen(boolean keepConnectionOpen) {
+        this.keepConnectionOpen = keepConnectionOpen;
+    }
+
     public String getDataSourceIdentifierKey(){
         return dataSourceType +"|"+ dataSourceHostIp +"|"+ dataSourcePort +"|"+ schemaName +"|"+ username +"|"+ password;
     }
+
     @Override
     public String toString() {
-        return "MeasurementRequestModel{" +
-                "measurementId='" + measurementId + '\'' +
-                ", test='" + test + '\'' +
-                ", type='" + type + '\'' +
-                ", schemaName='" + schemaName + '\'' +
-                ", tableName='" + tableName + '\'' +
-                ", fieldName='" + fieldName + '\'' +
-                ", whereCondition='" + whereCondition + '\'' +
-                ", limitRecords='" + limitRecords + '\'' +
-                ", dataSourceType='" + dataSourceType + '\'' +
-                ", dataSourceHostIp='" + dataSourceHostIp + '\'' +
-                ", dataSourcePort='" + dataSourcePort + '\'' +
-                ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
-                ", integratedSecurity='" + integratedSecurity + '\'' +
-                ", properties='" + properties + '\'' +
-                ", authenticationScheme='" + authenticationScheme + '\'' +
-                ", gsLookupGroup='" + gsLookupGroup + '\'' +
-                '}';
+        return "MeasurementRequestModel{" + "measurementId='" + measurementId + '\'' + ", test='" + test + '\''
+                + ", type='" + type + '\'' + ", schemaName='" + schemaName + '\'' + ", tableName='" + tableName + '\''
+                + ", fieldName='" + fieldName + '\'' + ", whereCondition='" + whereCondition + '\'' + ", limitRecords='"
+                + limitRecords + '\'' + ", dataSourceType='" + dataSourceType + '\'' + ", dataSourceHostIp='"
+                + dataSourceHostIp + '\'' + ", dataSourcePort='" + dataSourcePort + '\'' + ", username='" + username
+                + '\'' + ", password='" + password + '\'' + ", integratedSecurity='" + integratedSecurity + '\''
+                + ", properties='" + properties + '\'' + ", authenticationScheme='" + authenticationScheme + '\''
+                + ", gsLookupGroup='" + gsLookupGroup + '\'' + ", keepConnectionOpen=" + keepConnectionOpen + '}';
     }
 }

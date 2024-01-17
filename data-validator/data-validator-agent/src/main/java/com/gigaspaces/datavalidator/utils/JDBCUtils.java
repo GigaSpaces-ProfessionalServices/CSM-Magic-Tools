@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openspaces.admin.Admin;
+import org.openspaces.admin.AdminFactory;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
@@ -23,7 +25,8 @@ public class JDBCUtils {
     private static Logger logger = LoggerFactory.getLogger(JDBCUtils.class.getName());
 
     private static final Map<String, Connection> connectionPool = new HashMap<>();
-    
+    private static final Map<String, Admin> adminConnectionPool = new HashMap<>(); // Only for Gigaspaces Data source
+
     public static Connection getConnection(MeasurementRequestModel measurement)
 			throws ReflectiveOperationException, ReflectiveOperationException, ClassNotFoundException, SQLException {
 		
@@ -45,8 +48,15 @@ public class JDBCUtils {
             logger.debug("Found in Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
             connection = connectionPool.get(measurement.getDataSourceIdentifierKey());
             if(!connection.isClosed()){
-                logger.debug("Connection is still Open for Key: "+measurement.getDataSourceIdentifierKey());
-                return connection;
+                if(measurement.isKeepConnectionOpen()){
+                    logger.debug("Connection is still Open & Keep connection open flag is TRUE for Key: "+measurement.getDataSourceIdentifierKey());
+                    return connection;
+                }else{
+                    logger.debug("Connection is Open BUT Keep connection open flag is FALSE for Key: "+measurement.getDataSourceIdentifierKey());
+                    connection.close();
+                    connectionPool.remove(measurement.getDataSourceIdentifierKey());
+                    connection=null;
+                }
             }else{
                 connection=null;
             }
@@ -99,6 +109,41 @@ public class JDBCUtils {
 		return connection;
 	}
 
+    public static Admin getAdminConnection(MeasurementRequestModel measurement){
+        Admin admin = null;
+        if(adminConnectionPool.containsKey(measurement.getDataSourceIdentifierKey())){
+            logger.debug("Found in Admin Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
+            admin = adminConnectionPool.get(measurement.getDataSourceIdentifierKey());
+            if(!admin.isMonitoring()){
+                if(measurement.isKeepConnectionOpen()){
+                    logger.debug("Admin Connection is still Monitoring & Keep connection open flag is TRUE for Key: "+measurement.getDataSourceIdentifierKey());
+                    return admin;
+                }else{
+                    logger.debug("Admin Connection is Monitoring BUT Keep connection open flag is FALSE for Key: "+measurement.getDataSourceIdentifierKey());
+                    admin.close();
+                    adminConnectionPool.remove(measurement.getDataSourceIdentifierKey());
+                    admin=null;
+                }
+            }else{
+                admin=null;
+            }
+        }
+        if(measurement.getUsername()!=null
+                && !measurement.getUsername().isEmpty()){
+            admin = new AdminFactory()
+                    //.addGroup(measurement.getGsLookupGroup())
+                    .credentials(measurement.getUsername(), measurement.getPassword())
+                    .addLocator(measurement.getDataSourceHostIp())
+                    .createAdmin();
+        }else{
+            admin = new AdminFactory()
+                    //.addGroup(measurement.getGsLookupGroup())
+                    //.discoverUnmanagedSpaces()
+                    .addLocator(measurement.getDataSourceHostIp())
+                    .createAdmin();
+        }
+        return admin;
+    }
     public static String buildQuery(String dataSource, String fieldName
             , String function, String tableName, long limitRecords, String whereCondition){
         StringBuilder query = new StringBuilder();
