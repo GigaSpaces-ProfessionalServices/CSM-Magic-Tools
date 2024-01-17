@@ -1,22 +1,12 @@
 dbrp "mydb"."autogen"
 
-var snowType = 'Infra'
-var snowResource = 'CPU'
-var snowMetricName = 'CPU percent usage'
+var alert_name = 'cpu-alert'
 
 stream
     |from()
         .measurement('os_cpu_used-percent')
-    |default()
-	.tag('snowType', snowType)
-	.tag('snowResource', snowResource)
-	.tag('snowMetricName', snowMetricName)
-	.tag('host', 'SystemWide')
     |alert()
         .crit(lambda: int("value") > 15)
         .stateChangesOnly(1d)
-        .message('Process PPID={{ index .Tags "pid" }} on {{ index .Tags "host" }} use {{ index .Fields "value" }} CPU%')
-	.id('{{ index .Tags "host" }}-{{ index .Tags "pid" }}')
-	.details('{{ index .Tags "host" }}')
-	.post()
-		.endpoint('debug')
+		.message('{{ .Vars.alert_name }} on {{ index .Tags "host" }} - {{ .Level }} - {{ .Name }}')
+		.details('Process PPID={{ index .Tags "pid" }} on {{ index .Tags "host" }} use {{ index .Fields "value" }} CPU%')
