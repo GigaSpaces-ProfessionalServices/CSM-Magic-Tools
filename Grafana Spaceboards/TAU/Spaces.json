@@ -16,7 +16,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "iteration": 1705564859418,
+  "iteration": 1705577390378,
   "links": [
     {
       "icon": "external link",
@@ -95,7 +95,7 @@
           "orderByTime": "ASC",
           "policy": "default",
           "query": "SELECT sum(\"value\") FROM \"space_operations_read-tp\" WHERE (\"space_name\" =~ /^$space_pu$/) AND $timeFilter GROUP BY time($__interval) fill(null)",
-          "rawQuery": true,
+          "rawQuery": false,
           "refId": "C",
           "resultFormat": "time_series",
           "select": [
@@ -116,7 +116,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$space_pu$/"
+              "value": "/^$spc_name$/"
             }
           ]
         },
