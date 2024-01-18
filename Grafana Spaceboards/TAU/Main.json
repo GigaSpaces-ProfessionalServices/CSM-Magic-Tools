@@ -17,7 +17,6 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "iteration": 1701066766511,
   "links": [],
   "panels": [
     {
@@ -160,7 +159,7 @@
                 "value": [
                   {
                     "title": "Space drilldown",
-                    "url": "/d/XLXZvSg7kl/spaces?orgId=1&refresh=5s&var-Space=${__value.text}&kiosk"
+                    "url": "/d/XLXZvSg71x/spaces?orgId=1&refresh=5s&var-Space=${__value.text}&kiosk"
                   }
                 ]
               },
@@ -173,8 +172,8 @@
         ]
       },
       "gridPos": {
-        "h": 5,
-        "w": 5,
+        "h": 6,
+        "w": 6,
         "x": 0,
         "y": 3
       },
@@ -216,7 +215,7 @@
           "measurement": "space_data_data-types",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT mean(\"value\") FROM \"space_data_data-types\" WHERE (\"space_active\" = 'true') AND $timeFilter GROUP BY time($__interval), \"pu_name\", \"space_active\" fill(null) LIMIT 1",
+          "query": "SELECT mean(\"value\") FROM \"space_data_data-types\" WHERE (\"space_active\" = 'true') AND $timeFilter GROUP BY time($__interval), \"pu_name\", \"space_active\", \"space_name\" fill(null) LIMIT 1",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table",
@@ -252,8 +251,8 @@
           "options": {
             "include": {
               "names": [
-                "pu_name",
-                "space_active"
+                "space_active",
+                "space_name"
               ]
             }
           }
@@ -262,10 +261,14 @@
           "id": "organize",
           "options": {
             "excludeByName": {},
-            "indexByName": {},
+            "indexByName": {
+              "space_active": 1,
+              "space_name": 0
+            },
             "renameByName": {
               "pu_name": "Space name",
-              "space_active": "Status"
+              "space_active": "Status",
+              "space_name": "Space name"
             }
           }
         }
@@ -356,9 +359,9 @@
         ]
       },
       "gridPos": {
-        "h": 5,
-        "w": 13,
-        "x": 5,
+        "h": 6,
+        "w": 8,
+        "x": 6,
         "y": 3
       },
       "id": 54,
@@ -444,7 +447,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "NB - Application",
+      "title": "NB - Applicative",
       "transformations": [
         {
           "id": "organize",
@@ -462,234 +465,6 @@
         }
       ],
       "type": "table"
-    },
-    {
-      "datasource": "InfluxDB",
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "links": [
-            {
-              "title": "Go to Data Validation dashboard",
-              "url": "/d/MlFV_NHSz/data-validation"
-            }
-          ],
-          "mappings": [
-            {
-              "from": "",
-              "id": 1,
-              "text": "Pass",
-              "to": "",
-              "type": 1,
-              "value": "1"
-            },
-            {
-              "from": "",
-              "id": 2,
-              "text": "Fail",
-              "to": "",
-              "type": 1,
-              "value": "0"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "dark-orange",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 18,
-        "y": 3
-      },
-      "id": 64,
-      "links": [],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "min"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT * FROM \"dvState\" WHERE time > now() - $dvInterval tz('Asia/Jerusalem')",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "table",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": []
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Data Validation Status",
-      "transformations": [],
-      "type": "stat"
-    },
-    {
-      "datasource": "InfluxDB",
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {},
-          "links": [
-            {
-              "title": "Go to Freshness dashboard",
-              "url": "/d/1RIb31VIz/freshness?orgId=1&refresh=5s"
-            }
-          ],
-          "mappings": [
-            {
-              "from": "",
-              "id": 1,
-              "text": "Fresh",
-              "to": "",
-              "type": 1,
-              "value": "1"
-            },
-            {
-              "from": "",
-              "id": 2,
-              "text": "Stale",
-              "to": "",
-              "type": 1,
-              "value": "0"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "dark-orange",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 21,
-        "y": 3
-      },
-      "id": 65,
-      "links": [],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "min"
-          ],
-          "fields": "/^freshness$/",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT * FROM \"shobStatus\" WHERE time > now() - $shobInterval tz('Asia/Jerusalem')",
-          "rawQuery": true,
-          "refId": "A",
-          "resultFormat": "table",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": []
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Data Freshness Status",
-      "transformations": [],
-      "type": "stat"
     },
     {
       "datasource": "xap",
@@ -718,10 +493,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 6,
-        "x": 18,
-        "y": 6
+        "h": 6,
+        "w": 4,
+        "x": 14,
+        "y": 3
       },
       "id": 60,
       "options": {
@@ -791,8 +566,409 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Services - Total Memory Used",
+      "title": "Total Memory Used",
       "type": "gauge"
+    },
+    {
+      "datasource": "InfluxDB",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "links": [],
+          "mappings": [
+            {
+              "from": "",
+              "id": 1,
+              "text": "Pass",
+              "to": "",
+              "type": 1,
+              "value": "1"
+            },
+            {
+              "from": "",
+              "id": 2,
+              "text": "Fail",
+              "to": "",
+              "type": 1,
+              "value": "0"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 18,
+        "y": 3
+      },
+      "id": 64,
+      "links": [
+        {
+          "title": "Go to Data Validation dashboard",
+          "url": "/d/MlFV_NHSz/data-validation"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "min"
+          ],
+          "fields": "/^last$/",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.3.7",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"result\") FROM \"dvState\" WHERE $timeFilter GROUP BY \"obj_type\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Data Validation Status",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": "InfluxDB",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "links": [],
+          "mappings": [
+            {
+              "from": "",
+              "id": 1,
+              "text": "Fresh",
+              "to": "",
+              "type": 1,
+              "value": "1"
+            },
+            {
+              "from": "",
+              "id": 2,
+              "text": "Stale",
+              "to": "",
+              "type": 1,
+              "value": "0"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "id": 65,
+      "links": [
+        {
+          "title": "Go to Freshness dashboard",
+          "url": "/d/1RIb31VIz/freshness"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "min"
+          ],
+          "fields": "/^last$/",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.3.7",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"freshness\") FROM \"shobStatus\" WHERE $timeFilter GROUP BY \"table_name\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Data Freshness Status",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
+          "links": [],
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "from": "",
+                    "id": 1,
+                    "text": "OK",
+                    "to": "",
+                    "type": 1,
+                    "value": "true"
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Service name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "PU drilldown",
+                    "url": "/d/xP465rgnk/processing-units?orgId=1&var-PUname=${__value.text}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 7,
+        "x": 0,
+        "y": 9
+      },
+      "id": 71,
+      "options": {
+        "showHeader": true
+      },
+      "pluginVersion": "7.3.7",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "pu_name"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "limit": "1",
+          "measurement": "process_cpu_used-percent",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT last(\"value\") FROM \"process_cpu_used-percent\" WHERE pu_name != '' and $timeFilter GROUP BY time($__interval), \"pu_name\" fill(null) LIMIT 1",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "table",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Services",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "pu_name",
+                "space_active"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "pu_name": "Service name",
+              "space_active": "Status"
+            }
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "aliasColors": {},
@@ -824,10 +1000,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
-        "w": 18,
-        "x": 0,
-        "y": 8
+        "h": 6,
+        "w": 17,
+        "x": 7,
+        "y": 9
       },
       "hiddenSeries": false,
       "id": 26,
@@ -922,7 +1098,6 @@
       },
       "yaxes": [
         {
-          "$$hashKey": "object:547",
           "format": "ms",
           "label": null,
           "logBase": 1,
@@ -931,7 +1106,6 @@
           "show": true
         },
         {
-          "$$hashKey": "object:548",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -946,14 +1120,13 @@
       }
     },
     {
-      "aliasColors": {},
-      "bars": true,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "xap",
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
-          "custom": {},
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
           "mappings": [],
           "min": 0,
           "noValue": "No services",
@@ -970,40 +1143,26 @@
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 7,
+        "w": 11,
         "x": 0,
-        "y": 13
+        "y": 15
       },
-      "hiddenSeries": false,
-      "id": 45,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": false,
-      "linewidth": 1,
-      "nullPointMode": "null",
+      "id": 67,
       "options": {
-        "alertThreshold": true
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": false
       },
-      "percentage": false,
       "pluginVersion": "7.3.7",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
       "targets": [
         {
           "alias": "$tag_pu_name",
@@ -1030,7 +1189,7 @@
           "measurement": "jvm_memory_heap_used-bytes",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY time($__interval), \"pu_name\"",
+          "query": "SELECT SUM(val) FROM (SELECT last(value) as val FROM \"jvm_memory_heap_used-bytes\" WHERE  pu_name != ''  AND $timeFilter GROUP BY  pu_instance_id) where val != 0 GROUP BY  pu_name",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -1057,50 +1216,14 @@
           ]
         }
       ],
-      "thresholds": [],
       "timeFrom": null,
-      "timeRegions": [],
       "timeShift": null,
-      "title": "Service Memory Usage",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "decbytes",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
+      "title": "Memory usage",
+      "type": "bargauge"
     },
     {
       "cacheTimeout": null,
-      "datasource": "xap",
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1111,13 +1234,13 @@
             "align": null,
             "filterable": false
           },
-          "displayName": "${__field.displayName}",
           "links": [],
           "mappings": [
             {
+              "$$hashKey": "object:6094",
               "id": 0,
               "op": "=",
-              "text": "N/A",
+              "text": "No Object types",
               "type": 1,
               "value": "null"
             }
@@ -1138,12 +1261,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 13
+        "h": 7,
+        "w": 13,
+        "x": 11,
+        "y": 15
       },
-      "id": 34,
+      "id": 69,
       "links": [],
       "options": {
         "displayMode": "gradient",
@@ -1219,7 +1342,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Object Type Count",
+      "title": "Entries per object type",
       "transformations": [],
       "type": "bargauge"
     },
@@ -1266,10 +1389,10 @@
         ]
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 10,
+        "w": 9,
         "x": 0,
-        "y": 21
+        "y": 22
       },
       "id": 38,
       "links": [],
@@ -1379,10 +1502,10 @@
         ]
       },
       "gridPos": {
-        "h": 9,
-        "w": 11,
-        "x": 12,
-        "y": 21
+        "h": 10,
+        "w": 9,
+        "x": 9,
+        "y": 22
       },
       "id": 43,
       "links": [],
@@ -1492,10 +1615,10 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 30
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 22
       },
       "id": 58,
       "links": [],
@@ -1619,10 +1742,10 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 30
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 27
       },
       "id": 51,
       "links": [],
@@ -1702,549 +1825,20 @@
       "timeShift": null,
       "title": "Northbound Memory %",
       "type": "gauge"
-    },
-    {
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "displayName": "${__field.displayName}",
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "Infrastructure drilldown",
-              "url": "d/iwAep7R7z/infrastructure?orgId=1&refresh=5s&var-Host=${__field.displayName}&kiosk"
-            }
-          ],
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Time"
-            },
-            "properties": []
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 36
-      },
-      "id": 59,
-      "links": [],
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "alias": "$tag_host",
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "host"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "cpu",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "query": "SELECT mean(\"value\") FROM \"os_cpu_used-percent\" WHERE $timeFilter GROUP BY time($__interval), \"host\" fill(null)",
-          "rawQuery": false,
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "usage_system"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "gs_service",
-              "operator": "=",
-              "value": "di"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "DI CPU %",
-      "type": "gauge"
-    },
-    {
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "displayName": "${__field.displayName}",
-          "links": [
-            {
-              "targetBlank": true,
-              "title": "Infrastructure drilldown",
-              "url": "d/iwAep7R7z/infrastructure?orgId=1&refresh=5s&var-Host=${__field.displayName}&kiosk"
-            }
-          ],
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Time"
-            },
-            "properties": []
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 36
-      },
-      "id": 52,
-      "links": [],
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "alias": "$tag_host",
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "host"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "measurement": "mem",
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "used_percent"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "gs_service",
-              "operator": "=",
-              "value": "di"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "DI Memory %",
-      "type": "gauge"
-    },
-    {
-      "datasource": "InfluxDB",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null,
-            "displayMode": "auto",
-            "filterable": false
-          },
-          "mappings": [
-            {
-              "from": "",
-              "id": 1,
-              "text": "Up",
-              "to": "",
-              "type": 1,
-              "value": "0"
-            },
-            {
-              "from": "1",
-              "id": 2,
-              "text": "Down",
-              "to": "999999999999999",
-              "type": 2,
-              "value": ""
-            }
-          ],
-          "noValue": "Down",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "last 1"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Kafka"
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "last 2"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Zookeeper"
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "host"
-            },
-            "properties": [
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "$host",
-                    "url": "/d/lU_AJConz/di-status?orgId=1&refresh=30s&var-datasource=InfluxDB&var-hosts=${__data.fields.host}"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 43
-      },
-      "id": 57,
-      "options": {
-        "frameIndex": 0,
-        "showHeader": true
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "alias": "TEst",
-          "groupBy": [
-            {
-              "params": [
-                "10s"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "host"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "none"
-              ],
-              "type": "fill"
-            }
-          ],
-          "limit": "1",
-          "measurement": "systemd_units",
-          "orderByTime": "DESC",
-          "policy": "default",
-          "query": "SELECT last(\"DaemonThreadCount\") FROM \"kafka.thread_count\" WHERE $timeFilter GROUP BY time(10s), \"host\" fill(0) ORDER BY time DESC LIMIT 1",
-          "rawQuery": false,
-          "refId": "A",
-          "resultFormat": "table",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "last"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "name",
-              "operator": "=",
-              "value": "odsxkafka.service"
-            }
-          ]
-        },
-        {
-          "alias": "test123",
-          "groupBy": [
-            {
-              "params": [
-                "10s"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "host"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "none"
-              ],
-              "type": "fill"
-            }
-          ],
-          "limit": "1",
-          "measurement": "systemd_units",
-          "orderByTime": "DESC",
-          "policy": "default",
-          "refId": "B",
-          "resultFormat": "table",
-          "select": [
-            [
-              {
-                "params": [
-                  "active_code"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "last"
-              }
-            ]
-          ],
-          "tags": [
-            {
-              "key": "name",
-              "operator": "=",
-              "value": "odsxzookeeper.service"
-            }
-          ]
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "DI Server Status",
-      "transformations": [
-        {
-          "id": "seriesToColumns",
-          "options": {
-            "byField": "host"
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "host",
-                "last 1",
-                "last 2"
-              ]
-            }
-          }
-        }
-      ],
-      "type": "table"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 26,
   "style": "light",
   "tags": [
-    "Master"
+    "Master",
+    "Main"
   ],
   "templating": {
-    "list": [
-      {
-        "auto": false,
-        "auto_count": 30,
-        "auto_min": "10s",
-        "current": {
-          "selected": false,
-          "text": "10m",
-          "value": "10m"
-        },
-        "error": null,
-        "hide": 2,
-        "label": null,
-        "name": "shobInterval",
-        "options": [
-          {
-            "selected": true,
-            "text": "10m",
-            "value": "10m"
-          }
-        ],
-        "query": "10m",
-        "refresh": 2,
-        "skipUrlSync": false,
-        "type": "interval"
-      },
-      {
-        "current": {
-          "selected": false,
-          "text": "1m",
-          "value": "1m"
-        },
-        "error": null,
-        "hide": 2,
-        "label": null,
-        "name": "dvInterval",
-        "options": [
-          {
-            "selected": true,
-            "text": "1m",
-            "value": "1m"
-          }
-        ],
-        "query": "1m",
-        "skipUrlSync": false,
-        "type": "constant"
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-10m",
     "to": "now"
   },
   "timepicker": {
@@ -2280,6 +1874,6 @@
   },
   "timezone": "browser",
   "title": "Main dashboard",
-  "uid": "tJWLBOR7z",
-  "version": 17
+  "uid": "tJWLBOR7qx",
+  "version": 10
 }

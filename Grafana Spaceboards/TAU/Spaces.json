@@ -1,42 +1,4 @@
 {
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "bargauge",
-      "name": "Bar gauge",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "7.3.7"
-    },
-    {
-      "type": "panel",
-      "id": "graph",
-      "name": "Graph",
-      "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "influxdb",
-      "name": "InfluxDB",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "text",
-      "name": "Text",
-      "version": ""
-    }
-  ],
   "annotations": {
     "enable": false,
     "list": [
@@ -54,87 +16,23 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": null,
-  "iteration": 1638176534132,
+  "iteration": 1705564859418,
   "links": [
     {
       "icon": "external link",
       "tags": [
-        "Master"
+        "Main"
       ],
       "type": "dashboards"
     }
   ],
   "panels": [
     {
-      "datasource": "xap",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 65,
-      "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Spaces </span>\n         </div>\n      </a>\n         ",
-        "mode": "html"
-      },
-      "pluginVersion": "7.3.7",
-      "targets": [
-        {
-          "groupBy": [
-            {
-              "params": [
-                "$__interval"
-              ],
-              "type": "time"
-            },
-            {
-              "params": [
-                "null"
-              ],
-              "type": "fill"
-            }
-          ],
-          "orderByTime": "ASC",
-          "policy": "default",
-          "refId": "A",
-          "resultFormat": "time_series",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "field"
-              },
-              {
-                "params": [],
-                "type": "mean"
-              }
-            ]
-          ],
-          "tags": []
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "",
-      "transparent": true,
-      "type": "text"
-    },
-    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "xap",
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "custom": {},
@@ -148,7 +46,7 @@
         "h": 10,
         "w": 8,
         "x": 0,
-        "y": 3
+        "y": 0
       },
       "hiddenSeries": false,
       "id": 35,
@@ -196,6 +94,8 @@
           "measurement": "space_operations_read-tp",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT sum(\"value\") FROM \"space_operations_read-tp\" WHERE (\"space_name\" =~ /^$space_pu$/) AND $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
           "refId": "C",
           "resultFormat": "time_series",
           "select": [
@@ -216,7 +116,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$space_pu$/"
             }
           ]
         },
@@ -259,7 +159,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_name$/"
             }
           ]
         },
@@ -302,7 +202,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_name$/"
             }
           ]
         },
@@ -347,7 +247,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_name$/"
             }
           ]
         },
@@ -390,7 +290,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_name$/"
             }
           ]
         },
@@ -433,7 +333,7 @@
             {
               "key": "space_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_name$/"
             }
           ]
         }
@@ -484,7 +384,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "xap",
+      "datasource": null,
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -501,7 +401,7 @@
         "h": 10,
         "w": 8,
         "x": 8,
-        "y": 3
+        "y": 0
       },
       "hiddenSeries": false,
       "id": 14,
@@ -533,12 +433,6 @@
       "targets": [
         {
           "alias": "Instance: $tag_pu_instance_id",
-          "fields": [
-            {
-              "func": "sum",
-              "name": "value"
-            }
-          ],
           "groupBy": [
             {
               "params": [
@@ -577,7 +471,7 @@
               },
               {
                 "params": [],
-                "type": "last"
+                "type": "sum"
               }
             ]
           ],
@@ -585,7 +479,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         }
@@ -633,7 +527,7 @@
     },
     {
       "cacheTimeout": null,
-      "datasource": "xap",
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -644,11 +538,12 @@
             "align": null,
             "filterable": false
           },
+          "displayName": "${__field.displayName}",
           "links": [
             {
               "targetBlank": false,
               "title": "Object type drilldown",
-              "url": "/d/8NgZY0qWas/object-type-drilldown?orgId=1&refresh=5s&var-spaceName=${Space}&var-dataTypeName=${__field.displayName}&kiosk\t"
+              "url": "/d/8NgZY0qWa7/object-type-drilldown?orgId=1&refresh=5s&var-spaceName=${Space}&var-dataTypeName=${__field.displayName}"
             }
           ],
           "mappings": [
@@ -679,7 +574,7 @@
         "h": 10,
         "w": 8,
         "x": 16,
-        "y": 3
+        "y": 0
       },
       "id": 63,
       "links": [],
@@ -698,7 +593,7 @@
       "pluginVersion": "7.3.7",
       "targets": [
         {
-          "alias": "$tag_data_type_name",
+          "alias": "$tag_data_type_short_name",
           "groupBy": [
             {
               "params": [
@@ -722,7 +617,7 @@
           "measurement": "space_data_data-types",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT SUM(val) as v FROM (SELECT last(value) as val FROM \"space_data_data-types\" WHERE (\"space_active\" = 'true' AND \"data_type_name\" != 'java.lang.Object' AND \"pu_name\" =~ /^$Space$/ AND $timeFilter ) GROUP BY data_type_name, pu_instance_id) GROUP BY data_type_name",
+          "query": "SELECT SUM(val)  as v FROM (SELECT last(value) as val FROM \"space_data_data-types\"  WHERE (\"space_active\" = 'true' AND \"data_type_name\" != 'java.lang.Object'  AND \"pu_name\" =~ /^$spc_pu$/)  GROUP BY data_type_name, pu_instance_id)  where val != 0 GROUP BY data_type_short_name",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -757,12 +652,12 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Object type count",
+      "title": "Entries per object type",
       "transformations": [],
       "type": "bargauge"
     },
     {
-      "datasource": "xap",
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -902,47 +797,9 @@
               {
                 "id": "displayName",
                 "value": "Instance ID"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Delta"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "from": "0",
-                    "id": 1,
-                    "text": "OK",
-                    "to": "0.2",
-                    "type": 2,
-                    "value": ""
-                  },
-                  {
-                    "from": "0.2",
-                    "id": 2,
-                    "text": "WARNING",
-                    "to": "0.6",
-                    "type": 2,
-                    "value": ""
-                  },
-                  {
-                    "from": "0.6",
-                    "id": 3,
-                    "text": "ERROR",
-                    "to": "1",
-                    "type": 2,
-                    "value": ""
-                  }
-                ]
               },
               {
-                "id": "displayName",
-                "value": "Status"
+                "id": "unit"
               }
             ]
           },
@@ -962,7 +819,7 @@
                   {
                     "targetBlank": false,
                     "title": "Host drilldown",
-                    "url": "/d/iwAep7R7z/host-drilldown?orgId=1&var-Host=${__value.text}&kiosk"
+                    "url": "/d/iwAep7R7z/infrastructure?orgId=1&var-Host=${__value.text}"
                   }
                 ]
               }
@@ -1055,17 +912,6 @@
                 "value": "Tiered storage usage"
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Redolog"
-            },
-            "properties": [
-              {
-                "id": "unit"
-              }
-            ]
           }
         ]
       },
@@ -1073,7 +919,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 10
       },
       "id": 59,
       "interval": "1m",
@@ -1149,7 +995,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         },
@@ -1207,7 +1053,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         },
@@ -1265,7 +1111,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         },
@@ -1323,7 +1169,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         },
@@ -1349,7 +1195,7 @@
             },
             {
               "params": [
-                "space_active"
+                "space_primary"
               ],
               "type": "tag"
             }
@@ -1387,7 +1233,7 @@
             {
               "key": "pu_name",
               "operator": "=~",
-              "value": "/^$Space$/"
+              "value": "/^$spc_pu$/"
             }
           ]
         }
@@ -1412,8 +1258,8 @@
                 "host",
                 "up time",
                 "Status",
-                "total",
-                "space_active"
+                "space_primary",
+                "total"
               ]
             }
           }
@@ -1429,7 +1275,7 @@
               "host": 3,
               "pid": 4,
               "pu_instance_id": 0,
-              "space_active": 1,
+              "space_primary": 1,
               "total": 8,
               "up time": 7
             },
@@ -1456,18 +1302,55 @@
     "list": [
       {
         "allValue": null,
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "dih-tau-space",
+          "value": "dih-tau-space"
+        },
         "datasource": "xap",
         "definition": "",
         "error": null,
         "hide": 0,
-        "includeAll": true,
-        "label": "Space",
+        "includeAll": false,
+        "label": "Space name",
         "multi": false,
-        "name": "Space",
+        "name": "spc_name",
         "options": [],
-        "query": "SHOW TAG VALUES FROM \"space_data_data-types\" WITH KEY  = \"pu_name\"",
+        "query": "SELECT space_name, last(\"value\") FROM \"space_data_data-types\" WHERE (\"space_active\" = 'true') AND time > now() - 1m GROUP BY \"space_name\"",
         "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "dih-tau-service",
+          "value": "dih-tau-service"
+        },
+        "datasource": "xap",
+        "definition": "",
+        "error": null,
+        "hide": 2,
+        "includeAll": false,
+        "label": "",
+        "multi": false,
+        "name": "spc_pu",
+        "options": [
+          {
+            "selected": true,
+            "text": "dih-tau-service",
+            "value": "dih-tau-service"
+          }
+        ],
+        "query": "SELECT pu_name, last(\"value\") FROM \"space_data_data-types\" WHERE \"space_active\" = 'true' AND \"space_name\" =~ /^$spc_name$/ AND time > now() - 1m GROUP BY \"$spc_name\"",
+        "refresh": 0,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
@@ -1516,6 +1399,6 @@
   },
   "timezone": "browser",
   "title": "Spaces",
-  "uid": "XLXZvSg7kl",
-  "version": 3
+  "uid": "XLXZvSg71x",
+  "version": 12
 }
