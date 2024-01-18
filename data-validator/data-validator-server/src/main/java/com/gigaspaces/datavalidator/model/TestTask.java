@@ -290,43 +290,46 @@ public class TestTask  implements Serializable  {
 
                 Map<Long, Properties> results = new HashMap<>();
                 for(Measurement measurement : measurementList) {
-                    DataSource dataSource = measurement.getDataSource();
-                    String test = measurement.getType();
-                    String limitRecords = measurement.getLimitRecords();
-                    String whereCondition = measurement.getWhereCondition();
+                    if(this.type == null || this.type.equals(measurement.getType())) {
+                        DataSource dataSource = measurement.getDataSource();
+                        String test = measurement.getType();
+                        String limitRecords = measurement.getLimitRecords();
+                        String whereCondition = measurement.getWhereCondition();
 
-                    String endPoint = "http://" + dataSource.getAgent().getHostIp() + ":3223/measurement/run";
-                    String data = "{" + "\"measurementId\":\"" + measurement.getId() + "\"" + ",\"test\":\""
-                            + measurement.getType() + "\"" + ",\"type\":\"" + measurement.getType() + "\""
-                            + ",\"schemaName\":\"" + measurement.getSchemaName() + "\"" + ",\"tableName\":\""
-                            + measurement.getTableName() + "\"" + ",\"fieldName\":\"" + measurement.getFieldName()
-                            + "\"" + ",\"whereCondition\":\"" + measurement.getWhereCondition() + "\""
-                            + ",\"limitRecords\":\"" + measurement.getLimitRecords() + "\"" + ",\"dataSourceType\":\""
-                            + dataSource.getDataSourceType() + "\"" + ",\"dataSourceHostIp\":\""
-                            + EncryptionDecryptionUtils.encrypt(dataSource.getDataSourceHostIp()) + "\""
-                            + ",\"dataSourcePort\":\"" + EncryptionDecryptionUtils.encrypt(
-                            dataSource.getDataSourcePort()) + "\"" + ",\"username\":\""
-                            + EncryptionDecryptionUtils.encrypt(dataSource.getUsername()) + "\"" + ",\"password\":\""
-                            + EncryptionDecryptionUtils.encrypt(dataSource.getPassword()) + "\""
-                            + ",\"integratedSecurity\":\"" + dataSource.getIntegratedSecurity() + "\""
-                            + ",\"properties\":\"" + dataSource.getProperties() + "\"" + ",\"authenticationScheme\":\""
-                            + dataSource.getAuthenticationScheme() + "\"" + ",\"gsLookupGroup\":\""
-                            + dataSource.getGsLookupGroup() + "\"" + ",\"keepConnectionOpen\":\"true\"" + "}";
+                        String endPoint = "http://" + dataSource.getAgent().getHostIp() + ":3223/measurement/run";
+                        String data = "{" + "\"measurementId\":\"" + measurement.getId() + "\"" + ",\"test\":\""
+                                + measurement.getType() + "\"" + ",\"type\":\"" + measurement.getType() + "\""
+                                + ",\"schemaName\":\"" + measurement.getSchemaName() + "\"" + ",\"tableName\":\""
+                                + measurement.getTableName() + "\"" + ",\"fieldName\":\"" + measurement.getFieldName()
+                                + "\"" + ",\"whereCondition\":\"" + measurement.getWhereCondition() + "\""
+                                + ",\"limitRecords\":\"" + measurement.getLimitRecords() + "\""
+                                + ",\"dataSourceType\":\"" + dataSource.getDataSourceType() + "\""
+                                + ",\"dataSourceHostIp\":\"" + EncryptionDecryptionUtils.encrypt(
+                                dataSource.getDataSourceHostIp()) + "\"" + ",\"dataSourcePort\":\""
+                                + EncryptionDecryptionUtils.encrypt(dataSource.getDataSourcePort()) + "\""
+                                + ",\"username\":\"" + EncryptionDecryptionUtils.encrypt(dataSource.getUsername())
+                                + "\"" + ",\"password\":\"" + EncryptionDecryptionUtils.encrypt(
+                                dataSource.getPassword()) + "\"" + ",\"integratedSecurity\":\""
+                                + dataSource.getIntegratedSecurity() + "\"" + ",\"properties\":\""
+                                + dataSource.getProperties() + "\"" + ",\"authenticationScheme\":\""
+                                + dataSource.getAuthenticationScheme() + "\"" + ",\"gsLookupGroup\":\""
+                                + dataSource.getGsLookupGroup() + "\"" + ",\"keepConnectionOpen\":\"true\"" + "}";
 
-                    String response = NetClientPost.send(endPoint, data);
-                    logger.debug("response: " + response);
-                    JsonObject testTaskResponse = (JsonObject) JsonParser.parseString(response);
-                    response = testTaskResponse.get("result").getAsString();
-                    this.errorSummary = testTaskResponse.get("errorSummary").getAsString();
-                    this.query = testTaskResponse.get("query").getAsString();
+                        String response = NetClientPost.send(endPoint, data);
+                        logger.debug("response: " + response);
+                        JsonObject testTaskResponse = (JsonObject) JsonParser.parseString(response);
+                        response = testTaskResponse.get("result").getAsString();
+                        this.errorSummary = testTaskResponse.get("errorSummary").getAsString();
+                        this.query = testTaskResponse.get("query").getAsString();
 
-                    Properties result = new Properties();
-                    result.put("result",response);
-                    result.put("query",this.query);
-                    result.put("errorSummary",this.errorSummary);
-                    result.put("dataSourceType",dataSource.getDataSourceType());
-                    result.put("measurementType",measurement.getType());
-                    results.put(measurement.getId(),result);
+                        Properties result = new Properties();
+                        result.put("result", response);
+                        result.put("query", this.query);
+                        result.put("errorSummary", this.errorSummary);
+                        result.put("dataSourceType", dataSource.getDataSourceType());
+                        result.put("measurementType", measurement.getType());
+                        results.put(measurement.getId(), result);
+                    }
                 }
 
                 Map<String, Properties> finalResults = new HashMap<>();
