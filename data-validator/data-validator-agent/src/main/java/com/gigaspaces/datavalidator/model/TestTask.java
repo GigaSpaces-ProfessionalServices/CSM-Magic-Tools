@@ -3,10 +3,13 @@ package com.gigaspaces.datavalidator.model;
 
 import com.gigaspaces.cluster.activeelection.SpaceMode;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
+import com.gigaspaces.document.SpaceDocument;
 import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
+import com.j_spaces.core.client.SQLQuery;
+import java.time.LocalDateTime;
+import java.time.Month;
 import org.openspaces.admin.Admin;
-import org.openspaces.admin.AdminFactory;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.space.Space;
 import org.openspaces.admin.space.SpaceInstance;
@@ -52,61 +55,95 @@ public class    TestTask  implements Serializable  {
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
 
-					if(measurement.getDataSourceType().equals("gigaspaces")
-							&& measurement.getFieldName().equals("*")
-							&& whereCondition.equals("")){
-						logger.debug("### Admin API: Fetching record count ###");
-						logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
-						logger.debug("Admin API - Table name: "+measurement.getTableName());
-                        logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
-                        logger.debug("Admin API - GS Locator: "+measurement.getDataSourceHostIp());
-
-                        Admin admin = JDBCUtils.getAdminConnection(measurement);
-						String puName = measurement.getSchemaName().replace("space","service");
-						ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(puName, 1, TimeUnit.MINUTES);
-						if(processingUnit == null){
-							this.errorSummary = "Processing unit not available with the name:"+puName;
-							this.result = "Error";
-							return this.result;
-						}
-						Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
-						logger.debug("Admin API - Space: "+space.toString());
-						for(SpaceInstance se: space.getInstances()){
-							while(se.getMode().equals(SpaceMode.NONE)){
-								Thread.sleep(400);
-							}
-						}
-						Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
-						logger.debug("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
-
-
-						Integer count = countPerClassName.get(measurement.getTableName());
-						this.result = String.valueOf(count);
-						this.query = "N/A";
-						logger.debug("### Admin API: Count="+this.result);
-                        admin.close();
-						return this.result;
-					}
-					String column_type=null;
+                    String column_type=null;
 					if(measurement.getDataSourceType().equals("gigaspaces")){
-						logger.debug("### NN Gigaspaces Proxy: Fetching Column Type ###");
-                        logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
-                        logger.debug("Admin API - GS Locator: "+measurement.getDataSourceHostIp());
-						logger.debug("Admin API - Table name: "+measurement.getTableName());
-						logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
-
-						GigaSpace gigaSpace = new GigaSpaceConfigurer(new SpaceProxyConfigurer(measurement.getSchemaName())
+                        GigaSpace gigaSpace = new GigaSpaceConfigurer(new SpaceProxyConfigurer(measurement.getSchemaName())
                                 .lookupGroups(measurement.getGsLookupGroup())
                                 .lookupLocators(measurement.getDataSourceHostIp())).gigaSpace();
-						GigaSpaceTypeManager gigaSpaceTypeManager = gigaSpace.getTypeManager();
-						SpaceTypeDescriptor typeManager = gigaSpaceTypeManager.getTypeDescriptor(measurement.getTableName());
-						SpacePropertyDescriptor fixedProperty = typeManager.getFixedProperty(measurement.getFieldName());
-						column_type = fixedProperty.getTypeDisplayName();
+                        if(!measurement.getFieldName().equals("*")) {
+                            GigaSpaceTypeManager gigaSpaceTypeManager = gigaSpace.getTypeManager();
+                            SpaceTypeDescriptor typeManager = gigaSpaceTypeManager.getTypeDescriptor(
+                                    measurement.getTableName());
+                            SpacePropertyDescriptor fixedProperty = typeManager.getFixedProperty(
+                                    measurement.getFieldName());
+                            column_type = fixedProperty.getTypeDisplayName();
+                        }
+                        logger.debug("Gigaspaces Proxy - columnTypeInSpace: " + column_type
+                                +" for column name: "+measurement.getFieldName()
+                                +" from table name: "+measurement.getTableName());
 
-						logger.debug("Gigaspaces Proxy - columnTypeInSpace: " + column_type
-								+" for column name: "+measurement.getFieldName()
-								+" from table name: "+measurement.getTableName());
-					}
+                        if(measurement.getType().equals("count")
+							&& whereCondition.equals("")){
+                            logger.debug("### Admin API: Fetching record count ###");
+                            logger.debug("Admin API - GS LookupGrp: "+measurement.getGsLookupGroup());
+                            logger.debug("Admin API - Table name: "+measurement.getTableName());
+                            logger.debug("Admin API - Connecting Space: "+measurement.getSchemaName());
+                            logger.debug("Admin API - GS Locator: "+measurement.getDataSourceHostIp());
+
+                            Admin admin = JDBCUtils.getAdminConnection(measurement);
+                            String puName = measurement.getSchemaName().replace("space","service");
+                            ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(puName, 1, TimeUnit.MINUTES);
+                            if(processingUnit == null){
+                                this.errorSummary = "Processing unit not available with the name:"+puName;
+                                this.result = "Error";
+                                return this.result;
+                            }
+                            Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
+                            logger.debug("Admin API - Space: "+space.toString());
+                            for(SpaceInstance se: space.getInstances()){
+                                while(se.getMode().equals(SpaceMode.NONE)){
+                                    Thread.sleep(400);
+                                }
+                            }
+                            Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
+                            logger.debug("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
+
+                            Integer count = countPerClassName.get(measurement.getTableName());
+                            this.result = String.valueOf(count);
+                            this.query = "N/A";
+                            logger.debug("### Admin API: Count="+this.result);
+                            admin.close();
+                            return this.result;
+					    }
+                        if(measurement.getType().equals("max")){
+                            LocalDateTime maxDateTime = LocalDateTime.of(2099,
+                                    Month.DECEMBER, 31, 23, 59, 59);
+                            SQLQuery<SpaceDocument> sqlQuery
+                                    = new SQLQuery<SpaceDocument>(measurement.getTableName()
+                                    , measurement.getFieldName()+" < ?");
+                            sqlQuery.setParameter(1,maxDateTime);
+                            sqlQuery.setProjections(measurement.getFieldName());
+                            SpaceDocument result = gigaSpace.read(sqlQuery);
+                            Object colVal = result.getProperty(measurement.getFieldName());
+                            logger.debug("Final Result: "+colVal +" of class "+colVal.getClass().getName() +" And column type ins space is "+column_type);
+
+                            if(column_type!=null && column_type.equalsIgnoreCase("java.time.LocalDateTime")){
+                                LocalDateTime dateVal = (LocalDateTime) colVal;
+                                String dateStr = dateVal.toString();
+                                String dateFormat = "yyyy-MM-dd HH:mm:ss";
+                                if(StringUtils.countOccurrencesOf(dateStr,":")==1){
+                                    dateFormat = "yyyy-MM-dd HH:mm";
+                                }
+                                if (dateStr.indexOf("T") > 0) {
+                                    dateFormat=dateFormat.replaceAll(" ","'T'");
+                                }
+                                SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+                                Date date = sdf.parse(dateStr);
+                                this.result = String.valueOf(date.getTime());
+                            }else if(column_type!=null && column_type.equalsIgnoreCase("java.sql.Date")){
+                                java.sql.Date datVal = (java.sql.Date) colVal;
+                                this.result = String.valueOf(datVal.getTime());
+                            }else if (column_type!=null && column_type.equalsIgnoreCase("java.sql.Timestamp")){
+                                java.sql.Timestamp datVal = (java.sql.Timestamp) colVal;
+                                this.result = String.valueOf(datVal.getTime());
+                            }else{
+                                this.result = String.valueOf(colVal);
+                            }
+                            this.query = "N/A";
+                            logger.debug("### Optimized Get Max value from Gigaspaces ###");
+                            return this.result;
+                        }
+                    }
 
 					Connection conn = JDBCUtils.getConnection(measurement);
 					Statement st = conn.createStatement();
@@ -136,26 +173,17 @@ public class    TestTask  implements Serializable  {
 							val = String.valueOf(rs.getDate(1).getTime());
 						}else if( column_type.equalsIgnoreCase("java.time.LocalDateTime")){
                             String dateStr = rs.getString(1);
-                            String dateFormat = "";
-                            // If occurrence count of ":" is 1 then date does not have seconds value
+                            String dateFormat = "yyyy-MM-dd HH:mm:ss";
                             if(StringUtils.countOccurrencesOf(dateStr,":")==1){
                                 dateFormat = "yyyy-MM-dd HH:mm";
-                                if (dateStr.indexOf("T") > 0) {
-                                    dateFormat = "yyyy-MM-dd'T'HH:mm";
-                                }
-                            }else {
-                                dateFormat = "yyyy-MM-dd HH:mm:ss";
-                                if (dateStr.indexOf("T") > 0) {
-                                    dateFormat = "yyyy-MM-dd'T'HH:mm:ss";
-                                }
                             }
-                            logger.debug("String val: " + dateStr);
-                            logger.debug("dateFormat: " + dateFormat);
+                            if (dateStr.indexOf("T") > 0) {
+                                dateFormat=dateFormat.replaceAll(" ","'T'");
+                            }
                             SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
                             Date date = sdf.parse(dateStr);
                             val= String.valueOf(date.getTime());
                             logger.debug("date final val: " + dateStr);
-
                         }else{
 							val = rs.getString(1);
 						}
