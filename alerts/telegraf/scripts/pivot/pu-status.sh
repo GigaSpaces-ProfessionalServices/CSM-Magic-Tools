@@ -109,7 +109,7 @@ if [[ -z $MANAGER ]]; then
 fi
 
 BASE_URL="http://${MANAGER}:8090/v2"
-SHOB_COOKIE=/tmp/.shob_cookie
+SHOB_COOKIE=/tmp/.shob_cookie_${RANDOM}
 
 if [[ $AUTH_USER != "" ]] ; then
     # cache login
