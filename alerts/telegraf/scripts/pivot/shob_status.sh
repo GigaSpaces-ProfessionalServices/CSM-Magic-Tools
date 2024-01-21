@@ -118,16 +118,13 @@ SHOB_TABLES=([STUD.KR_KURS]=18000 \
 [STUD.TL_SEM]=86400 \
 [STUD.TB_917_SHANA]=86400 \
 [STUD.TL_MOED_TZIUN]=3600 \
-[STUD.TL_KVUTZA]=3600 \
+[STUD.TL_KVUTZA]=86400 \
 [STUD.TM_MECHKAR]=18000 \
 [STUD.TM_SEGEL]=18000 \
 )
 
 # special vaule for GilboaSync dbo.Portal_Calendary_View table
 GILBOASYNC=3600
-
-# set verbosity
-[[ $1 == '-v' ]] && verbose=true || verbose=false
 
 # get credentials if env is secured
 get_auth
@@ -192,7 +189,6 @@ while read -r value; do
     time_diff=$(expr $(date +%s) - $time_stamp)
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
-    $verbose && echo "$source_name | $table_name | threshold=$th | timestamp = $time_stamp_hr | now = $(date +%s) | time_diff = $time_diff"
 done< <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/query?typeName=SHOB_GA&maxResults=100" | jq --raw-output '.results[] | "\(.values)"')
 
 
@@ -214,7 +210,7 @@ field="ZZ_META_DI_TIMESTAMP"
 for table_name in $shob_objects; do
     params="withExplainPlan=false&ramOnly=true"
     query="SELECT%20${field}%20from%20%22${table_name}%22%20WHERE%20${field}%20%3C%209999999999999%20limit%201&${params}"
-    uri="internal/spaces/dih-tau-space/expressionquery?expression=${query}"
+    uri="internal/spaces/${SPACE_ID}/expressionquery?expression=${query}"
     zz_time=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/${uri}")
     time_stamp=$(echo $(echo "$zz_time" | jq -r '.results[].values[0]') / 1000 | bc)
     time_stamp_hr=$(date -d @${time_stamp} +"%Y-%m-%dT%H:%M:%SZ")
@@ -222,7 +218,6 @@ for table_name in $shob_objects; do
     time_diff=$(expr $(date +%s) - $time_stamp)
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
-    $verbose && echo "$source_name | $table_name | threshold=$th | timestamp = $time_stamp_hr | now = $(date +%s) | time_diff = $time_diff"
 done
 
 # output influx data
