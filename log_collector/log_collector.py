@@ -90,7 +90,7 @@ def verify_date_time(opt):
             len(_sec) != 2 or int(_sec) > 59:
         return 3
     input_epoch = datetime(int(_yy), int(_mm), int(_dd), int(_hr), int(_min), int(_sec)).timestamp()
-    if int(input_epoch) > int(time.time()):
+    if int(input_epoch) > int(datetime.now().timestamp()):
         return 4
     else:
         epoch_date_time = input_epoch
@@ -118,7 +118,7 @@ def get_date_time(phase):
                 epoch_end_date_time = epoch_date_time
             break
         else:
-            print(dt_errors[ret])
+            print("Enter Proper date = " + str(ret))
 
 
 def path_not_exists(the_path):
@@ -133,6 +133,18 @@ def path_not_exists(the_path):
         return False
     return True
 
+def listAllScripts(list_files_path):
+    """
+    Check if a folder and return list of file
+    :param the_path:
+    :return: List of files
+    """
+    if os.path.exists(list_files_path):
+        files = [file for file in os.listdir(list_files_path) if
+            os.path.isfile(os.path.join(list_files_path, file))]
+    else:
+        files = []
+    return files
 
 if __name__ == '__main__':
     signal(SIGINT, handler)
@@ -171,9 +183,24 @@ if __name__ == '__main__':
     runall_cmd = servers[result]['runall']
     print()
 
-    run_this = False
+    run_this = True
     if run_this:
-        print("Choose date & time window for your search (FORMAT: 2021-12-28 10:25:00)")
+        Run_Gc_log = True
+        Remove_GC_Log = False
+        while Run_Gc_log == True:
+            Remove_GC_Log = input('GC Logs required [Y/n] : ')
+            if Remove_GC_Log == "":
+                Remove_GC_Log = True
+                Run_Gc_log = False
+            elif (str(Remove_GC_Log.lower()) == "y" or str(Remove_GC_Log.lower()) == "n"):
+                if (str(Remove_GC_Log.lower()) == "n"):
+                    Remove_GC_Log = False
+                else:
+                    Remove_GC_Log = True
+                Run_Gc_log = False
+            else:
+                Run_Gc_log = True
+        print("Choose date & time window for your search (FORMAT: 2023-01-09 10:25:00)")
         while True:
             get_date_time('start')
             get_date_time('end')
@@ -209,9 +236,24 @@ if __name__ == '__main__':
         num_of_files = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).strip('\n')
         # copy file to designated node
         sh_cmd = f"scp -qrC {node}:{REMOTE_LOGS_DIR}/* {node_path}/"
-        print(f'[ INFO ] Getting {num_of_files} log files from node {node} ... ', flush=True ,end="")
+        # print(f'[ INFO ] Getting {num_of_files} log files from node {node} ... ', flush=True ,end="")
+        print(f'[ INFO ] Getting log files from node {node} ... ', flush=True ,end="")
         subprocess.run([sh_cmd], shell=True)
-        print('done')
+        ListAllFiles = listAllScripts(tmp_dir + "/" +node)
+        for i in range(len(ListAllFiles)):
+            try:
+                datetime_str = str(ListAllFiles[i])[0:16]
+                datetime_object = datetime.strptime(datetime_str, '%Y-%m-%d~%H.%M')
+                if ((str(start_date_time) <= str(datetime_object)) & (str(end_date_time) >= str(datetime_object))):
+                    pass
+                else:
+                    os.remove(tmp_dir + "/" +node + "/" +ListAllFiles[i])
+            except:
+                if "gc_" in ListAllFiles[i] and Remove_GC_Log:
+                    os.remove(tmp_dir + "/" +node + "/" +ListAllFiles[i])
+
+        num_of_files = len(listAllScripts(tmp_dir + "/" +node))
+        print(f'\n[ INFO ] Total {num_of_files} files done')
     print('\n')
 
     # TODO

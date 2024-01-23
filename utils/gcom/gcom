@@ -370,7 +370,7 @@ function get_cluster_hosts {
 
 
 function get_auth() {
-    sec_flag=$(cat ${ENV_CONFIG}/app.config | grep "app.setup.profile" | cut -d= -f2)
+    sec_flag=$(cat ${ENV_CONFIG}/app.config | grep "app.setup.profile" | cut -d= -f2 | sed 's/"//g')
     if [[ $sec_flag != "" ]]; then
         declare -g AUTH_USER=$(cat ${ENV_CONFIG}/app.config | grep "app.manager.security.username" | cut -d= -f2)
         declare -g AUTH_PASS=$(cat ${ENV_CONFIG}/app.config | grep "app.manager.security.password" | cut -d= -f2)
@@ -1029,7 +1029,7 @@ SERVICES_DIR=${BASE_DIR}/services
 SERVICE_PRESETS="service.presets"
 declare -A SPACE_MEM_INFO
 declare -a SERVICES_PATHS
-PREREQUISITES="jq nc bc"  # space separated commands
+PREREQUISITES="jq nc bc nslookup"  # space separated commands
 
 # text styles
 _b=$(tput bold)     # bold text
