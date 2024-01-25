@@ -16,7 +16,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "iteration": 1669793068659,
+  "iteration": 1706178774401,
   "links": [
     {
       "icon": "external link",
@@ -43,7 +43,7 @@
       },
       "id": 26,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Infrastructure </span>\n         </div>\n      </a>\n   \n         ",
+        "content": "   <a href=\"/d/tJWLBOR7qx/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard > Infrastructure </span>\n         </div>\n      </a>\n   \n         ",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",
@@ -1883,9 +1883,9 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "SERVERNAME",
-          "value": "SERVERNAME"
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": "xap",
         "definition": "",
@@ -1940,5 +1940,5 @@
   "timezone": "",
   "title": "Infrastructure",
   "uid": "iwAep7R7z",
-  "version": 2
+  "version": 4
 }

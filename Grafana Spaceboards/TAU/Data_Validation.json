@@ -35,7 +35,7 @@
       },
       "id": 50,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n         </div>\n      </a>\n   ",
+        "content": "<a href=\"/d/tJWLBOR7qx/main-dashboard?orgId=1&refresh=5s&kiosk\">\n   <div>\n      <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\" width=150\">\n      <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n   </div>\n</a>\n",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",
@@ -113,7 +113,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Status"
+              "options": "State"
             },
             "properties": [
               {
@@ -160,7 +160,7 @@
         "sortBy": [
           {
             "desc": false,
-            "displayName": "value"
+            "displayName": "State"
           }
         ]
       },
@@ -192,7 +192,7 @@
           "measurement": "dvState",
           "orderByTime": "DESC",
           "policy": "default",
-          "query": "SELECT * FROM \"dvState\" WHERE $timeFilter ORDER BY DESC tz('Asia/Jerusalem')\n",
+          "query": "SELECT last(*) FROM \"dvState\" WHERE $timeFilter GROUP BY \"obj_type\", \"result\" ORDER BY DESC",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table",
@@ -248,7 +248,7 @@
               "names": [
                 "Time",
                 "obj_type",
-                "value"
+                "last_result"
               ]
             }
           }
@@ -268,6 +268,7 @@
             "renameByName": {
               "Data Validation": "Data Validation status",
               "Time": "Validation Time",
+              "last_result": "State",
               "obj_type": "Object Type",
               "source": "Source",
               "state": "",
@@ -292,7 +293,7 @@
     "list": []
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -329,5 +330,5 @@
   "timezone": "browser",
   "title": "Data Validation",
   "uid": "MlFV_NHSz",
-  "version": 2
+  "version": 6
 }
