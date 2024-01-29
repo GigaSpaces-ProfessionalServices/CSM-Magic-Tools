@@ -3,7 +3,7 @@
 function edit_toml() {
     # change tables / vaules in TOML (configuration) files
     element=$1      # the element to target
-    table_name=$2   # the table name to address
+    table_name=$2   # the table name to target
     if [[ $element == "table" ]]; then
         # enable or disable a toml table
         [[ $# -ne 4 ]] && (echo "error: missing parameters!" ; return)
@@ -19,7 +19,7 @@ function edit_toml() {
         key=$3          # the key to change
         value=$4        # the new value to set
         file=$5         # the TOML file
-        sed -i "/^\[$table\]/,/^[[]/ s/\($key =\).*/\1 $value/" $file
+        sed -i "/^\[$table_name\]/,/^[[]/ s/\($key =\).*/\1 $value/" $file
     else
         echo "Error: bad parameter!"
     fi
@@ -40,35 +40,39 @@ source /root/.bashrc
 edit_toml "value" "http" "bind-address" ":9992" "$KAPACITOR_CONF"
 edit_toml "value" "http" "log-enabled" "false" "$KAPACITOR_CONF"
 
-# set stateChangesOnly()
+# set smtp parameters
+edit_toml "value" "smtp" "enabled" "true" "$KAPACITOR_CONF"
+edit_toml "value" "smtp" "global" "true" "$KAPACITOR_CONF"
+edit_toml "value" "smtp" "from" "from@mail.address" "$KAPACITOR_CONF"
+edit_toml "value" "smtp" "to" '["to@mail.address"]' "$KAPACITOR_CONF"
 edit_toml "value" "smtp" "state-changes-only" "true" "$KAPACITOR_CONF"
 
-# setup shob alerts file
-alerts_log="/gigalogs/shob_alerts.log"
-touch $alerts_log
-chown kapacitor:kapacitor $alerts_log
+# # setup shob alerts file
+# alerts_log="/gigalogs/shob_alerts.log"
+# touch $alerts_log
+# chown kapacitor:kapacitor $alerts_log
 
-set endpoint parameters according to environment
-cat >> $KAPACITOR_CONF << EOL
-[[httppost]]
-    endpoint = "debug"
-    url = "http://localhost:4242"
-    alert-template-file = "/etc/kapacitor/templates/debug.json"
+# set endpoint parameters according to environment
+# cat >> $KAPACITOR_CONF << EOL
+# [[httppost]]
+#     endpoint = "debug"
+#     url = "http://localhost:4242"
+#     alert-template-file = "/etc/kapacitor/templates/debug.json"
 
-[[httppost]]
-    endpoint = "common-alert"
-    url = "https://servicenow-preprod-itom/api/global/em/jsonv2"
-    headers = { Accept = "application/json" , Content-Type = "application/json" }
-    basic-auth = { username = "", password = "" }
-    alert-template-file = "/etc/kapacitor/templates/common-alert.json"
+# [[httppost]]
+#     endpoint = "common-alert"
+#     url = "https://servicenow-preprod-itom/api/global/em/jsonv2"
+#     headers = { Accept = "application/json" , Content-Type = "application/json" }
+#     basic-auth = { username = "", password = "" }
+#     alert-template-file = "/etc/kapacitor/templates/common-alert.json"
 
-[[httppost]]
-    endpoint = "nginx-load-raw"
-    url = "https://servicenow-preprod-itom/api/global/em/jsonv2"
-    headers = { Accept = "application/json" , Content-Type = "application/json" }
-    basic-auth = { username = "", password = "" }
-    row-template-file = "/etc/kapacitor/templates/nginx-load-raw.json"
+# [[httppost]]
+#     endpoint = "nginx-load-raw"
+#     url = "https://servicenow-preprod-itom/api/global/em/jsonv2"
+#     headers = { Accept = "application/json" , Content-Type = "application/json" }
+#     basic-auth = { username = "", password = "" }
+#     row-template-file = "/etc/kapacitor/templates/nginx-load-raw.json"
 
-EOL
+# EOL
 
 exit
