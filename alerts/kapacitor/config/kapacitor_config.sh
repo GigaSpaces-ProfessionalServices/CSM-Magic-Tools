@@ -43,8 +43,8 @@ edit_toml "value" "http" "log-enabled" "false" "$KAPACITOR_CONF"
 # set smtp parameters
 edit_toml "value" "smtp" "enabled" "true" "$KAPACITOR_CONF"
 edit_toml "value" "smtp" "global" "true" "$KAPACITOR_CONF"
-edit_toml "value" "smtp" "from" "from@mail.address" "$KAPACITOR_CONF"
-edit_toml "value" "smtp" "to" '["to@mail.address"]' "$KAPACITOR_CONF"
+edit_toml "value" "smtp" "from" "kapacitor-alerts@tau.ac.il" "$KAPACITOR_CONF"
+edit_toml "value" "smtp" "to" '["tau-alerts@gigaspaces.com"]' "$KAPACITOR_CONF"
 edit_toml "value" "smtp" "state-changes-only" "true" "$KAPACITOR_CONF"
 
 # # setup shob alerts file
