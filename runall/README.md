@@ -28,4 +28,4 @@ Every cluster of servers has two parameters:
 
 For help and usage run:<br>
 	
-	./runall.sh -h
+	runall -h
