@@ -1,14 +1,16 @@
 dbrp "telegraf"."autogen"
 
-var alert_name = 'space-status'
-
 stream
     |from()
         .measurement('gcState')
-        .groupBy('pu')
+        .groupBy('pu','host')
     |alert()
         .crit(lambda: "state" == 'faulty')
         .warn(lambda: "state" == 'partial')
         .stateChangesOnly(1d)
-        .message('{{ .Vars.alert_name }} for PU {{ index .Tags "pu" }} - {{ .Level }} - {{ .Name }}')
-        .details('PU id.{{ index .Tags "pu" }} is {{ index .Values "state" }}')
+        .message('{{ index .Tags "host" }} :: Partition #{{ index .Tags "pu" }} :: {{ .Level }}')
+        .details(
+            '<b>Reporter:</b> {{ .Name }}<br>' +
+            '<b>Partition ID:</b> {{ index .Tags "pu" }}<br>' +
+            '<b>Status:</b> {{ index .Fields "state" }}'
+            )
