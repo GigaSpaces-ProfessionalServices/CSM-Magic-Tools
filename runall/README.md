@@ -8,8 +8,10 @@
 * host.yaml - yaml containing a list of all servers
 
 ### Deployment
-1. get runall.sh and runall.conf files from GIT and deploy them in your directory of choice
-2. make sure runall.sh is executable (chmod +x runall.sh)
+1. mkdir /dbagiga/utils/runall
+2. Copy runall.sh and runall.conf files from GIT to /dbagiga/utils/runall/
+3. ln -s /giga/utils/runall/runall /usr/local/bin/runall.sh
+4. chmod +x /usr/local/bin/runall.sh
 
 ### Configuration
 runall configuration is managed in runall.conf.
