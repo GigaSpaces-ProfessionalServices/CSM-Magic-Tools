@@ -35,7 +35,11 @@ public class MaxValueTask<T extends Serializable & Comparable<T>> implements Dis
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
         SpaceDocument result = gigaSpace.read(sqlQuery);
-        return (T) result.getProperty(this.columnName);
+        if(result == null || result.getProperty(this.columnName) == null){
+            return null;
+        }else {
+            return (T) result.getProperty(this.columnName);
+        }
     }
 
     @Override
@@ -45,8 +49,11 @@ public class MaxValueTask<T extends Serializable & Comparable<T>> implements Dis
             if (result.getException() != null) {
                 throw result.getException();
             }
-            resultList.add(result.getResult());
-            //if(result.getResult() < result.getResult()){}
+            if(result.getResult()!=null) {
+                resultList.add(result.getResult());
+            }else {
+                return null;
+            }
         }
         return getMax(resultList);
     }

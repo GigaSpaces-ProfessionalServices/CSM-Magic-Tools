@@ -36,9 +36,11 @@ public class MaxLocalDateTimeValueTask implements DistributedTask<LocalDateTime,
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
         SpaceDocument result = gigaSpace.read(sqlQuery);
-        logger.debug("@@@ MaxLocalDateTimeValueTask Executor Task Result: "+(LocalDateTime) result.getProperty(this.columnName));
-        System.out.println("@@@ MaxLocalDateTimeValueTask Executor Task Result: "+(LocalDateTime) result.getProperty(this.columnName));
-        return (LocalDateTime) result.getProperty(this.columnName);
+        if(result == null || result.getProperty(this.columnName) == null){
+            return null;
+        }else {
+            return (LocalDateTime) result.getProperty(this.columnName);
+        }
     }
 
     @Override
@@ -50,7 +52,11 @@ public class MaxLocalDateTimeValueTask implements DistributedTask<LocalDateTime,
                 throw result.getException();
             }
             logger.debug("MaxLocalDateTimeValueTask Reducer Individual Result: "+result.getResult());
-            resultList.add(result.getResult());
+            if(result.getResult()!=null) {
+                resultList.add(result.getResult());
+            }else {
+                return null;
+            }
         }
         return getMax(resultList);
     }

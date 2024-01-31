@@ -33,7 +33,11 @@ public class MaxSqlDateValueTask implements DistributedTask<Date,Date> {
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
         SpaceDocument result = gigaSpace.read(sqlQuery);
-        return (Date) result.getProperty(this.columnName);
+        if(result == null || result.getProperty(this.columnName) == null){
+            return null;
+        }else {
+            return (Date) result.getProperty(this.columnName);
+        }
     }
 
     @Override
@@ -43,8 +47,11 @@ public class MaxSqlDateValueTask implements DistributedTask<Date,Date> {
             if (result.getException() != null) {
                 throw result.getException();
             }
-            resultList.add(result.getResult());
-            //if(result.getResult() < result.getResult()){}
+            if(result.getResult()!=null) {
+                resultList.add(result.getResult());
+            }else {
+                return null;
+            }
         }
         return getMax(resultList);
     }
