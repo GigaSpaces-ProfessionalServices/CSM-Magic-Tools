@@ -112,7 +112,6 @@ public class    TestTask  implements Serializable  {
                             logger.debug("### Optimized Get Max value from Gigaspaces ###");
                             this.query = "N/A";
                             if(column_type!=null && column_type.equalsIgnoreCase("java.time.LocalDateTime")){
-                                final LocalDateTime[] colVal = new LocalDateTime[1];
                                 LocalDateTime maxDateTime = LocalDateTime.of(2099,
                                         Month.DECEMBER, 31, 23, 59, 59);
 

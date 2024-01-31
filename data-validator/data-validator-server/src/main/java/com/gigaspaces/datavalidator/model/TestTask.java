@@ -341,6 +341,9 @@ public class TestTask  implements Serializable  {
                 for(String keyA:mapA.keySet()){
                     measurementA=mapA.get(keyA);
                     measurementB=mapB.get(keyA);
+                    compareResult="";
+                    compareResultSummary="";
+                    compareErrorSummary="";
                     if(measurementA!=null && measurementB!=null){
                         if(!results.get(measurementA.getId()).getProperty("result").contains("FAIL")
                                 && !results.get(measurementB.getId()).getProperty("result").contains("FAIL")){
@@ -374,7 +377,6 @@ public class TestTask  implements Serializable  {
                     }else{
                         logger.error("Measurement with key: "+keyA+" not available in compare list");
                     }
-
                 }
 
                 String finalResult = new ObjectMapper().writeValueAsString(finalResults);

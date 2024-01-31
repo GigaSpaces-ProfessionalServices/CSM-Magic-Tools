@@ -29,7 +29,7 @@ public class MaxSqlDateValueTask implements DistributedTask<Date,Date> {
 
     @Override
     public Date execute() throws Exception {
-        SQLQuery<SpaceDocument> sqlQuery = new SQLQuery<SpaceDocument>(this.tableName, this.columnName + " < ?");
+        SQLQuery<SpaceDocument> sqlQuery = new SQLQuery<SpaceDocument>(this.tableName, this.columnName + " < ? AND rownum <= 1");
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
         SpaceDocument result = gigaSpace.read(sqlQuery);

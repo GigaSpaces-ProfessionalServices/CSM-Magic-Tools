@@ -29,7 +29,7 @@ public class MaxLocalDateValueTask implements DistributedTask<LocalDate,LocalDat
 
     @Override
     public LocalDate execute() throws Exception {
-        SQLQuery<SpaceDocument> sqlQuery = new SQLQuery<SpaceDocument>(this.tableName, this.columnName + " < ?");
+        SQLQuery<SpaceDocument> sqlQuery = new SQLQuery<SpaceDocument>(this.tableName, this.columnName + " < ? AND rownum <= 1");
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
         SpaceDocument result = gigaSpace.read(sqlQuery);
