@@ -1,5 +1,6 @@
 package com.gigaspaces.common.task;
 
+import com.gigaspaces.annotation.SupportCodeChange;
 import com.gigaspaces.async.AsyncResult;
 import com.gigaspaces.document.SpaceDocument;
 import com.j_spaces.core.client.SQLQuery;
@@ -14,6 +15,7 @@ import org.openspaces.core.executor.TaskGigaSpace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SupportCodeChange(id="1")
 public class MaxLocalDateTimeValueTask implements DistributedTask<LocalDateTime,LocalDateTime> {
 
     private static Logger logger = LoggerFactory.getLogger(MaxLocalDateTimeValueTask.class);

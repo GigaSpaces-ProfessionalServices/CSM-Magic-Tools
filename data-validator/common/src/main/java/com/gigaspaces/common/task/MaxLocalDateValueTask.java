@@ -1,5 +1,6 @@
 package com.gigaspaces.common.task;
 
+import com.gigaspaces.annotation.SupportCodeChange;
 import com.gigaspaces.async.AsyncResult;
 import com.gigaspaces.document.SpaceDocument;
 import com.j_spaces.core.client.SQLQuery;
@@ -12,6 +13,7 @@ import org.openspaces.core.GigaSpace;
 import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 
+@SupportCodeChange(id="1")
 public class MaxLocalDateValueTask implements DistributedTask<LocalDate,LocalDate> {
 
     private LocalDate maxParameter;
