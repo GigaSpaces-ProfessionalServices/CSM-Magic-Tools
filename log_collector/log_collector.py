@@ -188,15 +188,15 @@ if __name__ == '__main__':
         Run_Gc_log = True
         Remove_GC_Log = False
         while Run_Gc_log == True:
-            Remove_GC_Log = input('GC Logs required [Y/n] : ')
+            Remove_GC_Log = input('GC Logs required [y/N] : ')
             if Remove_GC_Log == "":
                 Remove_GC_Log = True
                 Run_Gc_log = False
             elif (str(Remove_GC_Log.lower()) == "y" or str(Remove_GC_Log.lower()) == "n"):
                 if (str(Remove_GC_Log.lower()) == "n"):
-                    Remove_GC_Log = False
-                else:
                     Remove_GC_Log = True
+                else:
+                    Remove_GC_Log = False
                 Run_Gc_log = False
             else:
                 Run_Gc_log = True
