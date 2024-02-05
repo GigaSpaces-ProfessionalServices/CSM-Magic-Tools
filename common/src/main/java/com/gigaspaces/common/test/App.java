@@ -11,33 +11,41 @@ import org.openspaces.core.GigaSpaceConfigurer;
 import org.openspaces.core.space.CannotFindSpaceException;
 import org.openspaces.core.space.SpaceProxyConfigurer;
 
-public class HowToDo {
-
-    /*
-    Set below parameters to connect to space
-    */
-    private static String spaceName="dih-tau-space";
-    private static String lookupLocator = "localhost";
-    private static String lookupGroup = "xap-16.4.0";
-
+public class App {
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
+        if(args.length != 6 ){
+            System.out.println("Please pass arguments in following order");
+            System.out.println("<space_name> <lookup_locator> <lookup_group> <data_type> <table_name> <column_name>");
+            return;
+        }
+        String spaceName = args[0];
+        String lookupLocator = args[1];
+        String lookupGroup = args[2];
+        String dataType = args[3];
+        String tableName = args[4];
+        String columnName = args[5];
+
         GigaSpace gigaSpace = getOrCreateSpace(spaceName,lookupLocator,lookupGroup);
 
-        // ### Example-1 Data Type 'Long'
-        AsyncFuture<Long> future = gigaSpace.execute(new MaxValueTask<Long>(Long.MAX_VALUE ,
-                "T_Long",  "T_IDKUN"));
-        Long colVal = future.get();
-        System.out.println("Max value (Long) for field 'T_IDKUN' is "+colVal);
+        switch (dataType.toLowerCase()){
+            case "long":
+                AsyncFuture<Long> future = gigaSpace.execute(new MaxValueTask<Long>(Long.MAX_VALUE ,
+                        tableName,  columnName));
+                Long colVal = future.get();
+                System.out.println("Max value ("+dataType+") for field '"+columnName+"' is "+colVal);
+                break;
+            case "localdatetime":
+                LocalDateTime maxDateTime = LocalDateTime.of(2099,
+                        Month.DECEMBER, 31, 23, 59, 59);
 
-        // ### Example-2 Data Type 'LocalDateTime'
-        LocalDateTime maxDateTime = LocalDateTime.of(2099,
-                Month.DECEMBER, 31, 23, 59, 59);
+                AsyncFuture<LocalDateTime> future2 = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
+                        tableName, columnName));
+                LocalDateTime dateVal = future2.get();
+                System.out.println("Max value ("+dataType+") for field '"+columnName+"' is "+dateVal);
+                break;
+        }
 
-        AsyncFuture<LocalDateTime> future2 = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
-                "STUD.TL_KURS",  "T_IDKUN"));
-        LocalDateTime dateVal = future2.get();
-        System.out.println("Max value (LocalDateTime) for field 'T_IDKUN' is "+dateVal);
     }
     public static GigaSpace getOrCreateSpace(String spaceName
             ,String lookupLocator, String lookupGroup) {

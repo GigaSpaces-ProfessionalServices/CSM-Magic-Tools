@@ -15,7 +15,6 @@
     </properties>
 
     <modules>
-        <module>common</module>
         <module>data-validator-server</module>
         <module>data-validator-agent</module>
     </modules>
