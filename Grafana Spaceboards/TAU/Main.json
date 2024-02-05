@@ -35,7 +35,7 @@
       },
       "id": 50,
       "options": {
-        "content": "   <a href=\"/d/tJWLBOR7z/main-dashboard?orgId=1&refresh=5s&kiosk\">\n         <div>\n         <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\"\n         width=150\">\n         <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n         </div>\n      </a>\n   ",
+        "content": "<div>\n   <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\" width=150\">\n   <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n</div>",
         "mode": "html"
       },
       "pluginVersion": "7.3.7",
@@ -1470,7 +1470,7 @@
           "displayName": "${__field.displayName}",
           "links": [
             {
-              "targetBlank": true,
+              "targetBlank": false,
               "title": "Infrastructure drilldown",
               "url": "d/iwAep7R7z/infrastructure?orgId=1&refresh=5s&var-Host=${__field.displayName}&kiosk"
             }
@@ -1875,5 +1875,5 @@
   "timezone": "browser",
   "title": "Main dashboard",
   "uid": "tJWLBOR7qx",
-  "version": 10
+  "version": 16
 }

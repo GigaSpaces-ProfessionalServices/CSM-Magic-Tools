@@ -1,0 +1,15 @@
+dbrp "telegraf"."autogen"
+
+stream
+    |from()
+        .measurement('di_iidr-Status')
+        .groupBy('service','host_type','port','rest_host','host')
+    |alert()
+        .crit(lambda: "status" != 1)
+        .stateChangesOnly(1d)
+        .message('{{ index .Tags "host" }} :: {{ index .Tags "service" }} :: {{ .Level }}')
+        .details(
+            '<b>Reporter:</b> {{ .Name }}<br>' +
+            '<b>Type:</b> {{ index .Tags "host_type" }} on host {{ index .Tags "rest_host" }} port {{ index .Tags "port" }}<br>' +
+            '<b>Service:</b> {{ index .Tags "service" }}<br>'
+            )

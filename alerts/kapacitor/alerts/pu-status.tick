@@ -1,13 +1,16 @@
 dbrp "telegraf"."autogen"
 
-var alert_name = 'pu-status'
-
 stream
     |from()
         .measurement('puStatus')
-        .groupBy('pu_name')
+        .groupBy('pu_name','host','pu_unit_type')
     |alert()
         .crit(lambda: "status" != 'intact')
         .stateChangesOnly(1d)
-        .message('{{ .Vars.alert_name }} for {{ index .Tags "pu_name" }} - {{ .Level }} - {{ .Name }}')
-		.details('PU {{ index .Tags "pu_name" }} type {{ index .Tags "pu_unit_type" }} not intact')
+        .message('{{ index .Tags "host" }} :: {{ index .Tags "pu_name" }} :: {{ .Level }}')
+        .details(
+            '<b>Reporter:</b> {{ .Name }}<br>' +
+            '<b>PU name:</b> {{ index .Tags "pu_name" }}<br>' + 
+            '<b>PU type:</b> {{ index .Tags "pu_unit_type" }}<br>' +
+            '<b>Test type:</b> Is not intact'
+            )

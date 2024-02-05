@@ -1,22 +1,17 @@
 dbrp "mydb"."autogen"
 
-var snowType = 'Infra'
-var snowResource = 'Core'
-var snowMetricName = 'RedologSizeThreshold'
-var limit = '1000'
-
 stream
-  |from()
-      .measurement('space_replication_redo-log_size')
-  |default()
-      .tag('snowType', snowType)
-      .tag('snowResource', snowResource)
-      .tag('snowMetricName', snowMetricName)
-      .tag('host', 'SystemWide')
-  |alert()
-	.crit(lambda: int("value") > int(limit) )
-	.stateChangesOnly(1d)
-	.message('Redo log size for {{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }}[{{ index .Tags "pid" }}] has value {{ index .Fields "value" }}') 
-	.id('redo_log-size_{{ index .Tags "pu_name" }}.{{ index .Tags "pu_instance_id" }}')
-	.post()
-		.endpoint('common-alert')
+    |from()
+        .measurement('space_replication_redo-log_size')
+        .groupBy('pu_instance_id','pu_name','host','pid')
+    |alert()
+        .crit(lambda: int("value") > 1000)
+        .stateChangesOnly(1d)
+        .message('{{ index .Tags "host" }} :: Redo log Size :: {{ .Level }}')
+        .details(
+            '<b>Reporter:</b> {{ .Name }}<br>' +
+            '<b>PU name:</b> {{ index .Tags "pu_name" }}<br>' + 
+            '<b>PU Instance ID:</b> {{ index .Tags "pu_instance_id" }}<br>' +
+            '<b>Process ID:</b> {{ index .Tags "pid" }}<br>' +
+            '<b>Redo log size:</b> {{ index .Fields "value" }}'
+            )

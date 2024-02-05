@@ -1,12 +1,15 @@
 package com.gigaspaces.datavalidator.model;
 
 
+import com.gigaspaces.async.AsyncFuture;
 import com.gigaspaces.cluster.activeelection.SpaceMode;
+import com.gigaspaces.common.task.MaxLocalDateTimeValueTask;
+import com.gigaspaces.common.task.MaxSqlDateValueTask;
+import com.gigaspaces.common.task.MaxTimestampValueTask;
+import com.gigaspaces.common.task.MaxValueTask;
 import com.gigaspaces.datavalidator.utils.JDBCUtils;
-import com.gigaspaces.document.SpaceDocument;
 import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
-import com.j_spaces.core.client.SQLQuery;
 import java.time.LocalDateTime;
 import java.time.Month;
 import org.openspaces.admin.Admin;
@@ -106,19 +109,20 @@ public class    TestTask  implements Serializable  {
                             return this.result;
 					    }
                         if(measurement.getType().equals("max")){
-                            LocalDateTime maxDateTime = LocalDateTime.of(2099,
-                                    Month.DECEMBER, 31, 23, 59, 59);
-                            SQLQuery<SpaceDocument> sqlQuery
-                                    = new SQLQuery<SpaceDocument>(measurement.getTableName()
-                                    , measurement.getFieldName()+" < ?");
-                            sqlQuery.setParameter(1,maxDateTime);
-                            sqlQuery.setProjections(measurement.getFieldName());
-                            SpaceDocument result = gigaSpace.read(sqlQuery);
-                            Object colVal = result.getProperty(measurement.getFieldName());
-                            logger.debug("Final Result: "+colVal +" of class "+colVal.getClass().getName() +" And column type ins space is "+column_type);
-
+                            logger.debug("### Optimized Get Max value from Gigaspaces ###");
+                            this.query = "N/A";
                             if(column_type!=null && column_type.equalsIgnoreCase("java.time.LocalDateTime")){
-                                LocalDateTime dateVal = (LocalDateTime) colVal;
+                                LocalDateTime maxDateTime = LocalDateTime.of(2099,
+                                        Month.DECEMBER, 31, 23, 59, 59);
+
+                                AsyncFuture<LocalDateTime> future = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
+                                        measurement.getTableName(),  measurement.getFieldName()));
+                                LocalDateTime dateVal = future.get();
+                                if(dateVal == null){
+                                    this.result = "FAIL";
+                                    this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                    return this.result;
+                                }
                                 String dateStr = dateVal.toString();
                                 String dateFormat = "yyyy-MM-dd HH:mm:ss";
                                 if(StringUtils.countOccurrencesOf(dateStr,":")==1){
@@ -131,16 +135,68 @@ public class    TestTask  implements Serializable  {
                                 Date date = sdf.parse(dateStr);
                                 this.result = String.valueOf(date.getTime());
                             }else if(column_type!=null && column_type.equalsIgnoreCase("java.sql.Date")){
-                                java.sql.Date datVal = (java.sql.Date) colVal;
-                                this.result = String.valueOf(datVal.getTime());
+                                java.sql.Date maxDateVal = new java.sql.Date(4102444799000L); //Thursday, 31 December 2099 23:59:59
+                                AsyncFuture<java.sql.Date> future = gigaSpace.execute(new MaxSqlDateValueTask(maxDateVal ,
+                                        measurement.getTableName(),  measurement.getFieldName()));
+                                java.sql.Date dateVal = future.get();
+                                if(dateVal == null){
+                                    this.result = "FAIL";
+                                    this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                    return this.result;
+                                }
+                                this.result = String.valueOf(dateVal.getTime());
                             }else if (column_type!=null && column_type.equalsIgnoreCase("java.sql.Timestamp")){
-                                java.sql.Timestamp datVal = (java.sql.Timestamp) colVal;
-                                this.result = String.valueOf(datVal.getTime());
-                            }else{
-                                this.result = String.valueOf(colVal);
+                                Timestamp maxDateVal = new Timestamp(4102444799000L); //Thursday, 31 December 2099 23:59:59
+                                AsyncFuture<java.sql.Timestamp> future = gigaSpace.execute(new MaxTimestampValueTask(maxDateVal ,
+                                        measurement.getTableName(),  measurement.getFieldName()));
+                                java.sql.Timestamp dateVal = future.get();
+                                if(dateVal == null){
+                                    this.result = "FAIL";
+                                    this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                    return this.result;
+                                }
+                                this.result = String.valueOf(dateVal.getTime());
+                            }else if (column_type!=null && column_type.equalsIgnoreCase("java.lang.Integer")){
+                                    AsyncFuture<Integer> future = gigaSpace.execute(new MaxValueTask<Integer>(Integer.MAX_VALUE ,
+                                            measurement.getTableName(),  measurement.getFieldName()));
+                                    Integer colVal = future.get();
+                                    if(colVal == null){
+                                        this.result = "FAIL";
+                                        this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                        return this.result;
+                                    }
+                                    this.result = String.valueOf(colVal);
+                            }else if (column_type!=null && column_type.equalsIgnoreCase("java.lang.Long")){
+                                    AsyncFuture<Long> future = gigaSpace.execute(new MaxValueTask<Long>(Long.MAX_VALUE ,
+                                            measurement.getTableName(),  measurement.getFieldName()));
+                                    Long colVal = future.get();
+                                    if(colVal == null){
+                                        this.result = "FAIL";
+                                        this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                        return this.result;
+                                    }
+                                    this.result = String.valueOf(colVal);
+                            }else if (column_type!=null && column_type.equalsIgnoreCase("java.lang.Float")){
+                                    AsyncFuture<Float> future = gigaSpace.execute(new MaxValueTask<Float>(Float.MAX_VALUE ,
+                                            measurement.getTableName(),  measurement.getFieldName()));
+                                    Float colVal = future.get();
+                                    if(colVal == null){
+                                        this.result = "FAIL";
+                                        this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                        return this.result;
+                                    }
+                                    this.result = String.valueOf(colVal);
+                            }else if (column_type!=null && column_type.equalsIgnoreCase("java.lang.Double")){
+                                    AsyncFuture<Double> future = gigaSpace.execute(new MaxValueTask<Double>(Double.MAX_VALUE ,
+                                            measurement.getTableName(),  measurement.getFieldName()));
+                                    Double colVal = future.get();
+                                    if(colVal == null){
+                                        this.result = "FAIL";
+                                        this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
+                                        return this.result;
+                                    }
+                                    this.result = String.valueOf(colVal);
                             }
-                            this.query = "N/A";
-                            logger.debug("### Optimized Get Max value from Gigaspaces ###");
                             return this.result;
                         }
                     }

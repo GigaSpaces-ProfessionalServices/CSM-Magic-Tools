@@ -693,18 +693,19 @@ public class ValidateController {
         response.put("response", agentWiseDSStr);
         return response;
     }*/
-    @GetMapping("/measurement/batchcompare/{TestType}")
-    public Map<String,String> compareMeasurementInBatch(@PathVariable String TestType
+    @GetMapping("/measurement/batchcompare/{testType}")
+    public Map<String,String> compareMeasurementInBatch(@PathVariable String testType
             ,@RequestParam(defaultValue="0") int executionTime
             ,@RequestParam(defaultValue="false") boolean influxdbResultStore) {
 
         Map<String,String> response = new HashMap<>();
         try {
             TestTask task;
+            if(testType != null && testType.equalsIgnoreCase("all")) testType=null;
             List<Measurement> measurementList = measurementService.getAll();
             if(executionTime == 0){
                 task = new TestTask(odsxTaskService.getUniqueId(), System.currentTimeMillis()
-                        ,"BatchCompare", measurementList,influxdbResultStore,influxDbProperties,TestType);
+                        ,"BatchCompare", measurementList,influxdbResultStore,influxDbProperties,testType);
                 String result = task.executeTask();
                 ObjectMapper objectMapper = new ObjectMapper();
                 objectMapper.setVisibility(JsonMethod.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -716,7 +717,7 @@ public class ValidateController {
                 Calendar calScheduledTime = Calendar.getInstance();
                 calScheduledTime.add(Calendar.MINUTE, executionTime);
                 task =new TestTask(odsxTaskService.getUniqueId(), calScheduledTime.getTimeInMillis()
-                        ,"BatchCompare", measurementList,influxdbResultStore,influxDbProperties,TestType);
+                        ,"BatchCompare", measurementList,influxdbResultStore,influxDbProperties,testType);
                 TaskQueue.setTask(task);
                 logger.debug("Task scheduled and will be executed at "+calScheduledTime.getTime());
                 ObjectMapper objectMapper = new ObjectMapper();

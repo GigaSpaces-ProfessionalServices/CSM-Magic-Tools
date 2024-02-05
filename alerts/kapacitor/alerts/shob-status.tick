@@ -3,10 +3,18 @@ dbrp "telegraf"."autogen"
 stream
     |from()
         .measurement('shobStatus')
+        .groupBy('host','table_name','threshold','updated','source')
+    |window()
+        .period(10m)
+        .every(10m)
     |alert()
         .crit(lambda: "freshness" == 0)
-        .stateChangesOnly()
-        .id('shobStatus_{{ index .Tags "table_name" }}')
-        .details('Custom details: {{ .Level }} - {{ .Name }}')
-        .message('Table {{ index .Tags "table_name" }} has not been updated for more than {{ index .Tags "threshold" }} seconds.')
-        .log('/gigalogs/shob_alerts.log')
+        .stateChangesOnly(1d)
+        .message('{{ index .Tags "host" }} :: {{ index .Tags "table_name" }} freshness status:: {{ .Level }}')
+        .details(
+            '<b>Reporter:</b> {{ .Name }}<br>' +
+            '<b>Table name:</b> {{ index .Tags "table_name" }}<br>' + 
+            '<b>Source:</b> {{ index .Tags "source" }}<br>' + 
+            '<b>Update threshold:</b> {{ index .Tags "threshold" }} seconds<br>' +
+            '<b>Last update:</b> {{ index .Tags "updated" }}'
+            )
