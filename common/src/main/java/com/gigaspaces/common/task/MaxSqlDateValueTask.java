@@ -13,7 +13,7 @@ import org.openspaces.core.GigaSpace;
 import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 
-@SupportCodeChange(id="1")
+@SupportCodeChange(id="2")
 public class MaxSqlDateValueTask implements DistributedTask<Date,Date> {
 
     private Date maxParameter;

@@ -13,7 +13,7 @@ import org.openspaces.core.GigaSpace;
 import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 
-@SupportCodeChange(id="1")
+@SupportCodeChange(id="2")
 public class MaxLocalDateValueTask implements DistributedTask<LocalDate,LocalDate> {
 
     private LocalDate maxParameter;

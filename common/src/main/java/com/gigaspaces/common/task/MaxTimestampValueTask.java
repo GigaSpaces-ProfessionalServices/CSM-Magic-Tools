@@ -14,7 +14,7 @@ import org.openspaces.core.GigaSpace;
 import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 
-@SupportCodeChange(id="1")
+@SupportCodeChange(id="2")
 public class MaxTimestampValueTask implements DistributedTask<Timestamp,Timestamp> {
 
     private Timestamp maxParameter;

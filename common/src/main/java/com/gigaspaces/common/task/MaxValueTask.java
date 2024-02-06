@@ -13,7 +13,7 @@ import org.openspaces.core.GigaSpace;
 import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 
-@SupportCodeChange(id="1")
+@SupportCodeChange(id="2")
 public class MaxValueTask<T extends Serializable & Comparable<T>> implements DistributedTask<T,T> {
 
     private T maxParameter;
