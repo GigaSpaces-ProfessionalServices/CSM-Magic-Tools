@@ -207,12 +207,12 @@ done < <(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/spaces/${SPACE_ID}/statisti
 # calculate CDC timestamps and generate influx data
 source_name="CDC"
 field="ZZ_META_DI_TIMESTAMP"
+lookup_group=$(cat $ENV_CONFIG/app.config | grep -oE '\lus\.groups=[^[:space:]]+' | awk -F'=' '{print $2}' | tail -1)
+dv_jar="/gigashare/current/data-validator/jars/common-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+
 for table_name in $shob_objects; do
-    params="withExplainPlan=false&ramOnly=true"
-    query="SELECT%20${field}%20from%20%22${table_name}%22%20WHERE%20${field}%20%3C%209999999999999%20limit%201&${params}"
-    uri="internal/spaces/${SPACE_ID}/expressionquery?expression=${query}"
-    zz_time=$(curl --cookie $SHOB_COOKIE -ks "${BASE_URL}/${uri}")
-    time_stamp=$(echo $(echo "$zz_time" | jq -r '.results[].values[0]') / 1000 | bc)
+    zz_time=$(java -jar $dv_jar $SPACE_ID $MANAGER $lookup_group Long $table_name $field 2>/dev/null | tail -1 | awk '{print $NF}')
+    time_stamp=$(echo "$zz_time" / 1000 | bc)
     time_stamp_hr=$(date -d @${time_stamp} +"%Y-%m-%dT%H:%M:%SZ")
     th=$(get_table_threshold $table_name)
     time_diff=$(expr $(date +%s) - $time_stamp)
