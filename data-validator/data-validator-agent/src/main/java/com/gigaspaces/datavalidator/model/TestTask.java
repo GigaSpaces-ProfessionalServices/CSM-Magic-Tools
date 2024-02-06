@@ -118,6 +118,7 @@ public class    TestTask  implements Serializable  {
                                 AsyncFuture<LocalDateTime> future = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
                                         measurement.getTableName(),  measurement.getFieldName()));
                                 LocalDateTime dateVal = future.get();
+                                logger.debug("### Get Max ["+column_type+"] value from Gigaspaces is "+dateVal);
                                 if(dateVal == null){
                                     this.result = "FAIL";
                                     this.errorSummary="Table ['"+measurement.getTableName()+"'] is empty";
