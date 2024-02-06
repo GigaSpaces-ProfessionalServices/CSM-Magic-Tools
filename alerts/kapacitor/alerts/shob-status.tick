@@ -7,6 +7,7 @@ stream
     |window()
         .period(10m)
         .every(10m)
+        .align()
     |alert()
         .crit(lambda: "freshness" == 0)
         .stateChangesOnly(1d)
