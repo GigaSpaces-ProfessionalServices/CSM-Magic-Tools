@@ -3,7 +3,7 @@ package com.gigaspaces.datavalidator.model;
 
 import com.gigaspaces.async.AsyncFuture;
 import com.gigaspaces.cluster.activeelection.SpaceMode;
-import com.gigaspaces.common.task.MaxLocalDateTimeValueTask;
+import com.gigaspaces.common.task.MaxLocalDateTimeValueTaskNew;
 import com.gigaspaces.common.task.MaxSqlDateValueTask;
 import com.gigaspaces.common.task.MaxTimestampValueTask;
 import com.gigaspaces.common.task.MaxValueTask;
@@ -115,7 +115,7 @@ public class    TestTask  implements Serializable  {
                                 LocalDateTime maxDateTime = LocalDateTime.of(2099,
                                         Month.DECEMBER, 31, 23, 59, 59);
 
-                                AsyncFuture<LocalDateTime> future = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
+                                AsyncFuture<LocalDateTime> future = gigaSpace.execute(new MaxLocalDateTimeValueTaskNew(maxDateTime ,
                                         measurement.getTableName(),  measurement.getFieldName()));
                                 LocalDateTime dateVal = future.get();
                                 logger.debug("### Get Max ["+column_type+"] value from Gigaspaces is "+dateVal);
