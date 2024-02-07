@@ -15,15 +15,15 @@ import org.openspaces.core.executor.TaskGigaSpace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SupportCodeChange(id="3")
-public class MaxLocalDateTimeValueTask implements DistributedTask<LocalDateTime,LocalDateTime> {
+@SupportCodeChange(id="4")
+public class MaxLocalDateTimeValueTaskNew implements DistributedTask<LocalDateTime,LocalDateTime> {
 
-    private static Logger logger = LoggerFactory.getLogger(MaxLocalDateTimeValueTask.class);
+    private static Logger logger = LoggerFactory.getLogger(MaxLocalDateTimeValueTaskNew.class);
     private LocalDateTime maxParameter;
     private String tableName;
     private String columnName;
 
-    public MaxLocalDateTimeValueTask(LocalDateTime maxParameter, String tableName, String columnName) {
+    public MaxLocalDateTimeValueTaskNew(LocalDateTime maxParameter, String tableName, String columnName) {
         this.maxParameter = maxParameter;
         this.tableName = tableName;
         this.columnName = columnName;
@@ -34,9 +34,15 @@ public class MaxLocalDateTimeValueTask implements DistributedTask<LocalDateTime,
 
     @Override
     public LocalDateTime execute() throws Exception {
+        System.out.println("Execute starts1");
+        System.out.println("Execute starts22");
+        System.out.println("Execute starts333");
         SQLQuery<SpaceDocument> sqlQuery = new SQLQuery<SpaceDocument>(this.tableName, this.columnName + " < ? AND rownum <= 1");
+        System.out.println("Column name: "+this.columnName);
+        System.out.println("sqlQuery: "+sqlQuery);
         sqlQuery.setParameter(1, maxParameter);
         sqlQuery.setProjections(this.columnName);
+        System.out.println("sqlQuery: "+sqlQuery);
         logger.debug("In Execute method");
         System.out.println("SOP:In Execute method");
         SpaceDocument result = gigaSpace.read(sqlQuery);

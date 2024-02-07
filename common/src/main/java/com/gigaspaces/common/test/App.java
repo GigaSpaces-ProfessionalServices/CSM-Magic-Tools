@@ -1,8 +1,10 @@
 package com.gigaspaces.common.test;
 
 import com.gigaspaces.async.AsyncFuture;
-import com.gigaspaces.common.task.MaxLocalDateTimeValueTask;
+import com.gigaspaces.common.task.MaxLocalDateTimeValueTaskNew;
 import com.gigaspaces.common.task.MaxValueTask;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.concurrent.ExecutionException;
@@ -19,6 +21,9 @@ public class App {
             System.out.println("<space_name> <lookup_locator> <lookup_group> <data_type> <table_name> <column_name>");
             return;
         }
+        PrintStream out = System.out;
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+
         String spaceName = args[0];
         String lookupLocator = args[1];
         String lookupGroup = args[2];
@@ -33,15 +38,17 @@ public class App {
                 AsyncFuture<Long> future = gigaSpace.execute(new MaxValueTask<Long>(Long.MAX_VALUE ,
                         tableName,  columnName));
                 Long colVal = future.get();
+                System.setOut(out);
                 System.out.println("Max value ("+dataType+") for field '"+columnName+"' is "+colVal);
                 break;
             case "localdatetime":
                 LocalDateTime maxDateTime = LocalDateTime.of(2099,
                         Month.DECEMBER, 31, 23, 59, 59);
 
-                AsyncFuture<LocalDateTime> future2 = gigaSpace.execute(new MaxLocalDateTimeValueTask(maxDateTime ,
+                AsyncFuture<LocalDateTime> future2 = gigaSpace.execute(new MaxLocalDateTimeValueTaskNew(maxDateTime ,
                         tableName, columnName));
                 LocalDateTime dateVal = future2.get();
+                System.setOut(out);
                 System.out.println("Max value ("+dataType+") for field '"+columnName+"' is "+dateVal);
                 break;
         }
