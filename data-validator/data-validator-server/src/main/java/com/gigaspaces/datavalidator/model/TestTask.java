@@ -275,6 +275,9 @@ public class TestTask  implements Serializable  {
                 Map<String,Measurement> mapA = new LinkedHashMap<>();
                 Map<String,Measurement> mapB = new LinkedHashMap<>();
                 for(Measurement measurement : measurementList) {
+                    if(!measurement.getStatus().equals(ModelConstant.ACTIVE)){
+                        continue;
+                    }
                     if(this.type == null || this.type.equals(measurement.getType())) {
                         key = measurement.getTableName() + "," + measurement.getType();
                         if (measurement.getDataSource().getDataSourceType().equals("gigaspaces")) {
@@ -290,6 +293,9 @@ public class TestTask  implements Serializable  {
 
                 Map<Long, Properties> results = new HashMap<>();
                 for(Measurement measurement : measurementList) {
+                    if(!measurement.getStatus().equals(ModelConstant.ACTIVE)){
+                        continue;
+                    }
                     if(this.type == null || this.type.equals(measurement.getType())) {
                         DataSource dataSource = measurement.getDataSource();
                         String test = measurement.getType();
@@ -315,6 +321,7 @@ public class TestTask  implements Serializable  {
                                 + dataSource.getAuthenticationScheme() + "\"" + ",\"gsLookupGroup\":\""
                                 + dataSource.getGsLookupGroup() + "\"" + ",\"keepConnectionOpen\":\"true\"" + "}";
 
+                        logger.debug("request: " + data);
                         String response = NetClientPost.send(endPoint, data);
                         logger.debug("response: " + response);
                         JsonObject testTaskResponse = (JsonObject) JsonParser.parseString(response);

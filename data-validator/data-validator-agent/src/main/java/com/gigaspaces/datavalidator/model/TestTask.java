@@ -56,7 +56,7 @@ public class    TestTask  implements Serializable  {
 					//DataSource dataSource = measurement.getDataSource();
                     logger.debug("Executing task with id: " + uuid);
                     logger.debug("Executing task for table : " +measurement.getTableName() +"  And Column: "+measurement.getFieldName()
-                    +"  On Data source: "+measurement.getDataSourceType());
+                    +"  On Data source: "+measurement.getDataSourceType() +" Measurement ID: "+measurement.getMeasurementId());
 					String whereCondition = measurement.getWhereCondition() != null ? measurement.getWhereCondition()
 							: "";
 

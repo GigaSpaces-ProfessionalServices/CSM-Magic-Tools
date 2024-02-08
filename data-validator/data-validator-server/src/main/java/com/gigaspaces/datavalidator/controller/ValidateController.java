@@ -702,7 +702,7 @@ public class ValidateController {
         try {
             TestTask task;
             if(testType != null && testType.equalsIgnoreCase("all")) testType=null;
-            List<Measurement> measurementList = measurementService.getAll();
+            List<Measurement> measurementList = measurementService.getActiveMeasurement();
             if(executionTime == 0){
                 task = new TestTask(odsxTaskService.getUniqueId(), System.currentTimeMillis()
                         ,"BatchCompare", measurementList,influxdbResultStore,influxDbProperties,testType);
