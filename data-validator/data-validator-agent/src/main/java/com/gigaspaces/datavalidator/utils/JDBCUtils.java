@@ -27,8 +27,7 @@ public class JDBCUtils {
     private static final Map<String, Connection> connectionPool = new HashMap<>();
     private static final Map<String, Admin> adminConnectionPool = new HashMap<>(); // Only for Gigaspaces Data source
 
-    public static Connection getConnection(MeasurementRequestModel measurement)
-			throws ReflectiveOperationException, ReflectiveOperationException, ClassNotFoundException, SQLException {
+    public static Connection getConnection(MeasurementRequestModel measurement) {
 		
 		String dataSourceType = measurement.getDataSourceType();
 		String dataSourceHostIp = measurement.getDataSourceHostIp();
@@ -44,68 +43,76 @@ public class JDBCUtils {
 		Connection connection = null;
 		String connectionString = "";
 
-        if(connectionPool.containsKey(measurement.getDataSourceIdentifierKey())){
-            logger.debug("Found in Connection Pool for Key: "+measurement.getDataSourceIdentifierKey());
-            connection = connectionPool.get(measurement.getDataSourceIdentifierKey());
-            if(!connection.isClosed()){
-                if(measurement.isKeepConnectionOpen()){
-                    logger.debug("Connection is still Open & Keep connection open flag is TRUE for Key: "+measurement.getDataSourceIdentifierKey());
-                    return connection;
-                }else{
-                    logger.debug("Connection is Open BUT Keep connection open flag is FALSE for Key: "+measurement.getDataSourceIdentifierKey());
-                    connection.close();
-                    connectionPool.remove(measurement.getDataSourceIdentifierKey());
-                    connection=null;
+        try {
+            if (connectionPool.containsKey(measurement.getDataSourceIdentifierKey())) {
+                logger.debug("Found in Connection Pool for Key: " + measurement.getDataSourceIdentifierKey());
+                connection = connectionPool.get(measurement.getDataSourceIdentifierKey());
+                if (!connection.isClosed()) {
+                    if (measurement.isKeepConnectionOpen()) {
+                        logger.debug("Connection is still Open & Keep connection open flag is TRUE for Key: "
+                                + measurement.getDataSourceIdentifierKey());
+                        return connection;
+                    } else {
+                        logger.debug("Connection is Open BUT Keep connection open flag is FALSE for Key: "
+                                + measurement.getDataSourceIdentifierKey());
+                        connection.close();
+                        connectionPool.remove(measurement.getDataSourceIdentifierKey());
+                        connection = null;
+                    }
+                } else {
+                    connection = null;
                 }
-            }else{
-                connection=null;
             }
+
+            switch (dataSourceType) {
+
+                case "gigaspaces":
+                    Class.forName("com.j_spaces.jdbc.driver.GDriver");
+                    connectionString = "jdbc:gigaspaces:v3://" + dataSourceHostIp + ":" + dataSourcePort + "/"
+                            + schemaName;
+                    break;
+
+                case "mysql":
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                    connectionString = "jdbc:mysql://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName
+                            + "?zeroDateTimeBehavior=CONVERT_TO_NULL";
+                    break;
+
+                case "db2":
+                    Class.forName("com.ibm.db2.jcc.DB2Driver");
+                    connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
+                    break;
+
+                case "oracle":
+                    Class.forName("oracle.jdbc.OracleDriver");
+                    connectionString = "jdbc:oracle:thin:@" + dataSourceHostIp + ":" + dataSourcePort + ":"
+                            + schemaName;
+                    break;
+
+                case "ms-sql":
+                    SQLServerDataSource ds = new SQLServerDataSource();
+                    ds.setServerName(dataSourceHostIp);
+                    ds.setIntegratedSecurity(Boolean.parseBoolean(integratedSecurity));
+                    ds.setAuthenticationScheme(authenticationScheme);
+                    ds.setDatabaseName(schemaName);
+
+                    if (authenticationScheme.equals("MSSQL")) {
+                        //ds.setPortNumber(dataSourcePort);
+                        ds.setUser(username);
+                        ds.setPassword(password);
+                    }
+                    connection = ds.getConnection();
+                    break;
+            }
+            if (!dataSourceType.equals("ms-sql")) {
+                connection = DriverManager.getConnection(connectionString, username, password);
+            }
+            logger.debug("Created New Connection for Key: " + measurement.getDataSourceIdentifierKey());
+            connectionPool.put(measurement.getDataSourceIdentifierKey(), connection);
+        }catch (Exception e){
+            logger.error("Error in getConnection");
+            e.printStackTrace();
         }
-
-		switch (dataSourceType) {
-
-		case "gigaspaces":
-			Class.forName("com.j_spaces.jdbc.driver.GDriver");
-			connectionString = "jdbc:gigaspaces:v3://" + dataSourceHostIp + ":" + dataSourcePort + "/"
-					+ schemaName;
-			break;
-
-		case "mysql":
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			connectionString = "jdbc:mysql://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName
-					+ "?zeroDateTimeBehavior=CONVERT_TO_NULL";
-			break;
-
-		case "db2":
-			Class.forName("com.ibm.db2.jcc.DB2Driver");
-			connectionString = "jdbc:db2://" + dataSourceHostIp + ":" + dataSourcePort + "/" + schemaName;
-			break;
-
-		case "oracle":
-			Class.forName("oracle.jdbc.OracleDriver");
-			connectionString = "jdbc:oracle:thin:@"+dataSourceHostIp+":"+dataSourcePort+":" + schemaName;
-			break;
-
-		case "ms-sql":
-			SQLServerDataSource ds = new SQLServerDataSource();
-			ds.setServerName(dataSourceHostIp);
-			ds.setIntegratedSecurity(Boolean.parseBoolean(integratedSecurity));
-			ds.setAuthenticationScheme(authenticationScheme);
-			ds.setDatabaseName(schemaName);
-
-			if(authenticationScheme.equals("MSSQL")){
-				//ds.setPortNumber(dataSourcePort);
-				ds.setUser(username);
-				ds.setPassword(password);
-			}
-			connection = ds.getConnection();
-			break;
-		}
-		if(!dataSourceType.equals("ms-sql")) {
-			connection = DriverManager.getConnection(connectionString, username, password);
-		}
-        logger.debug("Created New Connection for Key: "+measurement.getDataSourceIdentifierKey());
-        connectionPool.put(measurement.getDataSourceIdentifierKey(),connection);
 		return connection;
 	}
 
