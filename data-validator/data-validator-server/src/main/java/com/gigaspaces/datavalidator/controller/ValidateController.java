@@ -696,10 +696,11 @@ public class ValidateController {
     @GetMapping("/measurement/batchcompare/{testType}")
     public Map<String,String> compareMeasurementInBatch(@PathVariable String testType
             ,@RequestParam(defaultValue="0") int executionTime
-            ,@RequestParam(defaultValue="false") boolean influxdbResultStore) {
+            ,@RequestParam(defaultValue="true") boolean influxdbResultStore) {
 
         Map<String,String> response = new HashMap<>();
         try {
+            influxdbResultStore = true; // default to true
             TestTask task;
             if(testType != null && testType.equalsIgnoreCase("all")) testType=null;
             List<Measurement> measurementList = measurementService.getActiveMeasurement();

@@ -262,8 +262,8 @@ public class TestTask  implements Serializable  {
 						this.result = "FAIL";
 					}
 
+                    // Add Compare Results to InfluxDB
 					if(this.influxdbResultStore) {
-						// Add Compare Results to InfluxDB
 						InfluxDBUtils.doConnect(influxDbProperties.getInfluxDBUrl(), influxDbProperties.getInfluxDBUsername(), influxDbProperties.getInfluxDBPassword());  // TODO: Call this once when application loads or first compare test executes
 						InfluxDBUtils.write(influxDbProperties.getInfluxDBName(), "dvState"
 								, influxDbProperties.getEnvName(), measurement1.getTableName()
@@ -381,6 +381,14 @@ public class TestTask  implements Serializable  {
                         res.setProperty("tableName",measurementA.getTableName());
 
                         finalResults.put(measurementA.getId()+","+measurementB.getId(),res);
+
+                        // Add Compare Results to InfluxDB
+                        if(this.influxdbResultStore) {
+                            InfluxDBUtils.doConnect(influxDbProperties.getInfluxDBUrl(), influxDbProperties.getInfluxDBUsername(), influxDbProperties.getInfluxDBPassword());  // TODO: Call this once when application loads or first compare test executes
+                            InfluxDBUtils.write(influxDbProperties.getInfluxDBName(), "dvState"
+                                    , influxDbProperties.getEnvName(), measurementA.getTableName()
+                                    , compareResult,influxDbProperties.getHost());
+                        }
                     }else{
                         logger.error("Measurement with key: "+keyA+" not available in compare list");
                     }
