@@ -279,7 +279,24 @@ public class CommonUtil {
         }
         out.println("exit");
         p.waitFor();*/
-        try {
+
+        ProcessBuilder processBuilder = new ProcessBuilder("/usr/local/bin/odsx_vault_cred_details.sh");
+        // Redirect error stream to output stream
+        processBuilder.redirectErrorStream(true);
+        // Start the process
+        Process process = processBuilder.start();
+        // Get the input stream of the process
+        InputStream inputStream = process.getInputStream();
+        // Read the output
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            gspassword=line;
+        }
+        // Wait for the process to finish
+        int exitCode = process.waitFor();
+        System.out.println("Command executed with exit code: " + exitCode);
+        /*try {
             JSch jsch = new JSch();
             jsch.addIdentity("~/.ssh/id_rsa");
 
@@ -318,16 +335,17 @@ public class CommonUtil {
             session.disconnect();
         } catch (JSchException e) {
             logger.error(e.getLocalizedMessage(), e);
-        }
+        }*/
         if ("".equals(gsusername)) {
             gsusername = "gs-admin";
         }
-        if ("".equals(gspassword)) {
+        logger.info("GS_PASSWORD1 -> " + gspassword);
+        if (gspassword.isEmpty()) {
             gspassword = "gs-admin";
         }
         adminFactory.credentials(gsusername, gspassword);
         logger.info("GS_USERNAME -> " + gsusername);
-        logger.info("GS_PASSWORD -> " + gspassword);
+        logger.info("GS_PASSWORD2 -> " + gspassword);
     }
 
     public static Admin getAdmin(String lookupLocator, String lookupGroup, String odsxProfile, String username, String password, String appId, String safeId, String objectId) {
