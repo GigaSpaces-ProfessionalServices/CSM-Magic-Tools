@@ -28,6 +28,8 @@ public class InfluxDBUtils {
         }else{
             logger.debug("InfluxDB connected successfully");
         }
+        logger.debug("InfluxDB Parameters, database: "+database+", measurement: "+measurement+", tabEnv: "+tabEnv
+                +", tagObjType: "+tagObjType+", state: "+state+", host: "+host);
         influxDB.createDatabase(database);
         int result = 0; // 0=fail , 1=pass
         if(state != null && state.equals("PASS")){
@@ -37,6 +39,7 @@ public class InfluxDBUtils {
         ZoneId zone = ZoneId.systemDefault();
         Instant beginofday = LocalDate.now(zone).atStartOfDay(zone).toInstant();
         long timestamp = beginofday.toEpochMilli();
+        logger.debug("TimeZone: "+zone +", timestamp: "+timestamp);
 
         Point point = Point.measurement(measurement)
                 .time(timestamp, TimeUnit.MILLISECONDS)
