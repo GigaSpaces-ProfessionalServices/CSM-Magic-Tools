@@ -1,7 +1,9 @@
 package com.gigaspaces.datavalidator.utils;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
@@ -37,12 +39,13 @@ public class InfluxDBUtils {
         }
 
         ZoneId zone = ZoneId.systemDefault();
-        Instant beginofday = LocalDate.now(zone).atStartOfDay(zone).toInstant();
-        long timestamp = beginofday.toEpochMilli();
-        logger.debug("TimeZone: "+zone +", timestamp: "+timestamp);
+        LocalDateTime now = LocalDateTime.now(zone);
+        Timestamp timestamp = Timestamp.valueOf(now);
+        long timestampVal = timestamp.getTime();
+        logger.debug("TimeZone: "+zone +", timestampVal: "+timestampVal);
 
         Point point = Point.measurement(measurement)
-                .time(timestamp, TimeUnit.MILLISECONDS)
+                .time(timestampVal, TimeUnit.MILLISECONDS)
                 .tag("env", tabEnv)
                 .tag("obj_type",tagObjType)
                 .tag("host",host)
