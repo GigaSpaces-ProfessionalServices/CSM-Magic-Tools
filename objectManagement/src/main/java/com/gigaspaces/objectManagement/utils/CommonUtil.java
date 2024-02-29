@@ -249,6 +249,27 @@ public class CommonUtil {
 
         return false;
     }
+    public static String getpassword() {
+        String gspassword =null;
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder("/usr/local/bin/odsx_vault_cred_details.sh");
+            // Redirect error stream to output stream
+            processBuilder.redirectErrorStream(true);
+            // Start the process
+            Process process = processBuilder.start();
+            // Get the input stream of the process
+            InputStream inputStream = process.getInputStream();
+            // Read the output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                gspassword=line;
+            }
+        }catch (Exception e){
+            logger.error(e.getMessage(),e);
+        }
+        return gspassword;
+    }
 
     private static void setCredentials(String lookupLocator, String lookupGroup, AdminFactory adminFactory, String appId, String safeId, String objectId) throws IOException, InterruptedException {
         String gsusername = "";

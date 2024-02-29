@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.logging.Logger;
@@ -62,36 +63,65 @@ public class GSManagerConfiguration {
      * Commented bean creation of Admin because most of the operations can be done by space proxy object ,
      * as we have all details to get space proxy at application level
     */
-    private  void setCredentials() throws IOException, InterruptedException {
+    private  void setCredentials(AdminFactory adminFactory,SpaceProxyConfigurer configurer) {
         String managerHost = LOOKUP_GROUP.split(",")[0].split(":")[0];
         logger.info("LOOKUP_GROUP : "+LOOKUP_GROUP);
         logger.info("managerHost : "+managerHost);
+       // logger.debug("70.  : "+GS_PASSWORD);
+        if (GS_PASSWORD==null || "".equals(GS_PASSWORD)){
+            ProcessBuilder processBuilder = new ProcessBuilder("/usr/local/bin/odsx_vault_cred_details.sh");
+            // Redirect error stream to output stream
+            processBuilder.redirectErrorStream(true);
+            // Start the process
+            Process process = null;
+            try {
+                process = processBuilder.start();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            // Get the input stream of the process
+            InputStream inputStream = process.getInputStream();
+            // Read the output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            while (true) {
+                try {
+                    if ((line = reader.readLine()) == null) break;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                GS_PASSWORD=line;
+              //  logger.info("line1 >>> "+line);
+            }
+            // Wait for the process to finish
+            int exitCode = 0;
+            try {
+                exitCode = process.waitFor();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println("Command executed with exit code: " + exitCode);
+        }
 
-        Process p = Runtime.getRuntime().exec("ssh "+managerHost);
-        PrintStream out = new PrintStream(p.getOutputStream());
-        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String safeusernameCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+APP_ID+" -p Query=\"Safe="+SAFE_ID+";Folder=;Object="+OBJECT_ID+";\" -o PassProps.UserName";
-        String safepassCmd = "/opt/CARKaim/sdk/clipasswordsdk GetPassword -p AppDescs.AppID="+APP_ID+" -p Query=\"Safe="+SAFE_ID+";Folder=;Object="+OBJECT_ID+";\" -o Password";
-        logger.info("safeusernameCmd :: "+safeusernameCmd);
-        logger.info("safepassCmd :: "+safepassCmd);
-        out.println(safeusernameCmd);
-        while (in.ready()) {
-            GS_USERNAME = in.readLine();
-            logger.info(GS_USERNAME);
-            break;
+        if ("".equals(GS_USERNAME)) {
+            GS_USERNAME = "gs-admin";
         }
-        out.println(safepassCmd);
-        while (in.ready()) {
-            GS_PASSWORD = in.readLine();
-            logger.info(GS_PASSWORD);
-            break;
+        //logger.debug("GS_USERNAME1 -> " + GS_USERNAME);
+        if (GS_PASSWORD.isEmpty()) {
+            GS_PASSWORD = "gs-admin";
         }
-        out.println("exit");
-        p.waitFor();
+        if (configurer!=null) {
+            configurer.credentials(GS_USERNAME, GS_PASSWORD);
+        }
+        if (adminFactory!=null){
+            adminFactory.credentials(GS_USERNAME, GS_PASSWORD);
+        }
+        //logger.debug("GS_USERNAME -> " + GS_USERNAME);
+        //logger.debug("GS_PASSWORD2 -> " + GS_PASSWORD);
     }
     @Bean
     public Admin getGSAdmin(){
-        logger.info("Generating bean -> getGSAdmin:Admin");
+        logger.info("Generating bean -> getGSAdmin:Admin PROFILE "+PROFILE);
         AdminFactory adminFactory = new AdminFactory();
         adminFactory.addLocators(LOOKUP_LOCATOR);
 
@@ -99,14 +129,7 @@ public class GSManagerConfiguration {
             adminFactory.addGroups(LOOKUP_GROUP);
         }
         if (PROFILE!=null && PROFILE!="" && PROFILE.equalsIgnoreCase("security")) {
-            try {
-                setCredentials();
-            } catch (IOException e) {
-                logger.error(e.getLocalizedMessage(),e);
-            } catch (InterruptedException e) {
-                logger.error(e.getLocalizedMessage(),e);
-            }
-            adminFactory.credentials(GS_USERNAME, GS_PASSWORD);
+            setCredentials(adminFactory,null);//adminFactory.credentials(GS_USERNAME, GS_PASSWORD);
         }
         Admin admin =adminFactory.createAdmin();
         logger.info("Bean Admin -> "+admin.toString());
@@ -116,7 +139,7 @@ public class GSManagerConfiguration {
     @Bean
     public GigaSpace gigaSpace(){
 
-        logger.info("gigaSpace() -------------------> "+PROFILE);
+        logger.info("gigaSpace()11 -------------------> "+PROFILE);
         SpaceProxyConfigurer configurer = new SpaceProxyConfigurer(SPACE_NAME);
         if(LOOKUP_GROUP!=null && LOOKUP_GROUP!=""){
             configurer.lookupGroups(LOOKUP_GROUP);

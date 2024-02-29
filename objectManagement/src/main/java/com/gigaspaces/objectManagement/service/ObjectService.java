@@ -21,6 +21,7 @@ import com.gigaspaces.objectManagement.model.SpaceObjectDto;
 import com.gigaspaces.objectManagement.model.TableOutcome;
 import com.gigaspaces.objectManagement.utils.CommonUtil;
 
+import static com.gigaspaces.objectManagement.utils.CommonUtil.getpassword;
 import static com.gigaspaces.objectManagement.utils.CommonUtil.readAdaptersProperties;
 import static com.gigaspaces.objectManagement.utils.DataGeneratorUtils.getPropertyValue;
 import com.gigaspaces.objectManagement.utils.ReportWriter;
@@ -434,6 +435,9 @@ public class ObjectService {
     public ProcessingUnit searchProcessingUnitByName(String puName, SearchType type){
         ProcessingUnit resultPU = null;
         logger.info("SearchProcessingUnitByName="+puName);
+        if (gsPassword ==null || "".equals(gsPassword)) {
+            gsPassword = getpassword();
+        }
         Admin admin = CommonUtil.getAdmin(
                 lookupLocator,
                 lookupGroup,
@@ -501,6 +505,9 @@ public class ObjectService {
             String reportFilePath) throws Exception {
         logger.info("Entering into -> registerInSandbox");
         logger.info("params:  tableName -> " + tableName + " & sandboxSpace -> " + sandboxSpace);
+        if (gsPassword ==null || "".equals(gsPassword)) {
+            gsPassword = getpassword();
+        }
         Admin admin = CommonUtil.getAdmin(
                 lookupLocator,
                 lookupGroup,
