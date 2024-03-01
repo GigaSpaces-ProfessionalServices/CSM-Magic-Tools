@@ -23,7 +23,7 @@ import pyfiglet
 import socket
 from glob import glob
 from pathlib import Path
-from configobj import ConfigObj
+
 
 class Spinner:
 
@@ -222,7 +222,7 @@ class OdsServiceGrid:
             the_url = self.url + f"/{the_instance_id}/statistics/operations"
             response_data = requests.get(the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
             return response_data.json()['objectCount']
-
+        
         def exist(self, the_instance_id):
             the_url = self.url + f"/{the_instance_id}"
             response_data = requests.get(
@@ -341,39 +341,17 @@ def check_connection(_server, _port, _timeout=5):
         print(f"[ERROR] caught exception: {socerr}")
     a_socket.settimeout(None)
     return check_port == 0
-def readValueByConfigObj(key):
-    sourceInstallerDirectory = str(os.getenv("ENV_CONFIG"))
-    logger.info("sourceInstallerDirectory:"+sourceInstallerDirectory)
-    file=sourceInstallerDirectory+'/app.config'
-    config = ConfigObj(file)
-    return  config.get(key)
 
-def executeLocalCommandAndGetOutput(commandToExecute):
-    logger.info("executeLocalCommandAndGetOutput() cmd :" + str(commandToExecute))
-    cmd = commandToExecute
-    cmdArray = cmd.split(" ")
-    #process = subprocess.Popen(cmdArray, stdout=subprocess.PIPE)
-    process = subprocess.Popen(cmdArray, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    out, error = process.communicate()
-    out = out.decode()
-    return str(out).replace('\n', '')
 
 def get_auth(app_config):
     auth_params = {'user': '', 'pass': ''}
     if is_env_secured():
-        appVaultUse = str(readValueByConfigObj("app.vault.use"))
-        auth_params['user'] = str(readValueByConfigObj("app.manager.security.username"))
-
-        if appVaultUse == "false":
-            auth_params['pass'] = str(readValueByConfigObj("app.manager.security.password"))
-        else:
-            passPropertyName = str(readValueByConfigObj("app.manager.security.password.vault"))
-            vaultJar = str(readValueByConfigObj("app.vault.jar.location"))
-            vaultDBLocation = str(readValueByConfigObj("app.vault.db.location"))
-            vaultDBLocation = "-Dapp.db.path=" + vaultDBLocation
-            cmdToExecute = 'java '+vaultDBLocation+' -jar '+vaultJar+' --get '+passPropertyName
-            output = executeLocalCommandAndGetOutput(cmdToExecute)
-            auth_params['pass'] = str(output).replace('\n','')
+        f = open(app_config, 'r')
+        for line in f:
+            if re.search("app.manager.security.username", line):
+                auth_params['user'] = line.strip().replace('\n','').split('=')[1]
+            if re.search("app.manager.security.password", line):
+                auth_params['pass'] = line.strip().replace('\n','').split('=')[1]
     return auth_params
 
 
