@@ -23,7 +23,7 @@ import pyfiglet
 import socket
 from glob import glob
 from pathlib import Path
-
+from configobj import ConfigObj
 
 class Spinner:
 
@@ -120,7 +120,7 @@ class OdsServiceGrid:
             for space in response_data.json():
                 if space['name'] == space_name:
                     return space['topology']['partitions']
-        
+
         def total_ram_count(self):
             the_url = self.url + f"/{space_name}/statistics/operations"
             response_data = requests.get(
@@ -222,7 +222,7 @@ class OdsServiceGrid:
             the_url = self.url + f"/{the_instance_id}/statistics/operations"
             response_data = requests.get(the_url, auth=(auth['user'], auth['pass']), headers=self.headers, verify=False)
             return response_data.json()['objectCount']
-        
+
         def exist(self, the_instance_id):
             the_url = self.url + f"/{the_instance_id}"
             response_data = requests.get(
@@ -238,7 +238,7 @@ def argument_parser():
     argument parser function
     :return: arguments object/dictionary
     '''
-    
+
     parser = argparse.ArgumentParser(
         description='description: kill space instances duo - primary and backup',
         epilog='* please report any issue to alon.segal@gigaspaces.com'
@@ -308,7 +308,7 @@ def is_restful_ok(the_url):
     :param the_url: url for GET request
     :return: True / False
     """
-    
+
     try:
         the_response = requests.get(
             the_url,
@@ -341,17 +341,39 @@ def check_connection(_server, _port, _timeout=5):
         print(f"[ERROR] caught exception: {socerr}")
     a_socket.settimeout(None)
     return check_port == 0
+def readValueByConfigObj(key):
+    sourceInstallerDirectory = str(os.getenv("ENV_CONFIG"))
+    logger.info("sourceInstallerDirectory:"+sourceInstallerDirectory)
+    file=sourceInstallerDirectory+'/app.config'
+    config = ConfigObj(file)
+    return  config.get(key)
 
+def executeLocalCommandAndGetOutput(commandToExecute):
+    logger.info("executeLocalCommandAndGetOutput() cmd :" + str(commandToExecute))
+    cmd = commandToExecute
+    cmdArray = cmd.split(" ")
+    #process = subprocess.Popen(cmdArray, stdout=subprocess.PIPE)
+    process = subprocess.Popen(cmdArray, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    out, error = process.communicate()
+    out = out.decode()
+    return str(out).replace('\n', '')
 
 def get_auth(app_config):
     auth_params = {'user': '', 'pass': ''}
     if is_env_secured():
-        f = open(app_config, 'r')
-        for line in f:
-            if re.search("app.manager.security.username", line):
-                auth_params['user'] = line.strip().replace('\n','').split('=')[1]
-            if re.search("app.manager.security.password", line):
-                auth_params['pass'] = line.strip().replace('\n','').split('=')[1]
+        appVaultUse = str(readValueByConfigObj("app.vault.use"))
+        auth_params['user'] = str(readValueByConfigObj("app.manager.security.username"))
+
+        if appVaultUse == "false":
+            auth_params['pass'] = str(readValueByConfigObj("app.manager.security.password"))
+        else:
+            passPropertyName = str(readValueByConfigObj("app.manager.security.password.vault"))
+            vaultJar = str(readValueByConfigObj("app.vault.jar.location"))
+            vaultDBLocation = str(readValueByConfigObj("app.vault.db.location"))
+            vaultDBLocation = "-Dapp.db.path=" + vaultDBLocation
+            cmdToExecute = 'java '+vaultDBLocation+' -jar '+vaultJar+' --get '+passPropertyName
+            output = executeLocalCommandAndGetOutput(cmdToExecute)
+            auth_params['pass'] = str(output).replace('\n','')
     return auth_params
 
 
@@ -524,7 +546,7 @@ def show_cdc_status(_step=None):
     except (KeyboardInterrupt, SystemExit):
         print("\n")
         exit(1)
-    
+
 
 def show_iidr_subscriptions(_step=None):
     print('\n-- [ IIDR SUBSCRIPTIONS ]')
@@ -836,7 +858,7 @@ if __name__ == '__main__':
         "https": "http://132.66.251.5:8080"
     }
 
-    try: 
+    try:
         # creating logger
         if not os.path.exists(logs_root):
             print(f"logs root directory '{logs_root}' does not exist. aborting.")
@@ -848,23 +870,23 @@ if __name__ == '__main__':
         log_format = "%(asctime)s %(levelname)s %(message)s"
         log_file = f"{logs_dir}/{Path(__file__).stem}.log"
         logging.basicConfig(
-            filename=log_file, 
-            filemode="a", 
-            format=log_format, 
-            datefmt='%Y-%m-%d %H:%M:%S', 
+            filename=log_file,
+            filemode="a",
+            format=log_format,
+            datefmt='%Y-%m-%d %H:%M:%S',
             level=logging.INFO
             )
         logger = logging.getLogger()
         logger.info('Sanity started.')
-        
+
         # disable insecure request warning
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         arguments = argument_parser()
         subprocess.run(['clear'])
-        
+
         # present title
         print(pyfiglet.figlet_format("     Sanity", font='slant'))
-        
+
         # check REST status and set operational manager
         managers = get_host_yaml_servers('manager')
         if len(managers) == 0:
@@ -873,10 +895,10 @@ if __name__ == '__main__':
             logger.error("[ERROR] manager servers not found. aborting!")
             logging.shutdown()
             exit(1)
-        
+
         # configure authentication
         auth = get_auth(f"{os.environ['ENV_CONFIG']}/app.config")
-        
+
         # get REST available host
         rest_ok_hosts = []
         for mgr in managers:
@@ -905,12 +927,12 @@ if __name__ == '__main__':
         verbose = False
         cycles_passed = 0
         total_cycles = 1
-        
+
         ### parse arguments ###
         # check if 'space_name' is valid
         space_name = arguments['space_name']
         osg = OdsServiceGrid()
-        
+
         # add sanity routines
         exec_funcs = [
             'show_grid_info',
@@ -921,7 +943,7 @@ if __name__ == '__main__':
             'show_health_info',
             #'run_stress_test',
             ]
-        
+
         # if HA is active we add recovery monitor report step
         backup_active = is_backup_active()
         headers = {'Accept': 'application/json'}
@@ -930,7 +952,7 @@ if __name__ == '__main__':
             the_url, auth=(auth['user'], auth['pass']), headers=headers, verify=False).json()
         if backup_active and "tieredConfiguration" in response_data:
             exec_funcs.append('show_recovery_report')
-        
+
         if not osg.Space.exist():
             print(f"space {space_name} does not exist!\n")
             logger.error(f"space {space_name} does not exist!")
@@ -957,7 +979,7 @@ if __name__ == '__main__':
         if 'service' in arguments:
             polling = True
             service_name = arguments['service']
-        
+
         # setup SSL certificates
         try:
             cert_file = glob(f"{ssl_root}/cert/*")[0]
@@ -971,12 +993,12 @@ if __name__ == '__main__':
             ca_file = glob(f"{ssl_root}/ca/*")[0]
         except:
             ca_file = ""
-    
+
         if verbose:
             print(f"cert_file = {cert_file}")
             print(f"key_file = {key_file}")
             print(f"ca_file = {ca_file}")
-        
+
         ### execute operations ###
         # if both cycles and duration requested we abort
         if cycles and duration:
