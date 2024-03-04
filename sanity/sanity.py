@@ -364,7 +364,7 @@ def get_auth(app_config):
         appVaultUse = str(readValueByConfigObj("app.vault.use"))
         auth_params['user'] = str(readValueByConfigObj("app.manager.security.username"))
 
-        if appVaultUse == "false":
+        if appVaultUse == "false" or appVaultUse == "None":
             auth_params['pass'] = str(readValueByConfigObj("app.manager.security.password"))
         else:
             passPropertyName = str(readValueByConfigObj("app.manager.security.password.vault"))
