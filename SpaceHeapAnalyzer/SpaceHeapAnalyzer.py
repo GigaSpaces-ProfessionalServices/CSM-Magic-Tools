@@ -6,18 +6,23 @@ import pandas as pd
 import pyfiglet
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from platform import system
+from configobj import ConfigObj
+from statistics import mean
 
 if system() == 'Linux':
     CLRSCR = "clear"
 if system() == 'Windows':
     CLRSCR = "cls"
+if system() == 'Darwin':
+    CLRSCR = "clear"
 
 
 def clearScreen():
     os.system(CLRSCR)
-    osPrint(pyfiglet.figlet_format("    Space Heap              Analyer", font='slant'))
+    osPrint(pyfiglet.figlet_format("    Space Heap             Analyzer", font='slant'))
 
 def listAllScripts(list_files_path):
     if os.path.exists(list_files_path):
@@ -34,16 +39,25 @@ def createFolder(folderPath):
 def osPrint(Statement):
     print(Statement)
 
+def readValueByConfigObj(key):
+    sourceInstallerDirectory = str(os.getenv("ENV_CONFIG"))
+    file=sourceInstallerDirectory+'/app.config'
+    config = ConfigObj(file)
+    return  config.get(key)
+
 def generateHeapHprof(_JmapPath,_PID,_SelectedSpaceName):
     osPrint("Generating Heap Hprof Report for Space Name = " + str(_SelectedSpaceName))
     jmapCmd = "jmap -dump:live,format=b,file="+_JmapPath+"/heap"+_PID+".hprof " + _PID
     subprocess.check_output(jmapCmd, shell=True, universal_newlines=True)
-    osPrint("Heap Hprof reports generated successfully for Space Name = " + str(_SelectedSpaceName) + "\n")
+    osPrint("Heap Hprof reports were generated successfully for Space Name = " + str(_SelectedSpaceName) + "\n")
 
 def generateJsonFromHprof(_JmapPath,_JavaJarPath,_SpaceHeapAnalyzerJsonPath,_hprofPath,_SelectedSpaceName):
     osPrint("Generating Json from SpaceHeapAnalyzer Java for Space Name = "+ str(_SelectedSpaceName))
     SpaceHeapAnalyzerCmd = "java -jar " + _JavaJarPath + " " + _JmapPath + _hprofPath + " " + _SpaceHeapAnalyzerJsonPath + _hprofPath.split('.')[0] + ".json"
     os.system(SpaceHeapAnalyzerCmd)
+    if os.path.exists(_SpaceHeapAnalyzerJsonPath + _hprofPath.split('.')[0] + ".json") == False:
+        osPrint("Unable to Generate Heap Hprof")
+        exit()
     if (os.path.getsize(_SpaceHeapAnalyzerJsonPath + _hprofPath.split('.')[0] + ".json") == 0):
         os.remove(_SpaceHeapAnalyzerJsonPath + _hprofPath.split('.')[0] + ".json")
     osPrint("SpaceHeapAnalyzer Json generated successfully for Space Name = "+ str(_SelectedSpaceName) + "\n")
@@ -60,24 +74,25 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
                 if "_" in str(_data["space"]["instanceId"]):
                     SpaceBackupJsonList.append(_filePath)
 
+    CombineReportJsonList = []
+
     for jsonfile in SpaceBackupJsonList:
-        CombineReportJsonList = []
         _SpaceBackupJsonFileName = jsonfile.split('/')[-1].replace(".json","")
         data = json.load(open(jsonfile))
 
         for _generalFData in data["space"]["types"]:
             GeneralCombineReportJson =  {"InstanceID" : data["space"]["instanceId"] , "SpaceName" : data["space"]["spaceName"] , "TypeName" : _generalFData["typeName"],
-                              "Property" : "", "Size" : _generalFData["averageEntrySize"], "Index Size" : "", "NumOfEntries" : _generalFData["numOfEntries"],
-                              "NumOfProperties" : _generalFData["propertiesCount"], "TotalSize" : _generalFData["totalSize"],
-                              "UidSizeCounter" : _generalFData["uidSizeCounter"], "MetadataSizeCountes" : _generalFData["metadataSizeCounter"],
-                              "RepeatedRefs" : "", "Nulls" : ""}
+                                         "Property" : "", "Size" : _generalFData["averageEntrySize"], "Index Size" : "", "NumOfEntries" : _generalFData["numOfEntries"],
+                                         "NumOfProperties" : _generalFData["propertiesCount"], "TotalSize" : _generalFData["totalSize"],
+                                         "UidSizeCounter" : _generalFData["uidSizeCounter"], "MetadataSizeCountes" : _generalFData["metadataSizeCounter"],
+                                         "RepeatedRefs" : "", "Nulls" : ""}
             CombineReportJsonList.append(GeneralCombineReportJson)
 
         for type in data["space"]["types"]:
             for property in type["properties"]:
                 PropertiesCombineReportJson =  {"InstanceID" : data["space"]["instanceId"] , "SpaceName" : data["space"]["spaceName"] , "TypeName" : type["typeName"] ,
-                                                "Property" : property["propertyName"] , "Size" : property["size"] , "Index Size" : "" , "NumOfEntries" : "" , "NumOfProperties" : "" ,
-                                                "TotalSize" : "" , "UidSizeCounter" : "" , "MetadataSizeCountes" : "" , "RepeatedRefs" : property["repeatedRefs"] ,
+                                                "Property" : property["propertyName"] , "Size" : property["size"] , "Index Size" : "" , "NumOfEntries" : "" ,
+                                                "NumOfProperties" : "" , "TotalSize" : "" , "UidSizeCounter" : "" , "MetadataSizeCountes" : "" , "RepeatedRefs" : property["repeatedRefs"] ,
                                                 "Nulls" : property["nulls"]}
                 CombineReportJsonList.append(PropertiesCombineReportJson)
 
@@ -91,10 +106,98 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
                                     if CombineReportJson["Property"] == Index["name"]:
                                         CombineReportJson["Index Size"] = Index["size"]
 
-        CombineReportDataFrame = pd.DataFrame(CombineReportJsonList)
-        CombineReportDataFrame.to_csv(_ReportsPath+"Combine_Report_"+_SpaceBackupJsonFileName+"_"+data["space"]["spaceName"]+"_"+data["space"]["instanceId"]+"_"+_DateTimeString+".csv",index=False)
+    writer = pd.ExcelWriter(_ReportsPath+"Combine_Report_"+_SpaceBackupJsonFileName+"_"+data["space"]["spaceName"]+"_"+_DateTimeString+".xlsx", engine='openpyxl')
 
+    CombineReportDataFrame = pd.DataFrame(CombineReportJsonList)
+    CombineReportDataFrame = CombineReportDataFrame.sort_values('InstanceID')
 
+    CombineReportDataFrame.to_excel(writer,index=False,sheet_name="Summary report")
+
+    CombineReportDataFrameList = CombineReportDataFrame['InstanceID'].tolist()
+    CombineReportDataFrameList = list(set(CombineReportDataFrameList))
+
+    AverageList = []
+
+    for backupInstance in CombineReportDataFrameList:
+        _backupInstance = CombineReportDataFrame[CombineReportDataFrame['InstanceID'] == backupInstance]
+        _backupInstance = _backupInstance.sort_values(['TypeName', 'Property'],ascending = [True, True])
+        _backupInstance.to_excel(writer,index=False,sheet_name=str(backupInstance))
+
+        _backupInstanceList = _backupInstance.to_dict('records')
+        if len(AverageList) == 0:
+            for i in _backupInstanceList:
+                AverageJson = {}
+                AverageJson["InstanceID"] = i["InstanceID"]
+                AverageJson["SpaceName"] = i["SpaceName"]
+                AverageJson["TypeName"] = i["TypeName"]
+                AverageJson["Property"] = i["Property"]
+                AverageJson["Size"] = [] if i["Size"] == "" else [i["Size"]]
+                AverageJson["Index Size"] = [] if i["Index Size"] == "" else [i["Index Size"]]
+                AverageJson["NumOfEntries"] = [] if i["NumOfEntries"] == "" else [i["NumOfEntries"]]
+                AverageJson["NumOfProperties"] = [] if i["NumOfProperties"] == "" else [i["NumOfProperties"]]
+                AverageJson["TotalSize"] = [] if i["TotalSize"] == "" else [i["TotalSize"]]
+                AverageJson["UidSizeCounter"] = [] if i["UidSizeCounter"] == "" else [i["UidSizeCounter"]]
+                AverageJson["MetadataSizeCountes"] = [] if i["MetadataSizeCountes"] == "" else [i["MetadataSizeCountes"]]
+                AverageJson["RepeatedRefs"] = [] if i["RepeatedRefs"] == "" else [i["RepeatedRefs"]]
+                AverageJson["Nulls"] = [] if i["Nulls"] == "" else [i["Nulls"]]
+                AverageList.append(AverageJson)
+        else:
+            for i in _backupInstanceList:
+                for _average in AverageList:
+                    if i["SpaceName"] == _average["SpaceName"] and i["TypeName"] == _average["TypeName"] and i["Property"] == _average["Property"]:
+                        _averageSizeList = _average["Size"]
+                        _averageSizeList.append(i["Size"])
+                        _average["Size"] = _averageSizeList
+
+                        _IndexSizeList = _average["Index Size"]
+                        True if i["Index Size"] == "" else _IndexSizeList.append(i["Index Size"])
+                        _average["Index Size"] = _IndexSizeList
+
+                        _NumOfEntriesList = _average["NumOfEntries"]
+                        True if i["NumOfEntries"] == "" else _NumOfEntriesList.append(i["NumOfEntries"])
+                        _average["NumOfEntries"] = _NumOfEntriesList
+
+                        _NumOfPropertiesList = _average["NumOfProperties"]
+                        True if i["NumOfProperties"] == "" else _NumOfPropertiesList.append(i["NumOfProperties"])
+                        _average["NumOfProperties"] = _NumOfPropertiesList
+
+                        _TotalSizeList = _average["TotalSize"]
+                        True if i["TotalSize"] == "" else _TotalSizeList.append(i["TotalSize"])
+                        _average["TotalSize"] = _TotalSizeList
+
+                        _UidSizeCounterList = _average["UidSizeCounter"]
+                        True if i["UidSizeCounter"] == "" else _UidSizeCounterList.append(i["UidSizeCounter"])
+                        _average["UidSizeCounter"] = _UidSizeCounterList
+
+                        _MetadataSizeCountesList = _average["MetadataSizeCountes"]
+                        True if i["MetadataSizeCountes"] == "" else _MetadataSizeCountesList.append(i["MetadataSizeCountes"])
+                        _average["MetadataSizeCountes"] = _MetadataSizeCountesList
+
+                        _RepeatedRefsList = _average["RepeatedRefs"]
+                        True if i["RepeatedRefs"] == "" else _RepeatedRefsList.append(i["RepeatedRefs"])
+                        _average["RepeatedRefs"] = _RepeatedRefsList
+
+                        _NullsList = _average["Nulls"]
+                        True if i["Nulls"] == "" else _NullsList.append(i["Nulls"])
+                        _average["Nulls"] = _NullsList
+
+    for _average in AverageList:
+        _average["Size"] = None if len(_average["Size"]) == 0 else round(mean(_average["Size"]),2)
+        _average["Index Size"] = None if len(_average["Index Size"]) == 0 else round(mean(_average["Index Size"]),2)
+        _average["NumOfEntries"] = None if len(_average["NumOfEntries"]) == 0 else round(mean(_average["NumOfEntries"]),2)
+        _average["NumOfProperties"] = None if len(_average["NumOfProperties"]) == 0 else round(mean(_average["NumOfProperties"]),2)
+        _average["TotalSize"] = None if len(_average["TotalSize"]) == 0 else round(mean(_average["TotalSize"]),2)
+        _average["UidSizeCounter"] = None if len(_average["UidSizeCounter"]) == 0 else round(mean(_average["UidSizeCounter"]),2)
+        _average["MetadataSizeCountes"] = None if len(_average["MetadataSizeCountes"]) == 0 else round(mean(_average["MetadataSizeCountes"]),2)
+        _average["RepeatedRefs"] = None if len(_average["RepeatedRefs"]) == 0 else round(mean(_average["RepeatedRefs"]),2)
+        _average["Nulls"] = None if len(_average["Nulls"]) == 0 else round(mean(_average["Nulls"]),2)
+
+    AverageListDataFrame = pd.DataFrame(AverageList)
+    AverageListDataFrame = AverageListDataFrame.sort_values(['TypeName', 'Property'],ascending = [True, True])
+
+    AverageListDataFrame.to_excel(writer,index=False,sheet_name="Average report")
+
+    writer.close()
     osPrint("Reports generated successfully")
 
 def removeUnwantedFiles(_JmapPath):
@@ -108,20 +211,44 @@ def removeUnwantedFiles(_JmapPath):
 
 if __name__ == '__main__':
     clearScreen()
-    osPrint("Manager IP Example - 'http://192.1.12.32' or 'http://localhost'")
-    ManagerIP = input("Enter Manager IP - ")
-    ManagerUserName = input("Manager UserName - ")
-    ManagerPassword = input("Manager Password - ")
-    JmapPath = input("Enter Output folder - ")
-    JavaJarPath = input("Enter SpaceHeapAnalyzer Java Jar Path - ")
+
+    AppConfigValues = input("Use Values from app.config [Y,n] - ")
+    if AppConfigValues == "":
+        AppConfigValues = "Y"
+
+    if AppConfigValues.lower() == "y":
+        ManagerIP = readValueByConfigObj("app.spaceheapanalyzer.managerip")
+        ManagerUserName = readValueByConfigObj("app.spaceheapanalyzer.managerusername")
+        ManagerPassword = readValueByConfigObj("app.spaceheapanalyzer.managerpassword")
+        JmapPath = readValueByConfigObj("app.spaceheapanalyzer.jmappath")
+        JavaJarPath = readValueByConfigObj("app.spaceheapanalyzer.javajarpath")
+    else:
+        osPrint("Manager IP Example - '192.1.12.32' or 'localhost'")
+        ManagerIP = input("Enter Manager IP - ")
+        ManagerUserName = input("Manager UserName (leave empty for unsecured) - ")
+        ManagerPassword = input("Manager Password (leave empty for unsecured) - ")
+        JmapPath = input("Enter Output folder - ")
+        JavaJarPath = input("Enter SpaceHeapAnalyzer Java Jar Path - ")
+
+    if "http://" not in ManagerIP:
+        ManagerIP = "http://" + ManagerIP
+
+    if os.path.exists(JavaJarPath) == False:
+        osPrint(os.getcwd()+"/target/SpaceHeapAnalyzer-1.0-SNAPSHOT-jar-with-dependencies.jar")
+        osPrint("Java Jar Not found Path")
+        exit()
 
     if JmapPath[-1] != "/":
         JmapPath = JmapPath + "/"
+
     SpaceHeapAnalyzerJsonPath = JmapPath + "SpaceHeapAnalyzerJson/"
     ReportsPath = JmapPath + "Report/"
     DateTimeString = datetime.now().strftime("%d-%m-%Y~%H.%M")
 
-    listSpacesCmd = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces' -u " + ManagerUserName + ":" + ManagerPassword
+    if (ManagerUserName == "" and ManagerPassword == ""):
+        listSpacesCmd = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces'"
+    else:
+        listSpacesCmd = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces' -u " + ManagerUserName + ":" + ManagerPassword
     osPrint(listSpacesCmd)
     listSpacesResult = subprocess.check_output(listSpacesCmd, shell=True, universal_newlines=True)
     listSpacesResultList = json.loads(listSpacesResult)
@@ -149,7 +276,11 @@ if __name__ == '__main__':
     PIDList = []
     for _InstanceId in FilterSpaceName:
         _SpaceName = _InstanceId.split("~")[0]
-        ListInstanceIdType = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces/" + _SpaceName + "/instances/" + _InstanceId + "' -u " + ManagerUserName + ":" + ManagerPassword
+        if (ManagerUserName == "" and ManagerPassword == ""):
+            ListInstanceIdType = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces/" + _SpaceName + "/instances/" + _InstanceId + "'"
+        else:
+            ListInstanceIdType = "curl -X GET --header 'Accept: application/json' '" + ManagerIP + ":8090/v2/spaces/" + _SpaceName + "/instances/" + _InstanceId + "' -u " + ManagerUserName + ":" + ManagerPassword
+
         ListInstanceIdTypeResult = subprocess.check_output(ListInstanceIdType, shell=True, universal_newlines=True)
         ListInstanceIdTypeResultList = json.loads(ListInstanceIdTypeResult)
         if ListInstanceIdTypeResultList["mode"] == "BACKUP":
@@ -182,19 +313,19 @@ if __name__ == '__main__':
 
     SelectedPIDList = []
     if (PartitionsSelection.isdigit()):
-        if (int(PartitionsSelection) != len(PIDList)+1):
+        if (int(PartitionsSelection) != len(PIDList)):
             for partitions in range(len(PIDList)):
                 for key,value in (PIDList[partitions]).items():
-                  if (str(tempPartitions[int(PartitionsSelection)]) == key):
-                      SelectedPIDList.append(value)
+                    if (str(tempPartitions[int(PartitionsSelection)]) == key):
+                        SelectedPIDList.append(value)
         else:
             for partitions in range(len(PIDList)):
                 for key,value in (PIDList[partitions]).items():
                     SelectedPIDList.append(value)
     elif isinstance(PartitionsSelection,str) and str(len(PIDList)) in str(PartitionsSelection):
-            for partitions in range(len(PIDList)):
-                for key,value in (PIDList[partitions]).items():
-                    SelectedPIDList.append(value)
+        for partitions in range(len(PIDList)):
+            for key,value in (PIDList[partitions]).items():
+                SelectedPIDList.append(value)
     elif isinstance(PartitionsSelection,str) and "-" in PartitionsSelection and "," in PartitionsSelection:
         osPrint("Wrong Selection quiting code.")
         exit()
@@ -219,6 +350,7 @@ if __name__ == '__main__':
     createFolder(SpaceHeapAnalyzerJsonPath)
     createFolder(ReportsPath)
 
+    start_time = time.time()
     for PID in list(SelectedPIDList):
         if len(SelectedPIDList) > 0:
             for partitions in range(len(PIDList)):
@@ -230,3 +362,5 @@ if __name__ == '__main__':
             removeUnwantedFiles(JmapPath)
 
     generateReportsFromJson(JmapPath,SpaceHeapAnalyzerJsonPath,ReportsPath,DateTimeString)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
