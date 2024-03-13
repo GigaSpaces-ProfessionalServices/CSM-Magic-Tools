@@ -11,6 +11,7 @@ from datetime import datetime
 from platform import system
 from configobj import ConfigObj
 from statistics import mean
+import re
 
 if system() == 'Linux':
     CLRSCR = "clear"
@@ -209,6 +210,19 @@ def removeUnwantedFiles(_JmapPath):
                 shutil.rmtree(_JmapPath + _path)
 
 if __name__ == '__main__':
+    def module_exist(_module_name):
+        r = subprocess.run(
+            "pip list".split(),
+            stdout=subprocess.PIPE).stdout.decode().lower()
+        if re.search(_module_name.lower(), r):
+            return True
+        return False
+
+    modules = ['configobj','pandas','pyfiglet']
+    for module in modules:
+        if not module_exist(module):
+            subprocess.run([f'pip install {module}'], shell=True)
+
     clearScreen()
 
     AppConfigValues = input("Use Values from app.config [Y,n] - ")
@@ -216,6 +230,11 @@ if __name__ == '__main__':
         AppConfigValues = "Y"
 
     if AppConfigValues.lower() == "y":
+        sourceInstallerDirectory = str(os.getenv("ENV_CONFIG"))
+        file=sourceInstallerDirectory+'/app.config'
+        if os.path.exists(file) == False:
+            osPrint("app.config unavailable at " + sourceInstallerDirectory + " path")
+            exit()
         ManagerIP = readValueByConfigObj("app.spaceheapanalyzer.managerip")
         ManagerUserName = readValueByConfigObj("app.spaceheapanalyzer.managerusername")
         ManagerPassword = readValueByConfigObj("app.spaceheapanalyzer.managerpassword")
