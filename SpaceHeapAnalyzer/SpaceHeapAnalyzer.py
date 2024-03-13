@@ -109,8 +109,7 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
     writer = pd.ExcelWriter(_ReportsPath+"Combine_Report_"+_SpaceBackupJsonFileName+"_"+data["space"]["spaceName"]+"_"+_DateTimeString+".xlsx", engine='openpyxl')
 
     CombineReportDataFrame = pd.DataFrame(CombineReportJsonList)
-    CombineReportDataFrame = CombineReportDataFrame.sort_values('InstanceID')
-
+    CombineReportDataFrame = CombineReportDataFrame.sort_values(['InstanceID','TypeName', 'Property'],ascending = [True, True, True])
     CombineReportDataFrame.to_excel(writer,index=False,sheet_name="Summary report")
 
     CombineReportDataFrameList = CombineReportDataFrame['InstanceID'].tolist()
@@ -127,7 +126,6 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
         if len(AverageList) == 0:
             for i in _backupInstanceList:
                 AverageJson = {}
-                AverageJson["InstanceID"] = i["InstanceID"]
                 AverageJson["SpaceName"] = i["SpaceName"]
                 AverageJson["TypeName"] = i["TypeName"]
                 AverageJson["Property"] = i["Property"]
@@ -184,13 +182,13 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
     for _average in AverageList:
         _average["Size"] = None if len(_average["Size"]) == 0 else round(mean(_average["Size"]),2)
         _average["Index Size"] = None if len(_average["Index Size"]) == 0 else round(mean(_average["Index Size"]),2)
-        _average["NumOfEntries"] = None if len(_average["NumOfEntries"]) == 0 else round(mean(_average["NumOfEntries"]),2)
-        _average["NumOfProperties"] = None if len(_average["NumOfProperties"]) == 0 else round(mean(_average["NumOfProperties"]),2)
-        _average["TotalSize"] = None if len(_average["TotalSize"]) == 0 else round(mean(_average["TotalSize"]),2)
-        _average["UidSizeCounter"] = None if len(_average["UidSizeCounter"]) == 0 else round(mean(_average["UidSizeCounter"]),2)
-        _average["MetadataSizeCountes"] = None if len(_average["MetadataSizeCountes"]) == 0 else round(mean(_average["MetadataSizeCountes"]),2)
-        _average["RepeatedRefs"] = None if len(_average["RepeatedRefs"]) == 0 else round(mean(_average["RepeatedRefs"]),2)
-        _average["Nulls"] = None if len(_average["Nulls"]) == 0 else round(mean(_average["Nulls"]),2)
+        _average["NumOfEntries"] = None if len(_average["NumOfEntries"]) == 0 else sum(_average["NumOfEntries"])
+        _average["NumOfProperties"] = None if len(_average["NumOfProperties"]) == 0 else max(_average["NumOfProperties"])
+        _average["TotalSize"] = None if len(_average["TotalSize"]) == 0 else sum(_average["TotalSize"])
+        _average["UidSizeCounter"] = None if len(_average["UidSizeCounter"]) == 0 else sum(_average["UidSizeCounter"])
+        _average["MetadataSizeCountes"] = None if len(_average["MetadataSizeCountes"]) == 0 else sum(_average["MetadataSizeCountes"])
+        _average["RepeatedRefs"] = None if len(_average["RepeatedRefs"]) == 0 else sum(_average["RepeatedRefs"])
+        _average["Nulls"] = None if len(_average["Nulls"]) == 0 else sum(_average["Nulls"])
 
     AverageListDataFrame = pd.DataFrame(AverageList)
     AverageListDataFrame = AverageListDataFrame.sort_values(['TypeName', 'Property'],ascending = [True, True])
@@ -199,6 +197,7 @@ def generateReportsFromJson(_JmapPath,_SpaceHeapAnalyzerJsonPath,_ReportsPath,_D
 
     writer.close()
     osPrint("Reports generated successfully")
+
 
 def removeUnwantedFiles(_JmapPath):
     ListJmapFolder = os.listdir(_JmapPath)
