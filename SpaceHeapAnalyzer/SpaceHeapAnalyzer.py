@@ -212,7 +212,7 @@ def removeUnwantedFiles(_JmapPath):
 if __name__ == '__main__':
     def module_exist(_module_name):
         r = subprocess.run(
-            "pip list".split(),
+            "pip3 list".split(),
             stdout=subprocess.PIPE).stdout.decode().lower()
         if re.search(_module_name.lower(), r):
             return True
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     modules = ['configobj','pandas','pyfiglet']
     for module in modules:
         if not module_exist(module):
-            subprocess.run([f'pip install {module}'], shell=True)
+            subprocess.run([f'pip3 install {module}'], shell=True)
 
     clearScreen()
 
