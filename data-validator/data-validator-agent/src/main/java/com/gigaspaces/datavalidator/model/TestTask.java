@@ -12,6 +12,8 @@ import com.gigaspaces.metadata.SpacePropertyDescriptor;
 import com.gigaspaces.metadata.SpaceTypeDescriptor;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.ArrayList;
+import java.util.List;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.space.Space;
@@ -95,13 +97,16 @@ public class    TestTask  implements Serializable  {
                             }
                             Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
                             logger.debug("Admin API - Space: "+space.toString());
+                            List<String> spaceModes = new ArrayList<>();
                             for(SpaceInstance se: space.getInstances()){
                                 while(se.getMode().equals(SpaceMode.NONE)){
                                     Thread.sleep(400);
                                 }
+                                spaceModes.add(se.getMode().toString());
                             }
                             Map<String, Integer> countPerClassName = space.getRuntimeDetails().getCountPerClassName();
-                            logger.debug("Admin API - Table count: " + countPerClassName.get(measurement.getTableName()));
+                            logger.debug("All Space Instances Modes: "+spaceModes.toString());
+                            logger.debug("Admin API - Table Name: "+measurement.getTableName() + " Record Count: " + countPerClassName.get(measurement.getTableName()));
 
                             Integer count = countPerClassName.get(measurement.getTableName());
                             this.result = String.valueOf(count);
