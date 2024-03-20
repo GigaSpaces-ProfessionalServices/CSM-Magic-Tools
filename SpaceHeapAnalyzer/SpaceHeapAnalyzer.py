@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
     clearScreen()
 
-    AppConfigValues = input("Use Values from app.config [Y,n] - ")
+    AppConfigValues = input("Use Values from app.config [(Yes) Y/ (No) n] [Y] -  ")
     if AppConfigValues == "":
         AppConfigValues = "Y"
 
