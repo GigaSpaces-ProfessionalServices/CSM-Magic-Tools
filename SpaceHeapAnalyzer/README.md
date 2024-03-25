@@ -1,7 +1,29 @@
+## Space Heap Analyzer
 
-### app.config file path should be stored in - "ENV_CONFIG" environment variable
+This tool is written in Python and in order to run it you need to have Python installed + modules like pandas and more, 
+so please start by downloading Python.
 
-In app.config file store these 5 values for default configurations
+In case you will encounter missing modules while execute, you can download it afterwords. 
+
+#### Prerequisite
+* Python
+
+* Python modules (as you will see while execution)
+
+#### Configuration
+This can be run in 2 modes:
+* interactive
+* pre define configuration (app.config file)
+
+##### app.config
+In order to use this file you first need to configure the path for its location (without the file name).
+
+For example, if the file location is /Users/david/app.config set ENV_CONFIG env variable as follows:
+
+
+    export ENV_CONFIG=/Users/david/
+
+#### Here is the app.config content example:
 
 app.spaceheapanalyzer.managerip=localhost
 
@@ -9,13 +31,14 @@ app.spaceheapanalyzer.managerusername=username
 
 app.spaceheapanalyzer.managerpassword=password
     
-app.spaceheapanalyzer.jmappath=outputpath
+app.spaceheapanalyzer.jmappath=/Users/david/output
     
-app.spaceheapanalyzer.javajarpath=path/SpaceHeapAnalyzer-1.0-SNAPSHOT-jar-with-dependencies.jar
+app.spaceheapanalyzer.javajarpath=/Users/david/SpaceHeapAnalyzer-1.0-SNAPSHOT-jar-with-dependencies.jar
 
-    run ./SpaceHeapAnalyzer.py
+#### How to run?
+    python SpaceHeapAnalyzer.py
 
-### For Partition selection
+#### For Partition selection
 
 For single partition selection just enter specific number
 
