@@ -1,17 +1,22 @@
 ## Space Heap Analyzer
 
+This tool let you run heap analyze on the cluster backups containers
+
+and get a nice report in an Excel file in addition to json file.
+
+The cluster could be run on your local machine or remotely.
+
+It can also be a secured or non-secured Grid
+
+#### Prerequisite
+
 This tool is written in Python and in order to run it you need to have Python installed + modules like pandas and more, 
 so please start by downloading Python.
 
 In case you will encounter missing modules while execute, you can download it afterwords. 
 
-#### Prerequisite
-* Python
-
-* Python modules (as you will see while execution)
-
 #### Configuration
-This can be run in 2 modes:
+The tool can be run in 2 modes:
 * interactive
 * pre define configuration (app.config file)
 
