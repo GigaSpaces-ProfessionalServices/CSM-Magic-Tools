@@ -343,13 +343,13 @@ def check_connection(_server, _port, _timeout=5):
     return check_port == 0
 def readValueByConfigObj(key):
     sourceInstallerDirectory = str(os.getenv("ENV_CONFIG"))
-    logger.info("sourceInstallerDirectory:"+sourceInstallerDirectory)
+    # logger.info("sourceInstallerDirectory:"+sourceInstallerDirectory)
     file=sourceInstallerDirectory+'/app.config'
     config = ConfigObj(file)
     return  config.get(key)
 
 def executeLocalCommandAndGetOutput(commandToExecute):
-    logger.info("executeLocalCommandAndGetOutput() cmd :" + str(commandToExecute))
+    # logger.info("executeLocalCommandAndGetOutput() cmd :" + str(commandToExecute))
     cmd = commandToExecute
     cmdArray = cmd.split(" ")
     #process = subprocess.Popen(cmdArray, stdout=subprocess.PIPE)
@@ -481,20 +481,21 @@ def run_services_polling(_service_name=None, _step=None):
         colorama.init(autoreset=True)
         svc_status_print = f"{f'{Fore.RED}Failed':<20}"  + u'[\u2717]'
         svc_status = 'Failed'
-        _timeout = 3
+        _timeout = 10
 
         # get nb domain
         nb_domain = get_nb_domain()
 
         with open(ms_config, 'r') as r:
             _lines = r.readlines()
+            enumerate = 1
             for _l in _lines:
                 l = _l.strip()
                 if l == '': continue
                 _url_elements = l.split('/')[3::]
                 _this_service_name = _url_elements[0]
                 _url = '/'.join(_url_elements)
-                _this_uri = f"'https://{nb_domain}:8443/{_url}'"
+                _this_uri = f'"https://{nb_domain}:8443/{_url}"'
                 if _service_name != None and _this_service_name != _service_name:
                     continue
                 if is_env_secured():
@@ -508,7 +509,7 @@ def run_services_polling(_service_name=None, _step=None):
                     print(f"service name = {_this_service_name}")
                     print(f"cmd = {cmd}")
                     print(f"response = {_response}")
-                print_line = f"polling service '{_this_service_name}':"
+                print_line = f"{str(enumerate + 1)} - polling service '{_this_service_name}':"
                 if f"x{_response}x" == 'xx' or _response == '{"res":[]}':
                     svc_status = 'No Data'
                     svc_status_print = f"{Fore.RED + svc_status:<20}" + u'[\u2717]'
