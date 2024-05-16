@@ -509,6 +509,7 @@ def run_services_polling(_service_name=None, _step=None):
                     print(f"service name = {_this_service_name}")
                     print(f"cmd = {cmd}")
                     print(f"response = {_response}")
+                enumerate = enumerate + 1
                 print_line = f"{str(enumerate + 1)} - polling service '{_this_service_name}':"
                 if f"x{_response}x" == 'xx' or _response == '{"res":[]}':
                     svc_status = 'No Data'
