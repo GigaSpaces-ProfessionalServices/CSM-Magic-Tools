@@ -488,7 +488,7 @@ def run_services_polling(_service_name=None, _step=None):
 
         with open(ms_config, 'r') as r:
             _lines = r.readlines()
-            enumerate = 1
+            enumerate = 0
             for _l in _lines:
                 l = _l.strip()
                 if l == '': continue
