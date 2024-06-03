@@ -97,7 +97,7 @@ list_of_checks() {
 
   1   check_ping
   2   check_ssh
-  3   check_disk_usage_all
+  3   check_disk_usage_all [<percent>]                    # Specify percent - default is 70
   4   show_primary_backup
   5   service_hc
   6   service_query
@@ -110,7 +110,7 @@ list_of_checks() {
   13  run_pipelines_bg ; show_pipelines_bg
   14  check_notifiers
   15  list_service_names
-  16  query_one_service <service name>                      $(basename $0) -c 16 program_study 
+  16  query_one_service <service name>                    # $(basename $0) -c 16 program_study 
   17  check_gigashare
   18  person_schedule_query_2
   19  check_nba_services
@@ -124,7 +124,7 @@ do_one_check() {
   case $2 in
     "1")  echo ; check_ping ;;
     "2")  echo ; check_ssh ;;
-    "3")  check_disk_usage_all ;;
+    "3")  shift 2 ; check_disk_usage_all "${1}" ;;
     "4")  show_primary_backup ;;
     "5")  service_hc ;;
     "6")  service_query ;;
@@ -305,12 +305,35 @@ check_all_sanity_of_today() {
   grep $(date "+%Y-%m-%d") /gigalogs/sanity/sanity.log
 }
 
-check_disk_usage_all() {
-  #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to Show DISK USAGE" ;echo ; }
-  echo -e "\n==================== Show DISK USAGE on all servers' partitions above ${_DISK_USAGE_PERCENT}%\n"
-  runhosts.sh -df $_DISK_USAGE_PERCENT
-  sleep $_SLEEP_AFTER
+
+check_disk_usage() {
+  perc=$2
+  ssh "$1" 'bash -s' "${perc}" <<-'ENDSSH'
+    perc=$1
+    # Run df -h to get disk usage information, then use awk to process the output
+    df -h | awk -v threshold="${perc}" '(NR > 1) && ($5+0 > threshold) {printf "%-20s %-40s %-10s %-10s\n", "'$(hostname)'", $6, $5, $2}'
+ENDSSH
 }
+
+check_disk_usage_all() {
+  if [[ -n $1 ]] ; then
+    _DISK_USAGE_PERCENT=$1
+  fi
+  local usage_threshold=$_DISK_USAGE_PERCENT
+  echo -e "\n==================== Show DISK USAGE on all servers' partitions above ${_DISK_USAGE_PERCENT}%\n"
+  # Print the header of the table
+  printf "%-20s %-40s %-10s %-10s\n" "Hostname" "Partition" "Usage (%)" "Total Size"
+  for h in $(runall -A -l | grep -v ====) ; do
+    check_disk_usage $h "${usage_threshold}" | grep -v 'docker\|container'
+  done
+}
+
+#check_disk_usage_all() {
+#  #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to Show DISK USAGE" ;echo ; }
+#  echo -e "\n==================== Show DISK USAGE on all servers' partitions above ${_DISK_USAGE_PERCENT}%\n"
+#  runhosts.sh -df $_DISK_USAGE_PERCENT
+#  sleep $_SLEEP_AFTER
+#}
 
 finish_checking_env() {
   echo -e "===================="
