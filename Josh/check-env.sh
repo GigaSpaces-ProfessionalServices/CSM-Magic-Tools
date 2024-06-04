@@ -17,6 +17,7 @@ _MODE="daily"
 _EMPTY=""
 _VERBOSE=""
 _MANAGERS=( $( runall -m -l | grep -v === ) )
+_SPACE_NAME=dih-tau-service
 }
 
 usage() {
@@ -114,6 +115,8 @@ list_of_checks() {
   17  check_gigashare
   18  person_schedule_query_2
   19  check_nba_services
+  20  check_sync_of_managers
+  21  check_spacedeck_on_managers
 
 
 EOF
@@ -141,6 +144,8 @@ do_one_check() {
     "17") check_gigashare ;;
     "18") person_schedule_query_2 ;;
     "19") check_nba_services ;;
+    "20") check_sync_of_managers ;;
+    "21") check_spacedeck_on_managers ;;
     *)    echo -e "\nChoice unknown" ;;
   esac
   echo
@@ -488,6 +493,33 @@ check_nba_services() {
   [[ -z $result ]] && echo Success || { echo -e Failure ; echo "${result}" ; }
 }
 
+check_sync_of_managers() {
+  echo -e "\n==================== Check synchronization between managers.\n"
+  echo -ne "manager sync: "
+  # In TEST env e.g.: space_pus=32, space_containers=102
+  local mng sync_failed=0 
+  local -A space_pus space_containers
+  for mng in ${_MANAGERS[@]} ; do 
+    space_pus["${mng}"]="$(curl -sk -u "${_USER}:${_PASS}" http://${mng}:8090/v2/pus/$_SPACE_NAME | jq -r '.instances[]' | wc -l)"
+    space_containers["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | wc -l)"
+    [[ space_pus["${_MANAGERS[0]}"] -ne space_pus["${mng}"] ]] && sync_failed=1
+    [[ space_containers["${_MANAGERS[0]}"] -ne space_containers["${mng}"] ]] && sync_failed=1
+  done
+  [[ $sync_failed -eq 0 ]] && { echo Success ; return 0 ; }
+    echo failure
+    declare -p space_pus space_containers
+}
+
+check_spacedeck_on_managers() {
+  echo -e "\n==================== Check on which managers SPACEDECK is running.\n"
+  for mng in ${_MANAGERS[@]} ; do
+    local host_name=$(host $mng | awk '{print $NF}' | sed 's/\.$//')
+    echo -en "spacedeck ${host_name%%\.*}: "
+    curl -sLI http://${mng}:4200 |grep ' 200 OK' >/dev/null 2>&1
+    [[ $? -eq 0 ]] && echo -e "UP" || echo -e "DOWN"
+  done
+}
+
 person_schedule_query_2() {
   case ${ENV_NAME} in
     "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;;
@@ -512,6 +544,8 @@ do_daily() {
   [[ "${ENV_NAME}" != "TAUG" ]] && run_pipelines_bg
   check_ping
   check_nba_services
+  check_spacedeck_on_managers
+  check_sync_of_managers
   check_notifiers
   show_primary_backup
   service_hc
