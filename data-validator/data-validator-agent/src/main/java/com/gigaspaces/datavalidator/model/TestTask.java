@@ -96,6 +96,7 @@ public class    TestTask  implements Serializable  {
                                 return this.result;
                             }
                             Space space = admin.getSpaces().waitFor(measurement.getSchemaName(),1, TimeUnit.MINUTES);
+                            space.waitFor(space.getNumberOfInstances(), SpaceMode.PRIMARY, 20, TimeUnit.SECONDS);
                             logger.debug("Admin API - Space: "+space.toString());
                             List<String> spaceModes = new ArrayList<>();
                             Thread.sleep(800);
