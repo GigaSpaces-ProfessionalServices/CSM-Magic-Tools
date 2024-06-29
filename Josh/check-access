@@ -14,7 +14,12 @@ if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
 else
   _PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
 fi
-
+case $ENV_NAME in 
+  "TAUG") _TAU_ENV=DEV ;;
+  "TAUS") _TAU_ENV=TEST ;;
+  "TAUP") _TAU_ENV=PROD ;;
+  *) echo "Wrong env" ; exit 1 ;;
+esac
 _ALL_MANAGER_SERVERS=( $(runall -m -l | grep -v ===) )       # List ODS managers
 _STAT_DATE=""           # The DATE to get stats for
 _EXECUTE_DATE=""
@@ -110,11 +115,10 @@ retrieve_gets_for_date() {
   # Put remote nba servers' access.log files for date-hour in local /tmp
   for nba in $(runall -na -l|grep -v ===) ; do
     nba_host=$(host ${nba}|awk '{print $NF}'|sed 's/\.$//')
-    log_file="/tmp/check-access-${_STAT_DATE//\//-}-${nba_host}"
+    log_file="/tmp/${$}-check-access-${_STAT_DATE//\//-}-${nba_host}"
     _LOGFILES+=( "${log_file}" )
     ssh $nba 'grep  "\['${_STAT_DATE}':" /gigalogs/nginx/access.log | grep -v "actuator/health"' > $log_file
   done
-
 }
 
 check_gets_per_hour_for_all_services() {
@@ -186,6 +190,45 @@ create_files_for_response_time_for_all_services() {
     > $resp_file
     grep "${s}_service" ${_LOGFILES[@]} | grep '"GET.*" 200 ' | awk '{print $NF}' >> $resp_file
   done
+}
+
+get_avg_of_all_service_avgs_per_hour_for_date() {
+  nba_count=$(runall -na -l | grep -v == | wc -l)     # Get number of nba servers
+  get_stat_date
+  retrieve_gets_for_date    # Bring GETs locally for date - e.g. /tmp/check-access-25-Feb-2024-gsprod-manager1
+  local tmp_svc hours hour tmp_svc_resp_sum 
+  local tmp_svc_resp_list       # holds all responses for one hour
+  local tmp_svc_resp_num=0      # holds num of given service responses
+  local num_of_services=0   # num of services with avg > 0
+  local tmp_svc_avg=0       # holds avg for given service
+  local svc_avg_sum=0       # holds sum of all service avgs
+  local all_svc_avg=0       # holds the avg of all services's avgs
+  local avg_of_all_svc_avg      # avg of all service avgs
+  echo -e "\n====================$(date) AVG of all services' AVGs per hour for ${_STAT_DATE} on ${_TAU_ENV} env:"
+  hours=$(for i in {0..23} ; do printf "%02d\n" "${i}" ; done)
+  for hour in $hours ; do
+    svc_avg_sum=0
+    num_of_services=0
+    for tmp_svc in ${_SERVICE_NAMES[@]} ; do
+      tmp_svc_resp_list="$(grep "${tmp_svc}_service" ${_LOGFILES[@]} | grep "\[${_STAT_DATE}:${hour}" | grep '"GET.*" 200 ' | awk '{print $NF}')"
+      tmp_svc_resp_num=0
+      tmp_svc_resp_num=$(echo $tmp_svc_resp_list | wc -w)
+      [[ $tmp_svc_resp_num -le 0 ]] && continue
+      (( num_of_services++ )) # increase by one if service has response
+      tmp_svc_resp_sum=0                   # sum of milliseconds
+      for resp in $tmp_svc_resp_list ; do
+        resp_int=$( echo " $resp * 1000 / 1 " | bc )
+        (( tmp_svc_resp_sum+=resp_int ))
+      done
+      tmp_svc_avg=$(( tmp_svc_resp_sum / tmp_svc_resp_num ))
+      (( svc_avg_sum+=tmp_svc_avg ))
+      #echo " svc_avg_sum+=$svc_avg_sum --- tmp_svc_avg=$tmp_svc_avg = tmp_svc_resp_sum=$tmp_svc_resp_sum / tmp_svc_resp_num=$tmp_svc_resp_num "
+    done
+    [[ $num_of_services -le 0 ]] && continue
+    (( avg_of_all_svc_avg=$(( svc_avg_sum / num_of_services )) ))
+    echo -e "${_STAT_DATE}-${hour}:00 ${avg_of_all_svc_avg}"
+  done
+  cd /tmp ; rm -f ${_LOGFILES[@]}
 }
 
 # Find min, max and mid for GETs response times
@@ -489,6 +532,7 @@ usage() {
     -grespall <seconds>                                 # GETs ALL SERVICES - Response times above <seconds>.
     -gday                                               # Place in localhost /tmp all GETs for specified date (e.g. $(date -d yesterday +%d/%b/%Y))
     -gsallresp                                          # GET ALL SERVICES: Response time stats (e.g. /tmp/person_tziun_kurs-response-times-09-May-2024)
+    -gstallrespavg                                      # GET AVG RESP OF ALL SERVICES' AVG RESP PER HR
     
     "Execute took" from service logs
     --------------------------------
@@ -562,6 +606,9 @@ do_menu() {
         create_files_for_response_time_for_all_services
         get_avg_min_max_mid_for_response_time_of_all_services
         get_non_200_response_codes_count
+        ;;
+      "-gstallrespavg") 
+        get_avg_of_all_service_avgs_per_hour_for_date
         ;;
       "-hourlyexec")
         shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
