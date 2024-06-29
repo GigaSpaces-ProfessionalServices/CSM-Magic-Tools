@@ -1,0 +1,609 @@
+#!/bin/bash
+
+# access.log example row:
+# [24/Feb/2024:19:05:40 +0200] 132.66.21.4 18.196.128.13 prod "GET /get_internal_id_service/v1/u1?IDNO=314809021&access_token=62c3956e-4789-4e9b-995b-fd3708551a1c-1708797940 HTTP/1.1" 200 42 "-" "OutSystemsPlatform" "-" 0.038 0.037
+
+do_env() {
+# The user and pass used in curl command
+[[ $(which jq > /dev/null 2>&1 ; echo $?) -ne 0 ]] && { echo "Package \"jq\" not installed." ; exit 1 ; }
+# Get user/pass creds
+_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+  _VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+  _PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${_VAULT_PASS})
+else
+  _PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
+fi
+
+_ALL_MANAGER_SERVERS=( $(runall -m -l | grep -v ===) )       # List ODS managers
+_STAT_DATE=""           # The DATE to get stats for
+_EXECUTE_DATE=""
+_HOUR=""                # HOUR to check
+_MINUTE=""
+_SERVICE_NAME=""
+_YESTERDAY=""
+_TOTAL_SERVICE_REQUESTS_FOR_DATE=0      # Total gets for one service  
+_SERVICE_NAMES=( $(ls -1 /giga/deployment/services)  )
+_LOGFILES=()
+_RESPONSEFILES=()
+_MAX_EXEC_TOOK_SPACE=""
+_MAX_EXEC_TOOK=0
+}
+
+# date format for nginx: 24/Feb/2024
+check_input() {
+  # Split the input date into day, month, and year
+  local day month year
+  IFS='/' read -r day month year <<< "${1}"
+  # date must be in correct format
+  if ! date -d "$month $day $year" "+%b %d %Y" > /dev/null ; then return 1 ; fi
+  # day must be 2 digits
+  [[ ! $day =~ ^[0-9][0-9]$ ]] && return 1
+  return 0
+}
+
+check_service_name() {
+  echo ${_SERVICE_NAMES[@]} | grep -w ${_SERVICE_NAME} >/dev/null 2>&1
+  [[ $? -ne 0 ]] && { echo -e "\nService name ${_SERVICE_NAME} does not exist\n" ; exit 1 ; }
+}
+
+get_stat_date() {
+  [[ -n $_STAT_DATE ]] && return 0
+  if [[ -n $_YESTERDAY ]] ; then          # Run quiet - check for yesterday's date
+    _STAT_DATE=$(LC_TIME="en_US.UTF-8" date --date="yesterday" +%d/%b/%Y)
+    echo
+  else
+    _STAT_DATE=$(date +%d/%b/%Y)
+    echo -e "\nShowing service requests for date: ${_STAT_DATE}"
+    # Loop to process non-empty input 
+    while true ; do
+      read -ep "Enter new date or press ENTER to use today's date: " new_stat_date
+      if [[ "${new_stat_date}" == "" ]] ; then
+        break
+      else
+        check_input "${new_stat_date}"
+        [[ $? -ne 0 ]] && { echo -e "\nInput \"${new_stat_date}\" is in wrong format.\n" ; continue ; }
+        _STAT_DATE=$new_stat_date
+        break
+      fi
+    done
+  fi
+}
+
+check_8hr_total_gets() {
+  get_stat_date
+  echo -e "\n$(date) Display number of GET's on $_STAT_DATE for all Services for every 8 hrs."
+  local total_service_requests_for_date=0
+
+  sum00_07=0
+  for nba in $(runall -na -l|grep -v ===) ; do 
+    server_request=$(ssh $nba 'sum00_07=0 ; for h in 00 01 02 03 04 05 06 07 ; do (( sum00_07 += $(grep "\['${_STAT_DATE//\"/}':${h}:[0-9][0-9]:[0-9][0-9]" /gigalogs/nginx/access.log | grep -v "actuator/health" | wc -l) )) ; done ; echo $sum00_07')
+    (( sum00_07 += server_request ))
+  done
+  echo service requests from 00-07 = $sum00_07
+  (( total_service_requests_for_date += sum00_07))
+
+  sum08_15=0
+  for nba in $(runall -na -l|grep -v ===) ; do 
+    server_request=$(ssh $nba 'sum08_15=0 ; for h in 08 09 10 11 12 13 14 15 ; do (( sum08_15 += $(grep "\['${_STAT_DATE//\"/}':${h}:[0-9][0-9]:[0-9][0-9]" /gigalogs/nginx/access.log | grep -v "actuator/health" | wc -l) )) ; done ; echo $sum08_15')
+    (( sum08_15 += server_request ))
+  done
+  echo service requests from 08-15 = $sum08_15
+  (( total_service_requests_for_date += sum08_15 ))
+
+  sum16_23=0
+  for nba in $(runall -na -l|grep -v ===) ; do 
+    server_request=$(ssh $nba 'sum16_23=0 ; for h in 16 17 18 19 20 21 22 23 ; do (( sum16_23 += $(grep "\['${_STAT_DATE//\"/}':${h}:[0-9][0-9]:[0-9][0-9]" /gigalogs/nginx/access.log | grep -v "actuator/health" | wc -l) )) ; done ; echo $sum16_23')
+    (( sum16_23 += server_request ))
+  done
+  echo service requests from 16-23 = $sum16_23
+  (( total_service_requests_for_date += sum16_23 ))
+
+  echo -e "Total service requests for date: ${_STAT_DATE}: ${total_service_requests_for_date}\n"
+}
+
+# Place all GETs for specified date (e.g. 25/Feb/2024) in localhost /tmp
+retrieve_gets_for_date() {
+  get_stat_date
+  local nba nba_host log_file
+  unset _LOGFILES
+  # Put remote nba servers' access.log files for date-hour in local /tmp
+  for nba in $(runall -na -l|grep -v ===) ; do
+    nba_host=$(host ${nba}|awk '{print $NF}'|sed 's/\.$//')
+    log_file="/tmp/check-access-${_STAT_DATE//\//-}-${nba_host}"
+    _LOGFILES+=( "${log_file}" )
+    ssh $nba 'grep  "\['${_STAT_DATE}':" /gigalogs/nginx/access.log | grep -v "actuator/health"' > $log_file
+  done
+
+}
+
+check_gets_per_hour_for_all_services() {
+  get_stat_date
+  retrieve_gets_for_date    # Bring gets locally for date to /tmp - e.g. /tmp/check-access-25-Feb-2024-gsprod-manager1
+  echo 
+  local nba_hr_sum=0 nba_hr_sum_total=0 log_file 
+  # Process for each minute
+  local hours=$(for i in {0..23}; do printf "%02d\n" $i; done)
+  for hr in $hours ; do
+    nba_hr_sum=0 log_file=""
+    for logfile in ${_LOGFILES[@]} ; do
+      (( nba_hr_sum+=$(grep  '\['${_STAT_DATE}':'${hr}':.*GET' $logfile | wc -l) ))
+    done
+    [[ $nba_hr_sum -ne 0 ]] && printf "%-10s%7d\n" "Hour ${hr}:" "${nba_hr_sum}"
+    (( nba_hr_sum_total+=nba_hr_sum ))
+  done
+  echo -e "Total GET's for all services for day ${_STAT_DATE}: ${nba_hr_sum_total}\n"
+}
+
+get_upstream_response_time_for_all_services() {
+  if [[ $# -gt 0 ]] ; then local sec=$1 ; else echo -e "\nExit - Missing value to compare against upstream_response_time.\n" ; exit 1 ; fi
+  nba_count=$(runall -na -l | grep -v == | wc -l)     # Get number of nba servers
+  get_stat_date
+  retrieve_gets_for_date    # Bring GETs locally for date - e.g. /tmp/check-access-25-Feb-2024-gsprod-manager1
+  local resp_file=/tmp/upstream_response_time-lines-${_STAT_DATE//\//-}   # Will contain lines where response times are above "sec"
+  > $resp_file
+  local total_service_sum=0                     # hold total count for day
+  for s in ${_SERVICE_NAMES[@]} ; do
+    local service_sum=0                         # hold count sum for current service
+    local nba_server_idx=0                      # nba server index - 0 for first nba server
+    unset nba_server ; declare -a nba_server    # nba server array - holds count for each nba server
+    local service_hits=0                        # Counts total hits for service for day
+    for logfile in ${_LOGFILES[@]} ; do
+      while read line ; do 
+        #read -p "press" < /dev/tty
+        (( service_hits++ ))
+        result=$(echo "${line##* } > ${sec}" | bc)
+        if [ "${result}" -eq 1 ] ; then echo "${line}" >> $resp_file ; (( nba_server[nba_server_idx]++ )) ; (( service_sum++ )) ; fi 
+      done < <(grep "/${s}_service/" ${logfile})
+      (( nba_server_idx++ ))                # nba server index - increment for next nba server
+    done
+    if [[ $service_sum -gt 0 ]] ; then
+      local percent=$( printf "%.1f\n" "$(echo "scale=1 ; ${service_sum} * 100 / ${service_hits}" | bc -l )" )
+      echo -e "\n** ${s} **: Total upstream_response_time above ${sec} seconds: ${service_sum}, percent: ${percent}%, total hits: ${service_hits}"
+    fi
+    # print count for response times above "sec" for each manager
+    local nba_server_idx=0
+    for nba in $(runall -na -l|grep -v ===) ; do
+      nba_host=$(host ${nba}|awk '{print $NF}'|sed 's/\.$//')
+      [[ ${nba_server[${nba_server_idx}]} != "" ]] && echo "$nba_host count: ${nba_server[${nba_server_idx}]}"
+      (( nba_server_idx++ ))
+    done
+    (( total_service_sum+=service_sum ))
+  done
+  cat $resp_file
+  echo -e "\n====================$(date) Total upstream_response_time above ${sec} seconds for day ${_STAT_DATE}: ${total_service_sum}"
+}
+
+create_files_for_response_time_for_all_services() {
+  nba_count=$(runall -na -l | grep -v == | wc -l)     # Get number of nba servers
+  get_stat_date
+  retrieve_gets_for_date    # Bring GETs locally for date - e.g. /tmp/check-access-25-Feb-2024-gsprod-manager1
+  local s logfile resp_file
+  cd /tmp
+  for s in ${_SERVICE_NAMES[@]} ; do
+    resp_file=${s}-response-times-${_STAT_DATE//\//-}
+    _RESPONSEFILES+=( "${resp_file}" )
+    > $resp_file
+    grep "${s}_service" ${_LOGFILES[@]} | grep '"GET.*" 200 ' | awk '{print $NF}' >> $resp_file
+  done
+}
+
+# Find min, max and mid for GETs response times
+get_min_max_mid_for_response_time() {
+# Initialize min and max with the first number in the file
+read -r num < "${1}"
+min=$num
+max=$num
+# Read the remaining numbers from the file, one per line
+while IFS= read -r num
+do
+  # Update min if the current number is less than min
+  [[ $num < $min ]] && min=$num
+  # Update max if the current number is greater than max
+  [[ $num > $max ]] && max=$num
+done < "${1}"
+# Calculate the midpoint
+midpoint=$( echo " scale=3 ; $min + $max / 2 " | bc -l )  #$(( (min + max) / 2 ))
+# Output the min, max, and midpoint
+printf "%s%.3f\n" "Min is: " "${min}"
+printf "%s%.3f\n" "Max is: " "${max}"
+printf "%s%.3f\n" "Mid is: " "${midpoint}"
+}
+
+# Find avg for GETs response times
+get_avg_for_response_time() {
+  cd /tmp
+  [[ -z $1 || ! -f $1 ]] && { echo file argument missing or file does not exist ; return ; }
+  # Initialize sum and count
+  sum=0
+  count=0
+  # Read numbers from the file, one per line
+  while IFS= read -r num
+  do
+    # Add the current number to sum
+    sum=$( echo " $sum + $num " | bc -l )   #$((sum + num))
+    # Increment count
+    count=$((count + 1))
+  done < "$1"
+  # Check if count is zero to avoid division by zero
+  [[ $count -eq 0 ]] && { echo 0 ; return ; }
+  # Calculate the average
+  average=$( echo " scale=3 ; $sum / $count " | bc -l )
+  #echo sum=$sum count=$count average=$average
+  # Output the average
+  printf "%s%.3f\n" "Avg is: " "${average}"
+}
+
+get_avg_min_max_mid_for_response_time_of_all_services() {
+  cd /tmp
+  for r in ${_RESPONSEFILES[@]} ; do
+    [[ $( cat $r 2>/dev/null | wc -l ) -eq 0 ]] && continue
+    echo ===== service ${r%%-*}: 
+    echo -e "GETs count: $(cat $r  | wc -l)"
+    get_avg_for_response_time $r
+    get_min_max_mid_for_response_time $r
+  done
+}
+
+get_non_200_response_codes_count() {
+  echo ========== Total non 200 response GETs: $(grep -v '"GET.*" 200 ' ${_LOGFILES[@]} | wc -l )
+}
+
+# access.log example: [25/Feb/2024:10:16:43 +0200] 132.66.21.4 18.196.128.13 amoll "GET /person_schedule_service/v1/u1
+check_gets_per_minute_for_all_services() {
+  get_stat_date
+  local minutes nba_min_sum=0 nba_min_sum_total=0 log_file logfiles=()
+  [[ -z $_HOUR ]] && read -p "Give 2 digit hour (e.g. 19) to display GET's: " _HOUR
+  [[ -z $_HOUR ]] && { echo -e "The HOUR is being set to 10" ; _HOUR=10 ; }
+  echo -e "\n$(date) Display number of GET's on date: $_STAT_DATE hour: $_HOUR for all Services for every minute."
+  # Put remote nba servers' access.log files for date-hour in local /tmp
+  for nba in $(runall -na -l|grep -v ===) ; do
+    nba_host=$(host ${nba}|awk '{print $NF}'|sed 's/\.$//')
+    log_file="/tmp/check-access-${_STAT_DATE//\//-}-${_HOUR}-${nba_host}"
+    logfiles+=( "${log_file}" )
+    ssh $nba 'grep  "\['${_STAT_DATE}':'${_HOUR}':[0-9][0-9]:[0-9][0-9]" /gigalogs/nginx/access.log | grep -v "actuator/health"' > $log_file
+  done
+  # Process for each minute
+  minutes=$(for i in {0..59}; do printf "%02d\n" $i; done)
+  for m in $minutes ; do
+    nba_min_sum=0 log_file=""
+    for logfile in ${logfiles[@]} ; do      
+      (( nba_min_sum+=$(grep  '\['${_STAT_DATE}':'${_HOUR}':'${m}':[0-9][0-9].*GET' $logfile | wc -l) ))
+    done
+    [[ $nba_min_sum -ne 0 ]] && echo -e "minute ${m}: ${nba_min_sum}"
+    (( nba_min_sum_total+=nba_min_sum ))
+  done
+  echo -e "Total GET's for hour ${_HOUR}: ${nba_min_sum_total}"
+}
+
+function check_gets_per_second_for_all_services () {
+  [[ -z $1 ]] && { echo -e "\nMust provide minute parameter.\n" ; exit 1 ; }
+  _MINUTE=$1
+  get_stat_date
+  local s nba nba_host seconds nba_sec_sum=0 nba_sec_sum_total=0 log_file logfiles=()
+  [[ -z $_HOUR ]] && read -p "Give 2 digit hour (e.g. 19) to display GET's or press ENTER for 20:00: " _HOUR
+  [[ -z $_HOUR ]] && { echo -e "The HOUR is being set to 20" ; _HOUR=20 ; }
+  echo -e "\n$(date) Display number of GET's on Date: $_STAT_DATE, Time ${_HOUR}:${_MINUTE}, for all Services for every second."
+  # Put remote nba servers' access.log files for date-hour in local /tmp
+  for nba in $(runall -na -l|grep -v ===) ; do
+    nba_host=$(host ${nba}|awk '{print $NF}'|sed 's/\.$//')
+    log_file="/tmp/check-access-${_STAT_DATE//\//-}-${_HOUR}-${_MINUTE}-${nba_host}"
+    logfiles+=( "${log_file}" )
+    ssh $nba 'grep  "\['${_STAT_DATE}':'${_HOUR}':'${_MINUTE}':[0-9][0-9]" /gigalogs/nginx/access.log | grep -v "actuator/health"' > $log_file
+  done
+  # Process for each second
+  seconds=$(for i in {0..59}; do printf "%02d\n" $i; done)
+  for s in $seconds ; do
+    nba_min_sum=0 log_file=""
+    for logfile in ${logfiles[@]} ; do
+      (( nba_min_sum+=$(grep  '\['${_STAT_DATE}':'${_HOUR}':'${_MINUTE}':'${s}'.*GET' $logfile | wc -l) ))
+    done
+    #[[ $nba_min_sum -ne 0 ]] && echo -e "second ${s}: ${nba_min_sum}"
+    echo -e "second ${s}: ${nba_min_sum}"
+    (( nba_sec_sum_total+=nba_min_sum ))
+  done
+  echo -e "Date ${_STAT_DATE}, Time ${_HOUR}:${_MINUTE}, Total GET's: ${nba_sec_sum_total}"
+}
+
+function check_gets_per_second_for_all_services_muiltiple_seconds () {
+  local sec
+  for sec in "${@}" ; do
+    check_gets_per_second_for_all_services "${sec}"
+  done | grep -v 'GET\|^[[:space:]]*$' |awk '{print $NF}'
+}
+
+check_gets_per_hour_for_one_service() {
+  [[ -z $_STAT_DATE ]] && get_stat_date
+  echo -e "\n$(date) Hourly number of GET's for service: ${_SERVICE_NAME}, for date: ${_STAT_DATE}"
+  _TOTAL_SERVICE_REQUESTS_FOR_DATE=0
+  echo -e "Hour GET's\n---- ------"
+  local nba nba_host logfile logfiles=() 
+  # Put GET's from each NBAPP in local /tmp
+  for nba in $(runall -na -l|grep -v ===) ; do
+    nba_host=$(host ${nba} | awk '{print $NF}' | sed 's/\.$//')
+    log_file="/tmp/check-access-gets-per-hour-for-service-${_SERVICE_NAME}-${_STAT_DATE//\//-}-${nba_host}"
+    logfiles+=( "${log_file}" )
+    ssh $nba 'grep  "\['${_STAT_DATE}':[0-9][0-9]:[0-9][0-9]:[0-9][0-9].*GET /'${_SERVICE_NAME}'" /gigalogs/nginx/access.log | grep -v "actuator/health" ' > $log_file
+  done
+  local hours h nba_hr_sum=0 nba_hr_sum_total=0
+  hours=$(for i in {0..23} ; do printf "%02d\n" $i ; done)
+  # Count per hour and total
+  for h in $hours ; do
+    nba_hr_sum=0 log_file=""
+    for logfile in ${logfiles[@]} ; do
+      (( nba_hr_sum+=$(grep  '\['${_STAT_DATE}':'${h}':[0-9][0-9]:[0-9][0-9]' $logfile | wc -l) ))
+    done
+    [[ $nba_hr_sum -ne 0 ]] && printf "%-5s%6s\n" "${h}:" "${nba_hr_sum}"
+    (( nba_hr_sum_total+=nba_hr_sum ))
+  done
+  _TOTAL_SERVICE_REQUESTS_FOR_DATE=${nba_hr_sum_total}
+  echo -e "Total gets on date ${_STAT_DATE} for ${_SERVICE_NAME}: ${nba_hr_sum_total}"
+}
+
+check_gets_per_hour_for_every_service() {
+  local total_gets_for_all_services=0
+  for s in ${_SERVICE_NAMES[@]} ; do 
+    _SERVICE_NAME=${s} 
+    check_gets_per_hour_for_one_service    
+    (( total_gets_for_all_services+=_TOTAL_SERVICE_REQUESTS_FOR_DATE ))
+  done
+  echo -e "\nFor date: ${_STAT_DATE}, final sum total GETs for all services: ${total_gets_for_all_services}\n"
+}
+
+list_space_servers_containing_service_instance() {
+  local space_servers=$(curl -s -u ${_USER}:${_PASS} "http://${_ALL_MANAGER_SERVERS[0]}:8090/v2/containers" | jq -r --arg srv_name "${_SERVICE_NAME}" '.[] | select(.instances[] | contains($srv_name)) | .id')
+  for s in $space_servers ; do echo ${s} ; done
+}
+
+get_total_service_executes_for_date_get_logs() {
+  local space_servers_and_service_pids=$( $(basename $0) -lspc "${_SERVICE_NAME}" )
+  [[ $space_servers_and_service_pids == "" ]] && return 1
+  get_stat_date
+  local day month year
+  IFS='/' read -r day month year <<< "${_STAT_DATE}"
+  _EXECUTE_DATE=$(date -d "$month $day $year" "+%Y-%m-%d")   # Turns date "Feb 21 2024" into "2024-02-21"
+  # Get all executes for a service on all instances
+  #local max_exec_took_space max_exec_took                 # hold space server name and its max "Execute took" time
+  local space_host service_pid host_pid log_file max_exec_took
+  _MAX_EXEC_TOOK=0
+  _LOGFILES=()
+  for host_pid in ${space_servers_and_service_pids} ; do
+    space_host="${host_pid%~*}"
+    service_pid="${host_pid#*~}"
+    log_file="/tmp/EXECUTE-TOOK-${_SERVICE_NAME}-${_EXECUTE_DATE}-${space_host}"
+    _LOGFILES+=( "${log_file}" )
+    ssh $space_host 'cd /gigalogs ; ls -1tr *-'${service_pid}'.log | xargs grep -h "Execute took " | grep -h "^'${_EXECUTE_DATE}' " ' > $log_file
+    # get space that has biggest "Execute took" time
+    max_exec_took=$(awk '{print $NF}' ${log_file} | sort -n | tail -1)
+    if [[ $max_exec_took -gt $_MAX_EXEC_TOOK ]] ; then
+      _MAX_EXEC_TOOK=$max_exec_took ; _MAX_EXEC_TOOK_SPACE="${space_host}"
+    fi
+  done
+}
+
+get_total_service_executes_for_date_one_service() {
+  local space_servers_and_service_pids=$( $(basename $0) -lspc "${_SERVICE_NAME}" )
+  [[ $space_servers_and_service_pids == "" ]] && return 1
+  echo -e "\nHourly \"Execute took\" response times for service: ${_SERVICE_NAME}, for date: ${_STAT_DATE}\nHour EXEC's\n---- ------"
+  local h hour_count hours total_execs=0
+  hours=$(for i in {0..23} ; do printf "%02d\n" $i ; done)
+  for h in $hours ; do
+    _HOUR=$h
+    hour_count=0
+    for log_file in ${_LOGFILES[@]} ; do
+      (( hour_count+=$( grep "^${_EXECUTE_DATE} ${_HOUR}" $log_file | wc -l ) ))
+    done
+    (( total_execs+=hour_count ))
+    [[ $hour_count -ne 0 ]] && printf "%-5s%6s\n" "${h}:"  "${hour_count}"
+  done
+  echo -e "$(date), max exec: ${_MAX_EXEC_TOOK_SPACE} ${_MAX_EXEC_TOOK}, total \"Execute took\" count: ${total_execs}"
+  grep -h "${_MAX_EXEC_TOOK}$" ${_LOGFILES[@]}
+}
+
+get_total_service_executes_for_date() {
+  get_total_service_executes_for_date_get_logs
+  get_total_service_executes_for_date_one_service
+}
+
+get_total_service_executes_for_date_all() {
+  for s in ${_SERVICE_NAMES[@]} ; do
+    _SERVICE_NAME=$s
+    get_total_service_executes_for_date_get_logs
+    get_total_service_executes_for_date_one_service
+  done
+}
+
+# HOURLY "Execute took" for a service on DATE and specific HOUR for all instances on all space servers
+# Example of row: 
+# 2024-02-21 23:12:42,021 program_study_service INFO [com.gs.usecase.Program_StudyJdbcTask] - Execute took 33
+get_total_service_executes_for_date_hour() {
+  get_stat_date
+  local day month year
+  IFS='/' read -r day month year <<< "${_STAT_DATE}"
+  _EXECUTE_DATE=$(date -d "$month $day $year" "+%Y-%m-%d")   # Turns date "Feb 21 2024" into "2024-02-21"
+  [[ -z $_HOUR ]] && read -p "Give 2 digit hour (e.g. 19) to display GET's: " _HOUR
+  [[ -z $_HOUR ]] && { echo -e "The HOUR is being set to 10" ; _HOUR=10 ; }
+  local space_servers_and_service_pids=$( $(basename $0) -lspc "${_SERVICE_NAME}" ) 
+  # Get all executes for a service on all instances
+  local space_host service_pid host_pid
+  local log_file=/tmp/"${_SERVICE_NAME}"-"${_EXECUTE_DATE}"-"${_HOUR}"
+  for host_pid in ${space_servers_and_service_pids} ; do 
+    space_host="${host_pid%~*}"
+    service_pid="${host_pid#*~}"
+    ssh $space_host 'cd /gigalogs ; ls *-'${service_pid}'* | xargs ls -1tr | xargs grep "Execute took " | grep "'${_EXECUTE_DATE} ${_HOUR}'" '
+  done > $log_file
+  local service_executes=$(cat $log_file | wc -l)
+  echo -e "\nNumber of executes for date=${_EXECUTE_DATE} hour=${_HOUR} service=${_SERVICE_NAME}: ${service_executes}\n"
+}
+
+# Get all "Execute took " lines for service and date
+# Example of row: 2024-02-21 23:12:42,021 program_study_service INFO [com.gs.usecase.Program_StudyJdbcTask] - Execute took 33
+# 
+get_total_service_Entring_for_date() {
+  get_stat_date
+  local day month year
+  IFS='/' read -r day month year <<< "${_STAT_DATE}"
+  _EXECUTE_DATE=$(date -d "$month $day $year" "+%Y-%m-%d")   # Turns date "Feb 21 2024" into "2024-02-21"
+  [[ -z $_HOUR ]] && read -p "Give 2 digit hour (e.g. 19) to display GET's: " _HOUR
+  [[ -z $_HOUR ]] && { echo -e "The HOUR is being set to 10" ; _HOUR=10 ; }
+  local service_name="${1}"
+  #echo execute_date=$execute_date _HOUR=$_HOUR service_name=$service_name
+  local space_servers_and_service_pids=$( $(basename $0) -lspc "${service_name}" ) 
+  #echo space_servers_and_service_pids=$space_servers_and_service_pids
+  # Get all executes for a service on all instances
+  local space_host service_pid host_pid
+  log_file=/tmp/"${service_name}"-"${_EXECUTE_DATE}"-"${_HOUR}"
+  for host_pid in ${space_servers_and_service_pids} ; do 
+    space_host="${host_pid%~*}"
+    service_pid="${host_pid#*~}"
+    #ssh $space_host 'cd /gigalogs ; ls *-'${service_pid}'* | xargs ls -1tr | xargs grep "Execute took " | grep "'${execute_date} ${_HOUR}'" '
+    ssh $space_host 'cd /gigalogs ; ls *-'${service_pid}'* | xargs ls -1tr | xargs grep "Entring execute" | grep "'${_EXECUTE_DATE} ${_HOUR}'" '
+  done > $log_file
+  local service_executes=$(cat $log_file | wc -l)
+  echo -e "\nNumber of \"Entring execute\" for date=${_EXECUTE_DATE} hour=${_HOUR} service=${service_name}: ${service_executes}\n"
+}
+
+usage() {
+  cat << EOF
+
+  DESCRIPTION:
+
+    Show service get requests
+
+  USAGE:
+
+    $(basename $0) [<option>]                 
+
+  OPTIONS:
+
+    GET's from access.log
+    ---------------------
+    -g8hr                                               # TOTAL GETs ALL SERVICES: Show count for hours 0-7, 8-15, 16-23
+    -gs <service>                                       # GETs ONE SERVICE: Show hourly count
+    -gsallhr                                            # ALL SERVICESS: Show hourly count
+    -gstallhr                                           # TOTAL GETs ALL SERVICES: Show hourly count
+    -gstallmin                                          # TOTAL GETs ALL SERVICES: Every minute for date and hour specified
+    -gstallsec <min>                                    # TOTAL GETs ALL SERVICES: Every second for date, hour and minute specified.
+    -gstallsecmulti <min> ...                           # TOTAL GETs ALL SERVICES: Every second. Specify multiple minutes in hour.
+    -gstallsecdp <min>                                  # TOTAL GETs ALL SERVICES: Every second for date, hour and minutes specified.
+    -grespall <seconds>                                 # GETs ALL SERVICES - Response times above <seconds>.
+    -gday                                               # Place in localhost /tmp all GETs for specified date (e.g. $(date -d yesterday +%d/%b/%Y))
+    -gsallresp                                          # GET ALL SERVICES: Response time stats (e.g. /tmp/person_tziun_kurs-response-times-09-May-2024)
+    
+    "Execute took" from service logs
+    --------------------------------
+    -hourlyexec <service>                               # HOURLY "Execute took" for a service on DATE and specific HOUR
+                                                          for all instances on all space servers 
+    -dailyexec <service>                                # DAILY "Execute took" for ONE service on DATE for all instances on all space servers 
+    -dailyexecall                                       # DAILY "Execute took" for ALL services on DATE for all instances on all space servers 
+
+    -y                                                  # Show for yesterday's date
+    -d <date>                                           # Set DATE for check, format: "$(date -d yesterday +%d/%b/%Y)"
+    -hour <hour>                                        # Set HOUR for check
+    -l                                                  # List service names e.g. person_tziun_kurs (found in /giga/deployment/services)
+    -lspc <service>                                     # List space servers incl. pid (gsprod-space9~2758823) running a service instance
+    -h                                                  # Show this HELP
+
+  DEFAULT:
+
+    $(basename $0) -y -tg                                 # This is default action, when no options are specified.
+
+  EXAMPLES:
+
+    $(basename $0) -gs person_tziun_kurs                  # Check one service's hourly total of queries/GET's.
+    $(basename $0) -hour 21 -d $(date +%d/%b/%Y) -tgmin         # TOTAL GETS for all services every minute for $(date +%d/%b/%Y) during 21:00-21:59
+    $(basename $0) -d "$(date -d yesterday +%d/%b/%Y)" -gstallhr
+    $(basename $0) -hour 20 -d "$(date -d yesterday +%d/%b/%Y)" -gstallmin
+    $(basename $0) -hour 20 -d "$(date -d yesterday +%d/%b/%Y)" -gstallsecmulti <min> ...
+
+
+EOF
+exit
+}
+
+do_menu() {
+  do_env
+  [[ $# -eq 0 ]] && { _YESTERDAY="yes" ; check_8hr_total_gets ; exit ; }    # Default when no options specified
+  while [[ $# -ne 0 ]] ; do
+    case "${1}" in 
+      "-g8hr") 
+        check_8hr_total_gets
+        ;;
+      "-gs") 
+        shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
+        check_gets_per_hour_for_one_service 
+        ;;
+      "-gsallhr") 
+        check_gets_per_hour_for_every_service
+        ;;
+      "-gstallhr") 
+        check_gets_per_hour_for_all_services
+        ;;
+      "-gstallmin") 
+        check_gets_per_minute_for_all_services
+        ;;
+      "-gstallsec") 
+        check_gets_per_second_for_all_services $2 ; exit
+        ;;
+      "-gstallsecmulti") 
+        shift ; check_gets_per_second_for_all_services_muiltiple_seconds "${@}" ; exit
+        ;;
+      "-gstallsecdp") 
+        check_gets_per_second_for_all_services_datapoints
+        ;;
+      "-grespall") 
+        shift ; get_upstream_response_time_for_all_services "${@}" ; exit   # Give seconds to compare response against
+        ;;
+      "-gday") 
+        retrieve_gets_for_date
+        ;;
+      "-gsallresp") 
+        echo -e "========== GET response time stats for all services for ${_STAT_DATE}"
+        create_files_for_response_time_for_all_services
+        get_avg_min_max_mid_for_response_time_of_all_services
+        get_non_200_response_codes_count
+        ;;
+      "-hourlyexec")
+        shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
+        get_total_service_executes_for_date_hour ; exit
+        ;;
+      "-dailyexec")
+        shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
+        get_total_service_executes_for_date ; exit
+        ;;
+      "-dailyexecall")
+        get_total_service_executes_for_date_all ; exit
+        ;;
+      "-Entring")
+        shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
+        get_total_service_Entring_for_date  ; exit  #"${1}" "${2}"
+        ;;
+      "-l") 
+        ls -1 /giga/deployment/services ; exit
+        ;;
+      "-lspc") 
+        shift ; _SERVICE_NAME=${1%_service*} ; check_service_name
+        list_space_servers_containing_service_instance ; exit
+        ;;
+      "-d") 
+        shift ; _STAT_DATE="${1}"
+        ;;
+      "-hour") 
+        shift ; _HOUR="${1}"
+        ;;
+      "-y") 
+        _YESTERDAY="yes"
+        ;;
+      *)
+        echo -e "\n Option $1 not supported.\n" ; exit 1
+        ;;
+    esac
+    shift
+ done
+}
+
+################### MAIN
+
+[[ $1 == "-h" ]] && usage
+do_menu "${@}"
+
