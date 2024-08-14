@@ -217,9 +217,8 @@ service_hc() {
 
 service_query() {
   local srv_num=0             # enumerate service queries
-  #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to display data query for all existing services." ; echo ; }
   local services_count=$(curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier | wc -l)
-  echo -e "\n==================== Display data query for all ${services_count} defined services.\n"
+  echo -e "\n==================== Display data query for all ${services_count} deployed services.\n"
   case ${ENV_NAME} in
     "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;; 
     "TAUS") local ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ;;
@@ -229,27 +228,24 @@ service_query() {
   local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
   cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
   # Define local variables for below code
-  local real_service_name service_name microservice service_string deploy_state response_time
+  local real_service_name             # Only PU's ending with "_service" except notifiers
+  local service_name                  # Versioned (v2, v3) text removed from service for querying purposes
+  local microservices_full_string     # holds /giga/microservices/curls full query string
+  local service_string                # holds only query string in /giga/microservices/curls e.g. "/get_sem_dates_service/v1/u1?limit=1"
+  local deploy_state                  # shows: intact, not intact
   # Check state of every service returned from REST call and query every intact service found in /giga/microservices/curls
   while read real_service_name ; do 
     service_name=$(echo $real_service_name | sed 's/_v[0-9]\+//')
-    microservice=$(grep "/${service_name}/" /giga/microservices/curls)
-    [[ -z $microservice ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "intact" ; continue ; }
-    service_string=${microservice##*8443/}
-    deploy_state=$( curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
-    [[ $deploy_state != "intact" ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "not intact" ; continue ; }
-
-    # Non-verbose 
-#   if [[ -z "${_VERBOSE}" ]] ; then
-#     response_time=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo ; } 2>&1 | grep real | awk '{print $2}' )
-#     printf '%3d %-35s%s\t%s\n' "$((++srv_num))" "${real_service_name}" "$(curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "=========== empty response" else "data returned" end')" "${response_time}" ; continue
-#   fi
+    microservices_full_string=$(grep "/${service_name}/" /giga/microservices/curls)
+    deploy_state=$( curl -s -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
+    [[ -z $microservices_full_string ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
+    service_string=${microservices_full_string##*8443/}
+    #[[ $deploy_state != "intact" ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "not intact" ; continue ; }
     if [[ -z "${_VERBOSE}" ]] ; then
       local result=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
-      printf '%3d %-35s%-25s%s\n' "$((++srv_num))" "${service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')"
+      printf '%3d %-35s%-25s%-10s%-12s\n' "$((++srv_num))" "${real_service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')" "${deploy_state}"
       continue
     fi
-
     # Verbose
     printf '=%.0s' {1..50} ; echo " $((++srv_num)) ${real_service_name}"
     time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo 
@@ -459,7 +455,7 @@ check_ctm() {
 check_sanity_errors() {
   echo -e "\n==================== Checking sanity lines containing:  fail|error|warn|down\n"
   local include_txt='fail\|error\|warn\|down\|==========================='
-  grep "$(date +%Y-%m-%d)" /dbagigalogs/sanity/sanity.log | grep -i "${include_txt}"
+  grep "$(date +%Y-%m-%d)" /dbagigalogs/sanity/sanity.log | grep -i "${include_txt}" | grep -v 'ZOOKEEPER-LEADER'
 }
 
 check_notifiers() {
@@ -494,7 +490,7 @@ check_nba_services() {
 }
 
 check_sync_of_managers() {
-  echo -e "\n==================== Check synchronization between managers.\n"
+  echo -e "\n==================== Check managers' SYNC: Compare PU and CONTAINER counts between managers.\n"
   echo -ne "manager sync: "
   # In TEST env e.g.: space_pus=32, space_containers=102
   local mng sync_failed=0 
