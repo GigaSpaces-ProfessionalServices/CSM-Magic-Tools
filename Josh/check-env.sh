@@ -114,9 +114,10 @@ list_of_checks() {
   16  query_one_service <service name>                    # $(basename $0) -c 16 program_study 
   17  check_gigashare
   18  person_schedule_query_2
-  19  check_nba_services
+  19  check_nbapp_services
   20  check_sync_of_managers
   21  check_spacedeck_on_managers
+  22  check_nbagent_services
 
 
 EOF
@@ -143,9 +144,10 @@ do_one_check() {
     "16") query_one_service $3 ;;
     "17") check_gigashare ;;
     "18") person_schedule_query_2 ;;
-    "19") check_nba_services ;;
+    "19") check_nbapp_services ;;
     "20") check_sync_of_managers ;;
     "21") check_spacedeck_on_managers ;;
+    "22") check_nbagent_services ;;
     *)    echo -e "\nChoice unknown" ;;
   esac
   echo
@@ -459,6 +461,7 @@ check_sanity_errors() {
 }
 
 check_notifiers() {
+  [[ "${ENV_NAME}" == "TAUG" ]] && return
   echo -e "\n==================== Checking notifiers.\n"
   local notifier_output result
   echo -n "Notifiers result: "
@@ -482,10 +485,17 @@ check_gigashare() {
   [[ -n "${_VERBOSE}" ]]  && { echo ; runall -A 'echo "$(hostname) $(df -h |grep gigashare)"' | grep -v '===\|^ *$' ; }
 }
 
-check_nba_services() {
+check_nbapp_services() {
   echo -e "\n==================== Check all NB APP services on all NB APP hosts\n"
-  echo -n "NB services check: "
-  local result="$(runall -m 'for s in consul.service consul-template.service telegraf.service northbound.target ; do printf "%-45s%s\n" "$(hostname) ${s}:" "$(systemctl is-active ${s})" | grep -vw active ; done' | grep -v '===\|^ *$')"
+  echo -n "NB APP services check: "
+  local result="$(runall -na 'for s in nginx.service consul.service consul-template.service telegraf.service northbound.target ; do printf "%-45s%s\n" "$(hostname) ${s}:" "$(systemctl is-active ${s})" | grep -vw active ; done' | grep -v '===\|^ *$')"
+  [[ -z $result ]] && echo Success || { echo -e Failure ; echo "${result}" ; }
+}
+
+check_nbagent_services() {
+  echo -e "\n==================== Check all NB AGENT services on all NB AGENT hosts\n"
+  echo -n "NB AGENT services check: "
+  local result="$(runall -s 'for s in consul.service telegraf.service northbound.target ; do printf "%-45s%s\n" "$(hostname) ${s}:" "$(systemctl is-active ${s})" | grep -vw active ; done' | grep -v '===\|^ *$')"
   [[ -z $result ]] && echo Success || { echo -e Failure ; echo "${result}" ; }
 }
 
@@ -539,7 +549,8 @@ do_daily() {
   run_sanity_bg
   [[ "${ENV_NAME}" != "TAUG" ]] && run_pipelines_bg
   check_ping
-  check_nba_services
+  check_nbapp_services
+  check_nbagent_services
   check_spacedeck_on_managers
   check_sync_of_managers
   check_notifiers
