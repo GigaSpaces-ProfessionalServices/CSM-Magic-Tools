@@ -1,0 +1,154 @@
+#!/bin/bash
+
+source ~/.bashrc
+_LOG=/var/log/auto_odsx.log
+_FULL_LOG=/dbagigalogs/auto_odsx_full.log
+_WAIT=120
+_DI_SERVER1=$(runall -d -l | grep -v === | head -1)
+
+echo -e "$(date) ===Starting DIH space reinstall===" | tee -a $_LOG $_FULL_LOG
+
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  # Disabling di_watchdog_rest.sh in crontab.
+  if crontab -l | grep -v '^#' | grep 'di_watchdog_rest\.sh' >/dev/null 2>&1 ; then
+    echo -e "$(date) Disabling di_watchdog_rest.sh in crontab." | tee -a $_LOG $_FULL_LOG
+    watchdog_line=$(crontab -l | grep -v '^#' | grep 'di_watchdog_rest\.sh' | tail -1)
+    ( crontab -l | grep -v 'di_watchdog_rest\.sh' ) | crontab -
+    ( crontab -l ; echo -e "#${watchdog_line}" ) | crontab -
+    read -t 30 -p "Waiting 30 sec - press ENTER to cont."
+  fi
+fi
+
+[[ "${ENV_NAME}" != "TAUG" ]] && { echo -e "Stopping Kapacitor" ; auto_kapacitorstop ; }
+
+echo -e "$(date) Stopping spacedeck containers." | tee -a $_LOG $_FULL_LOG
+runall -m 'hostname ; docker stop spacedeck-spacedeck-1' | tee -a $_LOG $_FULL_LOG
+
+# Stopping DV services
+echo -e "$(date) Stopping DV services." | tee -a $_LOG $_FULL_LOG
+auto_dv.sh -stop | tee -a $_LOG $_FULL_LOG
+
+### Stop All Pipelines and exit 1 on fail
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  di_stop_success=1 ; di_stop_file=/tmp/di_stop_file$$
+  for (( i=0 ; i < 6 ; i++ )) ; do
+    echo -e "\n$(date) Run $(( $i + 1 ))/6 - Stop all pipelines\n" | tee -a $_LOG $_FULL_LOG
+    ssh ${_DI_SERVER1} 'su - gsods -c "/giga/scripts/stopAllPipelines.sh ; echo di_stop_exit_code=$? "' | tee $di_stop_file
+    di_stop_exit_code=$( awk -F= '/di_stop_exit_code=/{printf"%s",$2}' $di_stop_file )
+    [[ ${di_stop_exit_code} -eq 0 ]] && { di_stop_success=0 ; break ; }
+    [[ $i -lt 5 ]] && { echo "Sleeping 15s before retry." ; sleep 15 ; }
+  done
+  rm -f $di_stop_file
+  if [[ $di_stop_success -ne 0 ]] ; then
+    echo -e "\n$(date) Failed to stop all pipelines\n" | tee -a $_LOG $_FULL_LOG
+    read -t 600 -p "The script will continue automatically in 10min. Press ENTER to continue now or ctl-c to quit installation." ; echo
+  fi
+fi
+
+echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spacestop 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Removing ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spaceremove 2>&1 | tee -a $_FULL_LOG
+echo -e "$(date) Installing ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spaceinstall 2>&1 | tee -a $_FULL_LOG
+
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  echo -e "$(date) Stopping ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerstop 2>&1 | tee -a $_FULL_LOG
+  echo -e "$(date) Removing ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerremove 2>&1 | tee -a $_FULL_LOG
+  echo -e "$(date) Installing ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerinstall 2>&1 | tee -a $_FULL_LOG
+
+  echo -e "$(date) Starting ODS Manager servers" | tee -a $_LOG $_FULL_LOG
+  auto_managerstart 2>&1 | tee -a $_FULL_LOG
+fi
+
+echo -e "$(date) Starting ODS Space servers" | tee -a $_LOG $_FULL_LOG
+auto_spacestart 2>&1 | tee -a $_FULL_LOG
+
+echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $_LOG $_FULL_LOG
+auto_inmemorydeploy_check | tee -a $_FULL_LOG
+
+echo -e "$(date) Starting spacedeck container on managers." | tee -a $_LOG $_FULL_LOG
+[[ "${ENV_NAME}" == "TAUG" ]] && ssh $(runall -m -l |grep -v ==== | sed '2!d') 'hostname ; docker start spacedeck-spacedeck-1'
+[[ "${ENV_NAME}" == "TAUS" ]] && ssh $(runall -m -l |grep -v ==== | sed '2!d') 'hostname ; docker start spacedeck-spacedeck-1'
+[[ "${ENV_NAME}" == "TAUP" ]] && ssh $(runall -m -l |grep -v ==== | sed '1!d') 'hostname ; docker start spacedeck-spacedeck-1'
+
+# Starting DV services
+#echo -e "$(date) Starting DV services." | tee -a $_LOG $_FULL_LOG
+#auto_datavalidator.sh -start
+
+echo -e "$(date) Reinstalling objectmanagement.service before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
+auto_objectreinstall
+echo -e "$(date) Wait 10s before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
+sleep 10
+auto_objectregistration
+
+### Mark tables for refresh, delete topics and then start all pipelines
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  ### Mark tables for refresh and delete topics
+  di_flag_success=1 ; di_flag_file=/tmp/di_flag_file$$
+  for (( i=0 ; i < 6 ; i++ )) ; do
+    echo -e "\n$(date) Run $(( $i + 1 ))/6  - Flag tables for refresh and delete topics\n" | tee -a $_LOG $_FULL_LOG
+    ssh ${_DI_SERVER1} 'su - gsods -c "/giga/scripts/flag_tables_for_refresh.sh deleteTopics ; echo di_flag_exit_code=$? "' | tee $di_flag_file
+    di_flag_exit_code=$( awk -F= '/di_flag_exit_code=/{printf"%s",$2}' $di_flag_file )
+    [[ ${di_flag_exit_code} -eq 0 ]] && { di_flag_success=0 ; break ; }
+    [[ $i -lt 5 ]] && { echo "Sleeping 15s before trying to flag again" ; sleep 15 ; }
+  done
+  rm -f $di_flag_file 2>/dev/null
+  if [[ $di_flag_success -ne 0 ]] ; then
+    echo -e "\n$(date) Failed to flag tables for refresh and delete topics.\n" | tee -a $_LOG $_FULL_LOG
+    read -t 600 -p "The script will continue automatically in 10min. Press ENTER to continue now or ctl-c to quit installation." ; echo
+  fi
+  echo -e "\n$(date) Waiting 30 seconds before running - Start all pipelines\n" | tee -a $_LOG $_FULL_LOG
+  sleep 30
+
+  ### Start all pipelines - try twice with 30 interval
+  di_start_success=1 ; di_start_file=/tmp/di_start_file$$
+  for (( i=0 ; i < 6 ; i++ )) ; do
+    echo -e "\n$(date) Run $(( $i + 1 ))/6 - Start all pipelines\n" | tee -a $_LOG $_FULL_LOG
+    ssh ${_DI_SERVER1} 'su - gsods -c "/giga/scripts/startAllPipelines.sh ; echo di_start_exit_code=$? "' | tee $di_start_file
+    di_start_exit_code=$( awk -F= '/di_start_exit_code=/{printf"%s",$2}' $di_start_file )
+    [[ ${di_start_exit_code} -eq 0 ]] && { di_start_success=0 ; break ; }
+    [[ $i -lt 5 ]] && { echo "sleeping 15s before trying to start again" ; sleep 15 ; }
+  done
+  rm -f $di_start_file 2>/dev/null
+  if [[ $di_start_success -ne 0 ]] ; then
+    echo -e "\n$(date) Failed to start all pipelines\n" | tee -a $_LOG $_FULL_LOG
+    read -t 600 -p "The script will continue automatically in 10min. Press ENTER to continue now or ctl-c to quit installation." ; echo
+  fi
+fi
+
+echo -e "$(date) Resetting mssqlFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederfullloadreset
+echo -e "$(date) Deploying gilboa full load feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederfullloaddeploy
+echo -e "$(date) Starting gilboa full load feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederfullloadstart
+
+echo -e "$(date) Resetting gilboaFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederupdatereset
+echo -e "$(date) Deploying gilboa update feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederupdatedeploy
+
+echo -e "$(date) Resetting oracleFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederreset
+echo -e "$(date) Deploying ORACLE feeders." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederdeploy
+echo -e "$(date) Starting ORACLE feeders." | tee -a $_LOG $_FULL_LOG
+auto_oraclefeederstart
+
+if [[ "${ENV_NAME}" != "TAUG" ]] ; then
+  # Enabling di_watchdog_rest.sh in crontab.
+  if crontab -l | grep '^#.*di_watchdog_rest\.sh' >/dev/null 2>&1 ; then
+    echo -e "$(date) Enabling di_watchdog_rest.sh in crontab." | tee -a $_LOG $_FULL_LOG
+    watchdog_line=$(crontab -l | grep '^#.*di_watchdog_rest\.sh' | tail -1)
+    ( crontab -l | grep -v '^#.*di_watchdog_rest\.sh' ) | crontab -
+    ( crontab -l ; echo -e "${watchdog_line//#}" ) | crontab -
+  fi
+fi
+
+[[ "${ENV_NAME}" != "TAUG" ]] && { echo -e "Starting Kapacitor" ; auto_kapacitorstart ; auto_kapacitorlist ; }
+
+exit 0
