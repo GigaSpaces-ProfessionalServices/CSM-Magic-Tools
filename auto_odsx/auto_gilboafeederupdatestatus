@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd /dbagiga/gs-odsx
+./odsx.py dataengine gilboaupdater update status

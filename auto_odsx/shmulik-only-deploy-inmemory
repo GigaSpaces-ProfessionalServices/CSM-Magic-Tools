@@ -31,7 +31,7 @@ auto_spacestart 2>&1 | tee -a $_FULL_LOG
 echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $_LOG $_FULL_LOG
 #auto_tsdeploy_check 2>&1 | tee -a $_FULL_LOG
 auto_inmemorydeploy_check
-
+exit
 ## space1
 #echo "##### Going to register types #####"
 #cd /dbagiga/yuval/TAU/deployment/DDL_PARSER ; ./deploy.sh
@@ -51,15 +51,20 @@ echo -e "$(date) Starting Object Index Registration." | tee -a $_LOG $_FULL_LOG
 auto_objectindexregistration
 
 echo -e "$(date) Resetting mssqlFeeder.db." | tee -a $_LOG $_FULL_LOG
-auto_mssqlfeederreset
-echo -e "$(date) Starting to deploy MSSQL feeders." | tee -a $_LOG $_FULL_LOG
-auto_mssqlfeederdeploy
-echo -e "$(date) Starting MSSQL feeders." | tee -a $_LOG $_FULL_LOG
-auto_mssqlfeederstart
+auto_gilboafeederfullloadreset
+echo -e "$(date) Deploying gilboa full load feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederfullloaddeploy
+echo -e "$(date) Starting gilboa full load feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederfullloadstart
+
+echo -e "$(date) Resetting gilboaFeeder.db." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederupdatereset
+echo -e "$(date) Deploying gilboa update feeder." | tee -a $_LOG $_FULL_LOG
+auto_gilboafeederupdatedeploy
 
 echo -e "$(date) Resetting oracleFeeder.db." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederreset
-echo -e "$(date) Starting to deploy ORACLE feeders." | tee -a $_LOG $_FULL_LOG
+echo -e "$(date) Deploying ORACLE feeders." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederdeploy
 echo -e "$(date) Starting ORACLE feeders." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederstart

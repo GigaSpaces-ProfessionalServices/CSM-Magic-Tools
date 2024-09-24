@@ -4,10 +4,13 @@ cd /dbagiga/gs-odsx
 set timeout -1
 set force_conservative 1
 spawn ./odsx.py dataengine oracle-feeder install-deploy
-expect "Are you sure want to proceed"
-sleep 1
+expect "to deploy all feeder"
+sleep .5
+send -- "\n"
+expect "Are you sure want to proceed with all feeders"
+sleep .5
 send -- "y"
-sleep 1
+sleep .5
 send -- "\n"
 
 expect eof

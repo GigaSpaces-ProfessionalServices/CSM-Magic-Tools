@@ -3,11 +3,12 @@
 cd /dbagiga/gs-odsx
 set timeout -1
 set force_conservative 1
-spawn ./odsx.py dataengine mssql-feeder install-deploy
+spawn ./odsx.py dataengine gilboaupdater fullload install-deploy
+expect "to deploy all feeder"
+sleep .5
+send -- "\n"
 expect "Are you sure want to proceed"
-sleep 1
-send -- "y"
-sleep 1
+sleep .5
 send -- "\n"
 
 expect eof

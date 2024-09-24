@@ -1,0 +1,73 @@
+#!/bin/bash
+
+objectmanagement_remove() {
+/usr/bin/expect -c '
+set timeout -1
+set force_conservative 1
+
+cd /giga/gs-odsx
+spawn ./odsx.py object objectmanagement service remove
+expect "Are you sure, you want to remove Object Management service"
+sleep .5
+send -- "\r"
+
+expect eof
+'
+}
+
+objectmanagement_setup() {
+/usr/bin/expect -c '
+set timeout -1
+set force_conservative 1
+
+cd /giga/gs-odsx
+spawn ./odsx.py object objectmanagement service setup
+expect "Are you sure, you want to setup Object Management service"
+sleep .5
+send -- "\r"
+
+expect eof
+'
+}
+
+objectmanagement_disable() {
+/usr/bin/expect -c '
+set timeout -1
+set force_conservative 1
+
+cd /giga/gs-odsx
+
+spawn ./odsx.py object objectmanagement service disable
+expect "Are you sure, you want to stop Object Management service"
+sleep .5
+send -- "\n"
+expect "Service is"
+sleep .5
+
+expect eof
+'
+}
+
+objectmanagement_enable() {
+/usr/bin/expect -c '
+set timeout -1
+set force_conservative 1
+
+cd /giga/gs-odsx
+spawn ./odsx.py object objectmanagement service enable
+expect "Are you sure, you want to start Object Management service"
+sleep .5
+send -- "\n"
+expect "Service is"
+sleep .5
+
+expect eof
+'
+}
+
+################ MAIN
+
+objectmanagement_remove
+objectmanagement_setup
+objectmanagement_disable
+objectmanagement_enable

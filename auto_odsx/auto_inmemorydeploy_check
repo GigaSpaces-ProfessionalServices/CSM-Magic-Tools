@@ -1,12 +1,21 @@
 #!/bin/bash
 
+# Get user/pass creds
+_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+  _VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+  _PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${_VAULT_PASS})
+else
+  _PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
+fi
+
 space_servers=$(/dbagiga/utils/host-yaml.sh -s | wc -w)
 gsc_per_space_server=$(grep app.space.gsc.count ${ENV_CONFIG}/app.config | awk -F= '{print $2}')
 expected_containers=$(( $space_servers * $gsc_per_space_server ))
-containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
+containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --username=${_USER} --password=${_PASS} --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
 echo space_servers=$space_servers gsc_per_space_server=$gsc_per_space_server expected_containers=$expected_containers containers=$containers
 while (( $containers < $expected_containers )); do
-  containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
+  containers=$(/dbagiga/gigaspaces-smart-ods/bin/gs.sh --username=${_USER} --password=${_PASS} --server=$(host-yaml.sh -m | head -1) container list | grep tau | wc -l)
 	echo containers=$containers
 done
 echo containers=$containers

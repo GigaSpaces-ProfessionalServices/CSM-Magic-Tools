@@ -4,6 +4,6 @@ set timeout -1
 set force_conservative 1
 
 cd /dbagiga/gs-odsx
-spawn ./odsx.py dataengine mssql-feeder reset-database
+spawn ./odsx.py dataengine gilboaupdater fullload reset-database
 
 expect eof

@@ -4,10 +4,6 @@ set timeout -1
 set force_conservative 1
 
 cd /dbagiga/gs-odsx
-spawn ./odsx.py dataengine db2-feeder stop
-# Start all
-expect "For exit"
-sleep 1
-send -- "\n"
+spawn ./odsx.py monitors alerts services kapacitor list
 
 expect eof

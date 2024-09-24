@@ -19,8 +19,6 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   fi
 fi
 
-[[ "${ENV_NAME}" != "TAUG" ]] && { echo -e "Stopping Kapacitor" ; auto_kapacitorstop ; }
-
 if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   echo -e "$(date) Stopping spacedeck containers." | tee -a $_LOG $_FULL_LOG
   runall -m 'hostname ; docker stop spacedeck-spacedeck-1'
@@ -51,6 +49,9 @@ echo -e "$(date) Stopping ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spacestop 2>&1 | tee -a $_FULL_LOG
 echo -e "$(date) Removing ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spaceremove 2>&1 | tee -a $_FULL_LOG
+#echo -e "$(date) Cleaning /gigadata/processing-units from all space servers" | tee -a $_LOG $_FULL_LOG
+#/usr/local/bin/runall -s 'hostname ; find /gigadata/processing-units -mindepth 1 -delete' | grep -v '===\|^ *$'
+
 echo -e "$(date) Installing ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spaceinstall 2>&1 | tee -a $_FULL_LOG
 
@@ -62,6 +63,12 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   echo -e "$(date) Installing ODS Manager servers" | tee -a $_LOG $_FULL_LOG
   auto_managerinstall 2>&1 | tee -a $_FULL_LOG
 
+# read -p "check ldap files..."
+# echo -e "Copying ldap files..."
+# /usr/local/bin/runall -a 'cp /gigashare/env_config/security/ldap-client.jks /giga/gs_config/'
+# /usr/local/bin/runall -a 'cp /gigashare/current/security/jars/SecuredLDAP-1.0-SNAPSHOT.jar /giga/gs_jars'
+# /usr/local/bin/runall -s 'cp /gigashare/current/gs/config/imspace/imspace.properties /giga/gs_config'
+
   echo -e "$(date) Starting ODS Manager servers" | tee -a $_LOG $_FULL_LOG
   auto_managerstart 2>&1 | tee -a $_FULL_LOG
 fi
@@ -69,8 +76,13 @@ fi
 echo -e "$(date) Starting ODS Space servers" | tee -a $_LOG $_FULL_LOG
 auto_spacestart 2>&1 | tee -a $_FULL_LOG
 
+#read -p "before deploy"
+
 echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $_LOG $_FULL_LOG
-auto_inmemorydeploy_check | tee -a $_FULL_LOG
+auto_tsdeploy_check 2>&1 | tee -a $_FULL_LOG
+#auto_inmemorydeploy_check | tee -a $_FULL_LOG
+
+read -p "Deploy space finished - Reinstall objectmanagement"
 
 echo -e "$(date) Starting spacedeck container on managers." | tee -a $_LOG $_FULL_LOG
 if [[ "${ENV_NAME}" != "TAUG" ]] ; then
@@ -78,21 +90,17 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   [[ "${ENV_NAME}" == "TAUP" ]] && ssh $(runall -m -l |grep -v ==== | sed '1!d') 'hostname ; docker start spacedeck-spacedeck-1'
 fi
 
-# Start DV services
+# Starting DV services
 #echo -e "$(date) Starting DV services." | tee -a $_LOG $_FULL_LOG
 #auto_datavalidator.sh -start
 
-#echo -e "$(date) Disable object-management.service" | tee -a $_LOG $_FULL_LOG
-#auto_objectdisable
-#echo -e "$(date) Enable object-management.service" | tee -a $_LOG $_FULL_LOG
-#auto_objectenable
-echo -e "$(date) Reinstalling objectmanagement.service before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
-auto_objectreinstall
+echo -e "$(date) Disable object-management.service" | tee -a $_LOG $_FULL_LOG
+auto_objectdisable
+echo -e "$(date) Enable object-management.service" | tee -a $_LOG $_FULL_LOG
+auto_objectenable
 echo -e "$(date) Wait 10s before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
 sleep 10
 auto_objectregistration
-
-read -t 1800 -p "======================= Check objectmanagement reinstallation within 30min"
 
 ### Mark tables for refresh, delete topics and then start all pipelines
 if [[ "${ENV_NAME}" != "TAUG" ]] ; then
@@ -112,8 +120,6 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   fi
   echo -e "\n$(date) Waiting 30 seconds before running - Start all pipelines\n" | tee -a $_LOG $_FULL_LOG
   sleep 30
-
-  read -p "=========================== Shmulik to check MARK TABLE CAPTURE POINT FOR MIRRORING before Start all pipelines"
 
   ### Start all pipelines - try twice with 30 interval
   di_start_success=1 ; di_start_file=/tmp/di_start_file$$

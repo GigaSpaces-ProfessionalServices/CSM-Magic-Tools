@@ -64,6 +64,6 @@ auto_oraclefeederdeploy
 echo -e "$(date) Starting ORACLE feeders." | tee -a $_LOG $_FULL_LOG
 auto_oraclefeederstart
 
-[[ "${ENV_NAME}" == "TAUP" ]] && { sleep $_WAIT ; auto_oraclefeederstop ; }
+[[ "${ENV_NAME}" == "TAUP" ]] && { echo -e "Stopping oracle feeders in $_WAIT seconds..." ; sleep $_WAIT ; auto_oraclefeederstop ; }
 
 echo -e "$(date) ===Finished DIH space reinstall===" | tee -a $_LOG $_FULL_LOG

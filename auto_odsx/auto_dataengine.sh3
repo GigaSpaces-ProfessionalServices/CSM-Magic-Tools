@@ -1,0 +1,190 @@
+#!/bin/bash
+
+# get status from sqlite
+# curl <space_server>:<port>/table-feed/status
+# IDLE, SUCCESS, IN_PROGRESS, ERROR, Connect failed
+# Query feeder_name column:
+# SELECT * FROM users WHERE UPPER(name) = UPPER('john');
+# sqlite3 /gigawork/sqlite/mssqlFeeder.db <<<"select * from mssql_host_port where UPPER(feeder_name) LIKE '%PORTAL%';"
+# file|feeder_name|host|port
+# load_Portal_Calendary_View.sh|mssqlfeeder_portal_calendary_view|gsprod-space1|8302
+
+_TIME_TO_WAIT=5
+_DB_FILE=""
+
+usage() {
+  cat << EOF
+
+  USAGE: $(basename $0) [<option>] [<action>]
+
+  OPTIONS:
+
+  -f <feeder>      Feeder type
+  -t <table>       Table name
+  
+  ACTIONS:
+
+  start            Start feeder
+  stop             Stop feeder
+
+  NOTE: Regarding GILBOA FULL LOAD and GILBOA UPDATE, only provide feeder - see EXAMPLES below.
+
+  EXAMPLES:
+  $(basename $0) -f oracle -t tl_kurs start
+  $(basename $0) -f gilboafull
+  $(basename $0) -f gilboaupdate
+
+EOF
+exit
+}
+
+# parameter: 1=feeder, 2=table, 3=action
+db_feeder() {
+  local feeder=$1 table=$2 action=$3 
+  local space_server_name=$(sqlite3 /gigawork/sqlite/oracleFeeder.db <<<"select host from oracle_host_port where LOWER(feeder_name) LIKE '%${table}%';")
+  local port=$(sqlite3 /gigawork/sqlite/oracleFeeder.db <<<"select port from oracle_host_port where LOWER(feeder_name) LIKE '%${table}%';")
+  local space_server_ip=$(host $space_server_name |awk '{print $NF}')
+  local current_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo feeder=$feeder table=$table action=$action space_server_name=$space_server_name port=$port space_server_ip=$space_server_ip current_query_status=$current_query_status
+  [[ "${current_query_status}" != "IDLE" && "${current_query_status}" != "SUCCESS" ]] && return 1
+## do action e.g. start
+  echo -e "cd /dbagiga/gs-odsx ; ./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table}"
+  local output=$(cd /dbagiga/gs-odsx ; ./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table} 2>&1 ; echo $?)
+  exit_code=$?
+  echo show output ; echo output=$output | awk '{print $NF}'
+  echo exit_code=$exit_code
+  [[ $exit_code -ne 0 ]] && { return 1 ; }
+  new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo current_query_status="${current_query_status}" new_query_status="${new_query_status}"
+  ## loop unitl query status change or timeout=60s
+  local change_status_timeout=60 start_time=$(date +%s -d now) ; local timeout_time=$(( start_time + change_status_timeout ))
+  while [[ "${current_query_status}" == "${new_query_status}" &&  $(date +%s -d now) -lt $timeout_time ]] ; do
+    echo "start time=$start_time current time=$(date +%s -d now) timeout time=$timeout_time time left=$(( timeout_time - $(date +%s -d now) ))"
+    sleep $_TIME_TO_WAIT 
+    new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+    echo new_query_status=$new_query_status
+  done
+  echo new_query_status="${new_query_status}"
+  [[ "${new_query_status}" != "IN_PROGRESS" ]] && return 1
+  ## wait until finished loading (not IN_PROGRESS) or timeout=40m=2400s
+  local change_status_timeout=2400 start_time=$(date +%s -d now) ; local timeout_time=$(( start_time + change_status_timeout ))
+  echo "$(date +%s -d now) -lt ${timeout_time}"
+  while [[ "${new_query_status}" == "IN_PROGRESS" &&  $(date +%s -d now) -lt $timeout_time ]] ; do
+    echo "start time=$start_time current time=$(date +%s -d now) timeout time=$timeout_time time left=$(( timeout_time - $(date +%s -d now) ))"
+    sleep $_TIME_TO_WAIT
+    new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  done
+  echo "exiting IN_PROGRESS loop, new_query_status=$new_query_status"
+  new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo new_query_status=$new_query_status
+  [[ "${new_query_status}" != "SUCCESS" ]] && return 1 || return 0
+}
+
+do_db_feeder() {
+  while [[ $# -gt 0 ]] ; do
+    case $1 in
+      "-f") shift ; feeder="${1,,}" 
+        ;;
+      "-t") shift ; table="${1,,}" 
+        ;;
+      "start") action=start 
+        ;;
+      "stop") action=stop 
+        ;;
+      *) echo -e "\nWrong option.\n" ; usage 
+        ;;
+    esac
+    shift
+  done
+  db_feeder $feeder $table $action
+  db_feeder_exit_code=$?
+  echo finished db_feeder db_feeder_exit_code=$db_feeder_exit_code
+  exit $exit_code_from_function
+}
+
+gilboafull_feeder() {
+  if  [[ "${2,,}" == "gilboafull" ]] ; then db_file_type=mssql
+  elif [[ "${2,,}" == "gilboaupdate" ]] ; then db_file_type=gilboa
+  else db_file_type="${2,,}"
+  fi
+  local space_server_name=$(sqlite3 /gigawork/sqlite/${_DB_FILE} <<<"select host from ${db_file_type}_host_port where LOWER(feeder_name) LIKE '%${table}%';")
+  local port=$(sqlite3 /gigawork/sqlite/${_DB_FILE}Feeder.db <<<"select port from ${db_file_type}_host_port where LOWER(feeder_name) LIKE '%${table}%';")
+  local space_server_ip=$(host $space_server_name |awk '{print $NF}')
+  local current_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo feeder=$feeder table=$table action=$action space_server_name=$space_server_name port=$port space_server_ip=$space_server_ip current_query_status=$current_query_status
+  exit
+  [[ "${current_query_status}" != "IDLE" && "${current_query_status}" != "SUCCESS" ]] && return 1
+## do action e.g. start
+  echo -e "cd /dbagiga/gs-odsx ; ./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table}"
+  exit
+  local output=$(cd /dbagiga/gs-odsx ; ./odsx.py dataengine ${feeder}-feeder ${action} ${feeder}feeder_${table} 2>&1 ; echo $?)
+  exit_code=$?
+  echo show output ; echo output=$output | awk '{print $NF}'
+  echo exit_code=$exit_code
+  [[ $exit_code -ne 0 ]] && { return 1 ; }
+  new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo current_query_status="${current_query_status}" new_query_status="${new_query_status}"
+  ## loop unitl query status change or timeout=60s
+  local change_status_timeout=60 start_time=$(date +%s -d now) ; local timeout_time=$(( start_time + change_status_timeout ))
+  while [[ "${current_query_status}" == "${new_query_status}" &&  $(date +%s -d now) -lt $timeout_time ]] ; do
+    echo "start time=$start_time current time=$(date +%s -d now) timeout time=$timeout_time time left=$(( timeout_time - $(date +%s -d now) ))"
+    sleep $_TIME_TO_WAIT 
+    new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+    echo new_query_status=$new_query_status
+  done
+  echo new_query_status="${new_query_status}"
+  [[ "${new_query_status}" != "IN_PROGRESS" ]] && return 1
+  ## wait until finished loading (not IN_PROGRESS) or timeout=40m=2400s
+  local change_status_timeout=2400 start_time=$(date +%s -d now) ; local timeout_time=$(( start_time + change_status_timeout ))
+  echo "$(date +%s -d now) -lt ${timeout_time}"
+  while [[ "${new_query_status}" == "IN_PROGRESS" &&  $(date +%s -d now) -lt $timeout_time ]] ; do
+    echo "start time=$start_time current time=$(date +%s -d now) timeout time=$timeout_time time left=$(( timeout_time - $(date +%s -d now) ))"
+    sleep $_TIME_TO_WAIT
+    new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  done
+  echo "exiting IN_PROGRESS loop, new_query_status=$new_query_status"
+  new_query_status=$(curl -s "http://${space_server_ip}:${port}/table-feed/status" | tr -d '"')
+  echo new_query_status=$new_query_status
+  [[ "${new_query_status}" != "SUCCESS" ]] && return 1 || return 0
+}
+
+do_gilboafull_feeder() {
+  #  /giga/utils/auto_odsx/auto_gilboafeederfullloadstart
+  gilboafull_feeder
+  gilboafull_feeder_exit_code=$?
+  echo finished gilboafull_feeder gilboafull_feeder_exit_code=$gilboafull_feeder_exit_code
+  exit $gilboafull_feeder_exit_code
+}
+
+gilboaupdate_feeder() {
+echo
+}
+
+do_gilboaupdate_feeder() {
+  #  /giga/utils/auto_odsx/auto_gilboafeederupdatestart
+  gilboaupdate_feeder
+  gilboaupdate_feeder_exit_code=$?
+  echo finished gilboaupdate_feeder gilboaupdate_feeder_exit_code=$gilboaupdate_feeder_exit_code
+  exit $gilboaupdate_feeder_exit_code
+}
+
+################# MAIN #################
+
+[[ $# -eq 0 ]] && usage 
+
+case "${2,,}" in 
+  "gilboafull")
+    _DB_FILE="mssqlFeeder.db"
+    do_gilboafull_feeder "${@}"
+    ;;
+  "gilboaupdate")
+    _DB_FILE="gilboaFeeder.db"
+    do_gilboaupdate_feeder "${@}"
+    ;;
+  *)
+    _DB_FILE="${2,,}Feeder.db"
+    echo $_DB_FILE
+    exit
+    do_db_feeder "${@}"
+    ;;
+esac

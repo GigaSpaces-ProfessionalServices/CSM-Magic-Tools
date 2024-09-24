@@ -5,43 +5,35 @@ _ALL_MANAGER_SERVERS=( $(/usr/local/bin/runall -m -l | grep -v ====) )
 _MEASUREMENT_TYPE=""
 _TABLES=""
 _ONE_TABLE=()
-_FAIL_ONLY=""
-_TABLE_NUM=0
-
-# Temporary file treatment code
-_TMPFILE=/tmp/data-validator-tmp$$
-# Function to clean up temporary file
-cleanup() {
-  #echo "Cleaning up..."
-  rm -f "${_TMPFILE}"
-}
-# Set trap to call cleanup function on script exit
-trap cleanup EXIT
-
 
 get_tables() {
   if [[ -n $_ONE_TABLE ]] ; then
-    _TABLES=( "${_ONE_TABLE[@]}" )
+    _TABLES=( $_ONE_TABLE )
   else
-    if [[ "${_MEASUREMENT_TYPE}" == "max" ]] ; then
-    _TABLES=($(curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGER_SERVERS}:8090/v2/internal/spaces/utilization  | jq -r '.[]."objectTypes"|keys|.[]' | grep '^STUD'))
-    else
     _TABLES=($(curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGER_SERVERS}:8090/v2/internal/spaces/utilization  | jq -r '.[]."objectTypes"|keys|.[]' | grep '^dbo\|^STUD'))
-    fi
   fi
   [[ -z $_TABLES ]] && { echo -e "No TYPES are loaded\n" ; exit 1 ; }
 }
 
 get_measurement_ids() {
   cd /dbagiga/gs-odsx ; ./odsx.py datavalidator measurement list | grep "${_MEASUREMENT_TYPE}" | awk -F'|' '/'\'''"${1}"''\''/ {print $2}' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/[^[:print:]]//g; s/[ \t]//g'
+  #cd /dbagiga/gs-odsx ; ./odsx.py datavalidator measurement list | awk -F'|' '$5 ~ "max.*of" {print}'  grep "${_MEASUREMENT_TYPE}" | awk -F'|' '/'\'''"${1}"''\''/ {print $2}' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/[^[:print:]]//g; s/[ \t]//g'
 }
 
 # Compare measurement (e.g. count) between space and source db
 #
 #------------------------------------------------------------
-#Test Result: PASS
-#Details: Results matched. gigaspaces-Result: 3979  oracle-Result: 3979
+#Test Failed
+#Details: Results not matched. Result-1: 0  Result-2: 1644756
 #------------------------------------------------------------
+#
+#------------------------------------------------------------
+#Test Result: PASS
+#Query: SELECT count(*)  FROM STUD.TA_SEM A | SELECT count(*)  FROM STUD.TA_SEM A
+#Details: Results matched. Result-1: 247  Result-2: 247
+#------------------------------------------------------------
+#
+
 do_compare() {
 compare1="${1}" compare2="${2}" /usr/bin/expect -c '
     set num1 "$env(compare1)"
@@ -80,11 +72,9 @@ compare1="${1}" compare2="${2}" /usr/bin/expect -c '
 
     expect "Do you want to store results in influxdb"
     sleep .5
-    send -- "y"
+    send -- "n"
     sleep .5
-    send -- "e"
-    sleep .5
-    send -- "s"
+    send -- "o"
     sleep .5
     send -- "\r"
 
@@ -95,18 +85,13 @@ compare1="${1}" compare2="${2}" /usr/bin/expect -c '
 compare_tables() {
   get_tables
   for t in ${_TABLES[@]} ; do
-    unset myarr ; declare -a myarr=( $(get_measurement_ids ${t}) )
+    #local t='STUD.KR_CHEDER'
+    unset myarr ; declare -a myarr=( $(get_measurement_ids ${t^^}) )
+    #echo the numbers are ${myarr[@]}
     #get_measurement_ids ${t^^}
     [[ ${#myarr[@]} -ne 2 ]] && { echo -e "\nThere are not 2 results for table ${t}.\n" ; continue ; }
-    do_compare ${myarr[0]} ${myarr[1]} 2>&1 | grep 'Test Result\|Test Failed\|Details:' > $_TMPFILE
-    grep 'Test Failed' $_TMPFILE > /dev/null 2>&1
-    local exit_code=$?
-    if [[ ( $exit_code -eq 0 && -n $_FAIL_ONLY ) || -z $_FAIL_ONLY ]] ; then
-      echo -e "$(( ++_TABLE_NUM ))\t${t}\t\t\t\t$(date)"
-      echo -e "The numbers are: ${myarr[@]}"
-      cat $_TMPFILE
-      [[ "${t}" != "${_TABLES[-1]}" ]] && { echo "sleep 5s" ; sleep 5 ;  }
-    fi
+    echo "${t}"
+    do_compare ${myarr[0]} ${myarr[1]} 2>&1 | grep 'Test Result\|Test Failed\|Details:'
   done
 }
 
@@ -122,9 +107,6 @@ usage() {
 
     -t <table name>   Give one table name to check. If this parameter is missing 
                       then compare all tables.
-    -lt               List tables (REST call)
-    -lm               List measurements
-    -f                TBD - Display only failed comparison resultes
     -h                Display usage
 
   ACTIONS:
@@ -154,17 +136,8 @@ do_menu() {
         _MEASUREMENT_TYPE=max
         ;;
       "-t") 
-        [[ -z $2 ]] && { echo -e "\nTable name is missing\n" ; exit 1 ; }  || _ONE_TABLE+=( "${2}" )
+        [[ -z $2 ]] && { echo -e "\nTable name is missing\n" ; exit 1 ; }  || _ONE_TABLE=( ${_ONE_TABLE[@]} "${2}" )
         shift
-        ;;
-      "-lt") 
-        get_tables ; echo -e "Number of tables: $( echo -e "${_TABLES[@]}" | wc -w)" ; echo -e "${_TABLES[@]}" ; exit 0
-        ;;
-      "-f") 
-        _FAIL_ONLY="yes"
-        ;;
-      "-lm") 
-        cd /dbagiga/gs-odsx ; ./odsx.py datavalidator measurement list ; exit
         ;;
       "-h") 
         usage
@@ -181,3 +154,8 @@ do_menu() {
 
 do_menu "${@}"
 compare_tables
+
+#./odsx.py datavalidator measurement list | grep -i "count.*TL_HEARA" |grep -v gigaspaces |awk -F'|' '{print $2}' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g'
+#80
+
+#tau_srno=$(get_tau_srno | awk -F'|' '/\['\''tau'\''\]/ {print $2}' | sed -r 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/[^[:print:]]//g; s/[ \t]//g')
