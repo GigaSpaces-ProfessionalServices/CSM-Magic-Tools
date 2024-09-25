@@ -15,13 +15,19 @@ import org.openspaces.core.executor.TaskGigaSpace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SupportCodeChange(id="4")
+@SupportCodeChange(id="4.1")
 public class MaxLocalDateTimeValueTaskNew implements DistributedTask<LocalDateTime,LocalDateTime> {
 
     private static Logger logger = LoggerFactory.getLogger(MaxLocalDateTimeValueTaskNew.class);
     private LocalDateTime maxParameter;
     private String tableName;
     private String columnName;
+    private transient ClusterInfo clusterInfo;
+
+    @Override
+    public void setClusterInfo(ClusterInfo clusterInfo) {
+        this.clusterInfo=clusterInfo;
+    }
 
     public MaxLocalDateTimeValueTaskNew(LocalDateTime maxParameter, String tableName, String columnName) {
         this.maxParameter = maxParameter;
