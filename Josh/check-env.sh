@@ -14,10 +14,10 @@ _DI_HOST=$(runall -d -l | grep -v === | head -1)
 _DISK_USAGE_PERCENT=70
 _SLEEP_AFTER=1
 _MODE="daily"
-_EMPTY=""
 _VERBOSE=""
 _MANAGERS=( $( runall -m -l | grep -v === ) )
 _SPACE_NAME=dih-tau-service
+_PRINT=""
 }
 
 usage() {
@@ -29,20 +29,19 @@ usage() {
 
   OPTIONS:
 
-    -d                DAILY report checksa - default
-    -r                -- TBD -- Regular report checks
+    -d                DAILY report checks - default (no arguments)
     -v                VERBOSE
-    -q                QUIET - no wait between checks
     -c <number>       Specify one CHECK by number
-    -lc               LIST of individual CHECKS
-    -h                Display USAGE
+    -lc               LIST of single CHECKS
+    -p                Print command to be executed (single queries)
+    -h                Display HELP/USAGE
 
   EXAMPLES:
 
-   $(basename $0) -d -v             # All DAILY report checks (default), VERBOSE responses, no wait
-   $(basename $0) -c 6              # CHECK (query) services only
-   $(basename $0) -v -c 11          # CHECK today's Control-M log entries for success ("OK"), VERBOSE
-   $(basename $0) -q                # All DAILY report checks (default), short responses (default), QUIET - no wait
+   $(basename $0) -c 6              # QUERY services only
+   $(basename $0) -v -c 11          # CHECK today's Control-M log entries
+   $(basename $0) -v -c 8           # CHECK pipelines
+   $(basename $0) -p -c 16 program  # PRINT command: single query for program_study_service
 
 EOF
 exit
@@ -58,14 +57,14 @@ do_menu() {
   #[[ $# -eq 0 ]] && usage
   while [[ $# -gt 0 ]] ; do
     case $1 in
+      "-p")
+        _PRINT="yes"
+        ;;
       "-d")
         _MODE="daily"
         ;;
       "-r")
         _MODE="regular"
-        ;;
-      "-e")
-        _EMPTY="check_if_empty"
         ;;
       "-c")
         do_one_check "${@}"
@@ -98,7 +97,7 @@ list_of_checks() {
 
   1   check_ping
   2   check_ssh
-  3   check_disk_usage_all [<percent>]                    # Specify percent - default is 70
+  3   check_disk_usage_all [<percent>]            # Specify percent - default is 70
   4   show_primary_backup
   5   service_hc
   6   service_query
@@ -111,13 +110,14 @@ list_of_checks() {
   13  run_pipelines_bg ; show_pipelines_bg
   14  check_notifiers
   15  list_service_names
-  16  query_one_service <service name>                    # $(basename $0) -c 16 program_study 
+  16  query_one_service <service name>            # $(basename $0) -c 16 program_study 
   17  check_gigashare
   18  person_schedule_query_2
   19  check_nbapp_services
   20  check_sync_of_managers
   21  check_spacedeck_on_managers
   22  check_nbagent_services
+  23  check_indexes                               # "-l" insert into log, "-c" show count
 
 
 EOF
@@ -148,6 +148,7 @@ do_one_check() {
     "20") check_sync_of_managers ;;
     "21") check_spacedeck_on_managers ;;
     "22") check_nbagent_services ;;
+    "23") check_indexes $3 ;;
     *)    echo -e "\nChoice unknown" ;;
   esac
   echo
@@ -173,10 +174,16 @@ query_one_service() {
   local service_string=${microservice##*8443/}
   local service_name=${service_string%%/*}
 
+  # Only print command
+  if [[ -n "${_PRINT}" ]] ; then
+    echo -e "curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert https://${end_point}:8443/${service_string}" 
+    return
+  fi
+
   # Non verbose
   if [[ -z "${_VERBOSE}" ]] ; then 
     local result=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
-    printf '%3d %-35s%-25s%s\n' "$((++srv_num))" "${service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')"
+    printf '%3d %-40s%-25s%s\n' "$((++srv_num))" "${service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')"
     return 
   fi
 
@@ -206,7 +213,7 @@ service_hc() {
   local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
   cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
   for service_name in $registered_services ; do
-    printf "%3d %-35s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_name}/v1/actuator/health")"
+    printf "%3d %-40s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_name}/v1/actuator/health")"
   done
   sleep $_SLEEP_AFTER
 }
@@ -240,12 +247,12 @@ service_query() {
     service_name=$(echo $real_service_name | sed 's/_v[0-9]\+//')
     microservices_full_string=$(grep "/${service_name}/" /giga/microservices/curls)
     deploy_state=$( curl -s -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
-    [[ -z $microservices_full_string ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
+    [[ -z $microservices_full_string ]] && { printf '%3d %-40s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
     service_string=${microservices_full_string##*8443/}
     #[[ $deploy_state != "intact" ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "not intact" ; continue ; }
     if [[ -z "${_VERBOSE}" ]] ; then
       local result=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
-      printf '%3d %-35s%-25s%-10s%-12s\n' "$((++srv_num))" "${real_service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')" "${deploy_state}"
+      printf '%3d %-40s%-25s%-10s%-12s\n' "$((++srv_num))" "${real_service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')" "${deploy_state}"
       continue
     fi
     # Verbose
@@ -499,6 +506,15 @@ check_nbagent_services() {
   [[ -z $result ]] && echo Success || { echo -e Failure ; echo "${result}" ; }
 }
 
+check_indexes() {
+  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo | jq -r '.objectTypesMetadata[] | select(.indexes[] | select(.name == "T_IDKUN" and .method == "EQUAL_AND_ORDERED")).objectName' )
+  local IDX_COUNT="Number of Types that have T_IDKUN EQUAL_AND_ORDERED index: $(echo -e "${IDX}" | wc -l)"
+  [[ $1 == "-c" ]] && { echo -e "\n${IDX_COUNT}" ; return 0 ; }
+  [[ $1 == "-l" ]] && { echo -e "$(date)\n${IDX_COUNT}\n${IDX}" >> /gigalogs/check-indexes.log ; return 0 ; }
+  [[ -n $1 ]] && { echo "Option not supported" ; return 1 ; } 
+  echo -e "\n${IDX}"
+}
+
 check_sync_of_managers() {
   echo -e "\n==================== Check managers' SYNC: Compare PU and CONTAINER counts between managers.\n"
   echo -ne "manager sync: "
@@ -539,7 +555,7 @@ person_schedule_query_2() {
   local service_string='person_schedule_service/v1/u1?idno=97545&from_date=2023-06-30&to_date=2023-07-30&limit=1'
   local service_name=person_schedule_service
   # Non verbose
-  [[ -z "${_VERBOSE}" ]] && { printf '%-35s%s\n' "${service_name}" "$(curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "=========== empty response" else "data returned" end')" ; return ; }
+  [[ -z "${_VERBOSE}" ]] && { printf '%-40s%s\n' "${service_name}" "$(curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "=========== empty response" else "data returned" end')" ; return ; }
   # Verbose
   printf '=%.0s' {1..50} ; echo "${service_name}"
   time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo
