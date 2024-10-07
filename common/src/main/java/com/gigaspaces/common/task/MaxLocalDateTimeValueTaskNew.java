@@ -14,9 +14,11 @@ import org.openspaces.core.executor.DistributedTask;
 import org.openspaces.core.executor.TaskGigaSpace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.openspaces.core.cluster.ClusterInfo;
+import org.openspaces.core.cluster.ClusterInfoAware;
 
-@SupportCodeChange(id="4.1")
-public class MaxLocalDateTimeValueTaskNew implements DistributedTask<LocalDateTime,LocalDateTime> {
+@SupportCodeChange(id="4.3")
+public class MaxLocalDateTimeValueTaskNew implements ClusterInfoAware, DistributedTask<LocalDateTime,LocalDateTime> {
 
     private static Logger logger = LoggerFactory.getLogger(MaxLocalDateTimeValueTaskNew.class);
     private LocalDateTime maxParameter;
@@ -80,9 +82,10 @@ public class MaxLocalDateTimeValueTaskNew implements DistributedTask<LocalDateTi
             System.out.println("SOP:22MaxLocalDateTimeValueTask Reducer Individual Result: "+result.getResult());
             if(result.getResult()!=null) {
                 resultList.add(result.getResult());
-            }else {
-                return null;
             }
+//            else {
+//                return null;
+//            }
         }
         return getMax(resultList);
     }
