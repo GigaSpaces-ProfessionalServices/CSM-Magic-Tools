@@ -17,7 +17,6 @@ _ONE_TABLE=()
 _FAIL_ONLY=""
 _TABLE_NUM=0
 [[ "${ENV_NAME}" != "TAUG" ]] && _CDC_TABLES=$( ( ssh $(runall -d -l |grep -v === | head -1) /giga/scripts/listPipelineTables.sh |grep STUD) )
-
 # Temporary file treatment code
 _TMPFILE=/tmp/data-validator-tmp$$
 # Function to clean up temporary file
@@ -321,6 +320,22 @@ expect eof
 '  
 }
 
+function do_batchm2() {
+  local num=1 dvmax_out dvmax line table gigaspaces oracle table_type
+  dvmax_out="$( batch_max | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
+  echo -e "\nNumber of tables processed: $(echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | wc -l)"
+  dvmax=$( echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | grep -v 'gigaspaces-Result:FAIL' )
+  while read line ; do 
+    table=$( echo $line | awk -F\| '{print $4}' )
+    gigaspaces=$( echo "$( echo $line | grep -o 'gigaspaces-Result:[0-9]*' | awk -F: '{print $2}') / 1000" | bc )
+    oracle=$( echo "$( echo $line | grep -o 'oracle-Result:[0-9]*' | awk -F: '{print $2}') / 1000" | bc )
+    echo "${_CDC_TABLES}" | grep -w ${table} >/dev/null 2>&1
+    [[ $? -eq 0 ]] && table_type=CDC || table_type=FEEDER
+    printf "%3d %-50s %s     %s  %s %s\n" "$((num++))" "${table}" "GS = $(date -d @${gigaspaces} +"%Y-%m-%d %H:%M:%S" )" "ORA = $( date -d @${oracle} +"%Y-%m-%d %H:%M:%S" )" "$(echo $line | awk -F\| '{print $5}')" "${table_type}"
+  done < <(echo "${dvmax}")
+  echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | grep 'gigaspaces-Result:FAIL'
+}
+
 usage() {
   cat << EOF
 
@@ -384,8 +399,7 @@ do_menu() {
         batch_max ; exit
         ;;
       "batchm2") 
-        dvmax=$( batch_max | grep 'dbo\.\|STUD\.' | grep -v 'gigaspaces-Result: FAIL' ) ; echo "${dvmax}" | while read line ; do table=$( echo $line | awk -F\| '{print $4}') ; gigaspaces=$( echo "$( echo $line | grep -o 'gigaspaces-Result: [0-9]*' | awk '{print $2}') / 1000" | bc ) ; oracle=$( echo "$( echo $line | grep -o 'oracle-Result: [0-9]*' | awk '{print $2}') / 1000" | bc ) ; printf "%-45s %s     %s  %s\n" "${table}" "GS = $(date -d @${gigaspaces} +"%Y-%m-%d %H:%M:%S" )" "ORA = $( date -d @${oracle} +"%Y-%m-%d %H:%M:%S" )" "$(echo $line | awk -F\| '{print $5}')"; done
-        exit
+      do_batchm2 ; exit
         ;;
       "batchcm") 
         auto_dv.sh batchc
