@@ -40,8 +40,14 @@ function get_table_threshold() {
 function get_auth() {
     sec_flag=$(cat /gigashare/env_config/app.config | grep "app.setup.profile" | cut -d= -f2)
     if [[ $sec_flag != "" ]]; then
-        AUTH_USER=$(cat /gigashare/env_config/app.config | grep "app.manager.security.username" | cut -d= -f2)
-        AUTH_PASS=$(cat /gigashare/env_config/app.config | grep "app.manager.security.password" | cut -d= -f2)
+
+      AUTH_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+      if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+        _VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+        AUTH_PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${_VAULT_PASS})
+      else
+        AUTH_PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
+      fi
     fi
 }
 
@@ -74,57 +80,64 @@ AUTH_PASS=""
 # tables thresholds dictionary
 # * using bash v4.x associative array
 declare -A SHOB_TABLES
-SHOB_TABLES=([STUD.KR_KURS]=18000 \
-[STUD.KR_KVUTZA]=18000 \
-[STUD.KR_KVUTZA_MOED]=18000 \
-[STUD.KR_KVUTZA_SEGEL]=18000 \
-[STUD.KR_KVUTZA_ZAMAK]=18000 \
-[STUD.MJ_HODAOT_WEB]=86400 \
-[STUD.MM_TOCHNIT_LIMUD]=86400 \
-[STUD.MM_YEHIDA]=86400 \
-[STUD.SL_HESHBON]=18000 \
-[STUD.SL_TNUA]=18000 \
-[STUD.TA_HODAA]=3600 \
-[STUD.TA_IDS]=86400 \
-[STUD.TA_KTOVET]=86400 \
-[STUD.TA_PERSON]=86400 \
-[STUD.TA_PRATIM]=86400 \
-[STUD.TL_HEARA]=18000 \
-[STUD.TL_KURS]=3600 \
-[STUD.TL_TOAR]=86400 \
-[STUD.TL_TOCHNIT]=86400 \
-[STUD.TA_CALENDAR]=86400 \
-[STUD.TB_020_MADAD]=86400 \
-[STUD.TB_029_MAAMAD]=86400 \
-[STUD.TB_032_MATZAV_BACHUG]=86400 \
-[STUD.TB_038_MATZAV_TAL_MUM_MOR]=86400 \
-[STUD.TB_059_SCL_TOSEFET]=86400 \
-[STUD.TB_060_TOAR]=86400 \
-[STUD.TB_082_HEARA_TALMID]=86400 \
-[STUD.TB_101_SIVUG_TOAR]=86400 \
-[STUD.TB_975_CALNDR_ERUA]=86400 \
-[dbo.Portal_Calendary_View]=86400 \
-[STUD.TB_036_MATZAV_TZIUN]=86400 \
-[STUD.TB_071_SIMUL_TZIUN]=86400 \
-[STUD.TB_069_SCL_PEULA]=86400 \
-[STUD.TB_104_SUG_MATALA]=86400 \
-[STUD.TB_005_SHAOT_KURS]=86400 \
-[STUD.TB_911_BINYAN]=86400 \
-[STUD.TA_SEM]=86400 \
-[STUD.TB_002_OFEN_HORAA]=86400 \
-[STUD.TA_PERSON_SHAOT]=86400 \
-[STUD.TB_962_TOAR_MORE]=86400 \
-[STUD.KR_CHEDER]=86400 \
-[STUD.TL_SEM]=86400 \
-[STUD.TB_917_SHANA]=86400 \
-[STUD.TL_MOED_TZIUN]=3600 \
-[STUD.TL_KVUTZA]=86400 \
-[STUD.TM_MECHKAR]=18000 \
-[STUD.TM_SEGEL]=18000 \
+SHOB_TABLES=([STUD.KR_KURS]=2592000 \
+[STUD.KR_KVUTZA]=2592000 \
+[STUD.KR_KVUTZA_MOED]=2592000 \
+[STUD.KR_KVUTZA_SEGEL]=2592000 \
+[STUD.KR_KVUTZA_ZAMAK]=2592000 \
+[STUD.MJ_HODAOT_WEB]=2592000 \
+[STUD.MM_TOCHNIT_LIMUD]=2592000 \
+[STUD.MM_YEHIDA]=2592000 \
+[STUD.SL_HESHBON]=2592000 \
+[STUD.SL_TNUA]=2592000 \
+[STUD.TA_HODAA]=2592000 \
+[STUD.TA_IDS]=2592000 \
+[STUD.TA_KTOVET]=2592000 \
+[STUD.TA_PERSON]=2592000 \
+[STUD.TA_PRATIM]=2592000 \
+[STUD.TL_HEARA]=2592000 \
+[STUD.TL_KURS]=2592000 \
+[STUD.TL_TOAR]=2592000 \
+[STUD.TL_TOCHNIT]=2592000 \
+[STUD.TA_CALENDAR]=2592000 \
+[STUD.TB_020_MADAD]=2592000 \
+[STUD.TB_029_MAAMAD]=2592000 \
+[STUD.TB_032_MATZAV_BACHUG]=2592000 \
+[STUD.TB_038_MATZAV_TAL_MUM_MOR]=2592000 \
+[STUD.TB_059_SCL_TOSEFET]=2592000 \
+[STUD.TB_060_TOAR]=2592000 \
+[STUD.TB_082_HEARA_TALMID]=2592000 \
+[STUD.TB_101_SIVUG_TOAR]=2592000 \
+[STUD.TB_975_CALNDR_ERUA]=2592000 \
+[dbo.Portal_Calendary_View]=2592000 \
+[STUD.TB_036_MATZAV_TZIUN]=2592000 \
+[STUD.TB_071_SIMUL_TZIUN]=2592000 \
+[STUD.TB_069_SCL_PEULA]=2592000 \
+[STUD.TB_104_SUG_MATALA]=2592000 \
+[STUD.TB_005_SHAOT_KURS]=2592000 \
+[STUD.TB_911_BINYAN]=2592000 \
+[STUD.TA_SEM]=2592000 \
+[STUD.TB_002_OFEN_HORAA]=2592000 \
+[STUD.TA_PERSON_SHAOT]=2592000 \
+[STUD.TB_962_TOAR_MORE]=2592000 \
+[STUD.KR_CHEDER]=2592000 \
+[STUD.TL_SEM]=2592000 \
+[STUD.TB_917_SHANA]=2592000 \
+[STUD.TL_MOED_TZIUN]=2592000 \
+[STUD.TL_KVUTZA]=2592000 \
+[STUD.TM_MECHKAR]=2592000 \
+[STUD.TM_SEGEL]=2592000 \
+[STUD.KR_KVUTZA_MOED_HEARA]=2592000 \
+[STUD.TL_CHOVOT_UNI]=2592000 \
+[STUD.TL_MOED_NOSAF_BAKASHA]=2592000 \
+[STUD.TB_023_MOED]=2592000 \
+[STUD.TL_IRUR_BAKASHA]=2592000 \
+[STUD.TB_022_MOSAD]=2592000 \
+[STUD.TB_982_HODAA_URL]=2592000 \
 )
 
 # special vaule for GilboaSync dbo.Portal_Calendary_View table
-GILBOASYNC=3600
+GILBOASYNC=2592000
 
 # get credentials if env is secured
 get_auth
@@ -186,6 +199,7 @@ while read -r value; do
     else
         th=$(get_table_threshold $table_name)
     fi
+    #echo table_name=$table_name time_stamp=$time_stamp
     time_diff=$(expr $(date +%s) - $time_stamp)
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
@@ -215,6 +229,7 @@ for table_name in $shob_objects; do
     time_stamp=$(echo "$zz_time" / 1000 | bc)
     time_stamp_hr=$(date -d @${time_stamp} +"%Y-%m-%dT%H:%M:%SZ")
     th=$(get_table_threshold $table_name)
+    #echo table_name=$table_name time_stamp=$time_stamp
     time_diff=$(expr $(date +%s) - $time_stamp)
     [[ $time_diff -gt $th ]] && freshness=0 || freshness=1
     shob_info+=("shobStatus,source=$source_name,table_name=$table_name,threshold=$th,updated=${time_stamp_hr} freshness=$freshness")
@@ -227,3 +242,4 @@ for i in "${shob_info[@]}"; do echo "$i" ; done
 rm -f $SHOB_COOKIE
 
 exit
+

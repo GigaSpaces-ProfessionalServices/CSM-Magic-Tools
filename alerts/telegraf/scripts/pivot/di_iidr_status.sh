@@ -171,3 +171,4 @@ for i in "${influx_data[@]}"; do echo "$i" ; done
 # rm -f $CURL_AUTH_COOKIE
 
 exit
+

@@ -24,11 +24,19 @@ function get_cluster_hosts {
 }
 
 function get_auth() {
-    sec_flag=$(cat $ENV_CONFIG/app.config | grep "app.setup.profile" | cut -d= -f2)
-    if [[ $sec_flag != "" ]]; then
-        declare -g AUTH_USER=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.username" | cut -d= -f2)
-        declare -g AUTH_PASS=$(cat $ENV_CONFIG/app.config | grep "app.manager.security.password" | cut -d= -f2)
+  sec_flag=$(cat ${ENV_CONFIG}/app.config | grep "app.setup.profile" | cut -d= -f2)
+  if [[ $sec_flag != "" ]]; then
+    AUTH_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+    if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+      declare -g VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+      declare -g AUTH_PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${VAULT_PASS})
+    else
+      declare -g AUTH_PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
     fi
+  else
+      declare -g AUTH_USER=""
+      declare -g AUTH_PASS=""
+  fi
 }
 
 function is_manager_rest_ok() {
@@ -110,3 +118,4 @@ END	{
 		if (count == 2) print "gcState,pu="old" state=\"faulty\"";
 	}
 '
+

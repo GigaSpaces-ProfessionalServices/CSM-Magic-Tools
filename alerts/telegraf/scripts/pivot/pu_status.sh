@@ -41,11 +41,31 @@ function get_cluster_hosts {
 }
 
 
+#function get_auth() {
+#    sec_flag=$(cat /gigashare/env_config/app.config | grep "app.setup.profile" | cut -d= -f2)
+#    if [[ $sec_flag != "" ]]; then
+#        AUTH_USER=$(cat /gigashare/env_config/app.config | grep "app.manager.security.username" | cut -d= -f2)
+#        AUTH_PASS=$(cat /gigashare/env_config/app.config | grep "app.manager.security.password" | cut -d= -f2)
+#    fi
+#}
+
 function get_auth() {
-    sec_flag=$(cat /gigashare/env_config/app.config | grep "app.setup.profile" | cut -d= -f2)
+    sec_flag=$(cat ${ENV_CONFIG}/app.config | grep "app.setup.profile" | cut -d= -f2)
     if [[ $sec_flag != "" ]]; then
-        AUTH_USER=$(cat /gigashare/env_config/app.config | grep "app.manager.security.username" | cut -d= -f2)
-        AUTH_PASS=$(cat /gigashare/env_config/app.config | grep "app.manager.security.password" | cut -d= -f2)
+      AUTH_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+      if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+        declare -g VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+        declare -g AUTH_PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${VAULT_PASS})
+      else
+        declare -g AUTH_PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
+      fi
+#       declare -g AUTH_USER=$(cat ${ENV_CONFIG}/app.config | grep "app.manager.security.username" | cut -d= -f2)
+#       declare -g AUTH_PASS=$(cat ${ENV_CONFIG}/app.config | grep "app.manager.security.password" | cut -d= -f2)
+        #echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] environment secured. extracted username/password from app.config"
+    else
+        declare -g AUTH_USER=""
+        declare -g AUTH_PASS=""
+        #echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] environment not secured. username/password not set"
     fi
 }
 
@@ -161,3 +181,4 @@ for i in "${pu_info[@]}"; do echo "$i" ; done
 rm -f $SHOB_COOKIE
 
 exit
+
