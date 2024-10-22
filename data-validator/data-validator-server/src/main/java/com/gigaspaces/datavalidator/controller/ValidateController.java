@@ -700,7 +700,7 @@ public class ValidateController {
 
         Map<String,String> response = new HashMap<>();
         try {
-            influxdbResultStore = true; // default to true
+//            influxdbResultStore = true; // default to true
             TestTask task;
             if(testType != null && testType.equalsIgnoreCase("all")) testType=null;
             List<Measurement> measurementList = measurementService.getActiveMeasurement();
