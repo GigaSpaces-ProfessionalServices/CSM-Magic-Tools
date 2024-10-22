@@ -4,28 +4,34 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
   },
   "description": "v0.2",
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
-      "datasource": "${DS_XAP}",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
+      "datasource": {
+        "uid": "${DS_XAP}"
       },
       "gridPos": {
         "h": 3,
@@ -35,12 +41,20 @@
       },
       "id": 50,
       "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
         "content": "<a href=\"/d/tJWLBOR7qx/main-dashboard?orgId=1&refresh=5s&kiosk\">\n   <div>\n      <img alt=\"TAU Spaceboard\" src=\"/public/img/logo.png\" width=150\">\n      <span style=\"font-size:150%; font-weight:bold ;color:darkblue; padding-left:10px; font-style:italic\"> SpaceBoard </span>\n   </div>\n</a>\n",
         "mode": "html"
       },
-      "pluginVersion": "7.3.7",
+      "pluginVersion": "9.2.10",
       "targets": [
         {
+          "datasource": {
+            "uid": "${DS_XAP}"
+          },
           "groupBy": [
             {
               "params": [
@@ -76,14 +90,14 @@
           "tags": []
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "",
       "transparent": true,
       "type": "text"
     },
     {
-      "datasource": "InfluxDB",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "-ShY5tWIz"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -92,7 +106,8 @@
           "custom": {
             "align": "left",
             "displayMode": "auto",
-            "filterable": true
+            "filterable": true,
+            "inspect": false
           },
           "mappings": [],
           "thresholds": {
@@ -124,20 +139,15 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "from": "",
-                    "id": 1,
-                    "text": "PASS",
-                    "to": "",
-                    "type": 1,
-                    "value": "1"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "FAIL",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
+                    "options": {
+                      "0": {
+                        "text": "FAIL"
+                      },
+                      "1": {
+                        "text": "PASS"
+                      }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -155,6 +165,13 @@
       "interval": "",
       "maxDataPoints": 1,
       "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "frameIndex": 0,
         "showHeader": true,
         "sortBy": [
@@ -164,9 +181,13 @@
           }
         ]
       },
-      "pluginVersion": "7.3.7",
+      "pluginVersion": "9.2.10",
       "targets": [
         {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "-ShY5tWIz"
+          },
           "groupBy": [
             {
               "params": [
@@ -237,8 +258,6 @@
           ]
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Data Validation",
       "transformations": [
         {
@@ -248,7 +267,8 @@
               "names": [
                 "Time",
                 "obj_type",
-                "last_result"
+                "last_result",
+                "last_table_type"
               ]
             }
           }
@@ -258,17 +278,16 @@
           "options": {
             "excludeByName": {},
             "indexByName": {
-              "Time": 4,
-              "freshness": 5,
-              "source": 0,
-              "table_name": 1,
-              "threshold": 2,
-              "updated": 3
+              "Time": 2,
+              "last_result": 3,
+              "last_table_type": 0,
+              "obj_type": 1
             },
             "renameByName": {
               "Data Validation": "Data Validation status",
               "Time": "Validation Time",
               "last_result": "State",
+              "last_table_type": "Source",
               "obj_type": "Object Type",
               "source": "Source",
               "state": "",
@@ -284,7 +303,7 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 26,
+  "schemaVersion": 37,
   "style": "light",
   "tags": [
     "Master"
@@ -293,7 +312,7 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {
@@ -330,5 +349,6 @@
   "timezone": "browser",
   "title": "Data Validation",
   "uid": "MlFV_NHSz",
-  "version": 6
+  "version": 8,
+  "weekStart": ""
 }

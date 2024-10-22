@@ -1,6 +1,7 @@
 #!/bin/bash
 
 do_env() {
+export ENV_CONFIG=/gigashare/env_config
 # Get user/pass creds
 _USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
 if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
@@ -9,23 +10,42 @@ if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
 else
   _PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
 fi
-
-_ALL_MANAGER_SERVERS=( $(/usr/local/bin/runall -m -l | grep -v ====) )
+_ALL_MANAGER_SERVERS=( $(/usr/local/bin/runall -m -l | grep -v ===) )
+MANAGER=${_ALL_MANAGER_SERVERS[0]}
+BASE_URL="http://${MANAGER}:8090/v2"
+SPACE_ID=$(curl -u ${_USER}:${_PASS} -ks "${BASE_URL}/spaces" | jq -r '.[].name' | head -1)
+LOOKUP_GROUP=$(grep -o "groups=gs-tau-[a-z]\{3\}" ${ENV_CONFIG}/app.config | head -1 | awk -F= '{print $2}')
+case $LOOKUP_GROUP in
+  "gs-tau-dev") ENV_NAME=TAUG ;;
+  "gs-tau-stg") ENV_NAME=TAUS ;;
+  "gs-tau-prd") ENV_NAME=TAUP ;;
+esac
 _MEASUREMENT_TYPE="count"
 _TABLES=""
 _ONE_TABLE=()
 _FAIL_ONLY=""
 _TABLE_NUM=0
-[[ "${ENV_NAME}" != "TAUG" ]] && _CDC_TABLES=$( ( ssh $(runall -d -l |grep -v === | head -1) /giga/scripts/listPipelineTables.sh |grep STUD) )
+_LOGC=/tmp/jrbatchc_influx
+_LOGM=/tmp/jrbatchm_influx
+_DV_MAX_LOG=/gigalogs/auto_dv_max.log
+_DV_COUNT_LOG=/gigalogs/auto_dv_count.log
+declare -g -A _INFLUX
+# Create and indexed array holding all CDC tables
+#[[ "${ENV_NAME}" != "TAUG" ]] && _CDC_TABLES=( $( ssh $(runall -d -l |grep -v === | head -1) /giga/scripts/listPipelineTables.sh |grep STUD) )
+_CDC_TABLES=()
+get_CDC_object_data
+HOST_NAME=$(hostname)
+#_CDC_TABLES=( $(cat /tmp/jrcdctables) )
 # Temporary file treatment code
-_TMPFILE=/tmp/data-validator-tmp$$
+#_TMPFILE=/tmp/data-validator-tmp$$
+_TMP_COMPARE=""
 # Function to clean up temporary file
-cleanup() {
-  #echo "Cleaning up..."
-  rm -f "${_TMPFILE}"
-}
-# Set trap to call cleanup function on script exit
-trap cleanup EXIT
+#cleanup() {
+#  #echo "Cleaning up..."
+#  rm -f "${_TMPFILE}"
+#}
+## Set trap to call cleanup function on script exit
+#trap cleanup EXIT
 }
 
 get_tables() {
@@ -221,17 +241,17 @@ compare_tables() {
     unset myarr ; declare -a myarr=( $(get_measurement_ids ${t}) )
     #get_measurement_ids ${t^^}
     [[ ${#myarr[@]} -ne 2 ]] && { echo -e "\nThere are not 2 results for table ${t}.\n" ; continue ; }
-    do_compare ${myarr[0]} ${myarr[1]} 2>&1 | grep 'Test Result\|Test Failed\|Details:' > $_TMPFILE
-    grep 'Test Failed' $_TMPFILE > /dev/null 2>&1
+    _TMP_COMPARE=$( do_compare ${myarr[0]} ${myarr[1]} 2>&1 | grep 'Test Result\|Test Failed\|Details:' )
+    echo "${_TMP_COMPARE}" | grep 'Test Failed' > /dev/null 2>&1
     local exit_code=$?
     if [[ ( $exit_code -eq 0 && -n $_FAIL_ONLY ) || -z $_FAIL_ONLY ]] ; then
-      if [[ $(echo ${_CDC_TABLES[@]} | grep -w $t >/dev/null 2>&1 ; echo $?) -eq 0 ]] ; then
+      if echo ${_CDC_TABLES[@]} | grep -w "${t}" >/dev/null 2>&1 ; then
         echo -e "$(( ++_TABLE_NUM ))\t${t} CDC\t\t\t\t$(date)"
       else
         echo -e "$(( ++_TABLE_NUM ))\t${t}\t\t\t\t$(date)"
       fi
       echo -e "The numbers are: ${myarr[@]}"
-      cat $_TMPFILE
+      echo "${_TMP_COMPARE}"
       #[[ "${t}" != "${_TABLES[-1]}" ]] && { echo "sleep 5s" ; sleep 5 ; }
     fi
   done
@@ -240,7 +260,7 @@ compare_tables() {
 list_tables_column() {
   get_tables ; echo -e "=== Number of tables: $( echo -e "${_TABLES[@]}" | wc -w)"
   for t in ${_TABLES[@]} ; do
-    [[ $(echo ${_CDC_TABLES[@]} | grep -w $t >/dev/null 2>&1 ; echo $?) -eq 0 ]] && echo $t CDC || echo $t
+    [[ $(echo ${_CDC_TABLES[@]} | grep -w "${t}" >/dev/null 2>&1 ; echo $?) -eq 0 ]] && echo $t CDC || echo $t
   done
 }
 
@@ -322,19 +342,82 @@ expect eof
 
 function do_batchm2() {
   local num=1 dvmax_out dvmax line table gigaspaces oracle table_type
-  dvmax_out="$( batch_max | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
+  dvmax_out="$( batch_max | tee -a $_DV_MAX_LOG | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
   echo -e "\nNumber of tables processed: $(echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | wc -l)"
-  dvmax=$( echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | grep -v 'gigaspaces-Result:FAIL' )
+  dvmax=$( echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' )
   while read line ; do 
     table=$( echo $line | awk -F\| '{print $4}' )
     gigaspaces=$( echo "$( echo $line | grep -o 'gigaspaces-Result:[0-9]*' | awk -F: '{print $2}') / 1000" | bc )
     oracle=$( echo "$( echo $line | grep -o 'oracle-Result:[0-9]*' | awk -F: '{print $2}') / 1000" | bc )
-    echo "${_CDC_TABLES}" | grep -w ${table} >/dev/null 2>&1
+    echo "${_CDC_TABLES[@]}" | grep -w "${table}" >/dev/null 2>&1
     [[ $? -eq 0 ]] && table_type=CDC || table_type=FEEDER
     printf "%3d %-50s %s     %s  %s %s\n" "$((num++))" "${table}" "GS = $(date -d @${gigaspaces} +"%Y-%m-%d %H:%M:%S" )" "ORA = $( date -d @${oracle} +"%Y-%m-%d %H:%M:%S" )" "$(echo $line | awk -F\| '{print $5}')" "${table_type}"
   done < <(echo "${dvmax}")
   echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | grep 'gigaspaces-Result:FAIL'
 }
+
+get_CDC_object_data() {
+# Get list of CDC tables (tables that have field ZZ_META_DI_TIMESTAMP)
+objectTypesMetadata=$(curl -u ${_USER}:${_PASS} -sk ${BASE_URL}/spaces/${SPACE_ID}/objectsTypeInfo | jq -r '.objectTypesMetadata[]')
+while read -r obj; do
+    [[ $obj =~ SHOB ]] && continue
+    has_zz_meta_di_timestamp=$(echo $objectTypesMetadata | \
+    jq -r "select(.objectName == \"$obj\") | .schema" | \
+    jq '. | any(.name == "ZZ_META_DI_TIMESTAMP")')
+    $has_zz_meta_di_timestamp && _CDC_TABLES+=( $obj )
+done < <(curl -u ${_USER}:${_PASS} -sk "${BASE_URL}/spaces/${SPACE_ID}/statistics/types" | jq --raw-output 'keys[]' | grep -v "java.lang.Object" | sort -n)
+}
+
+# myarr[STUD.TL_KVUTZA]="1"
+# [[ -z ${_INFLUX[${t}]} ]] && echo empty || echo not empty
+# [[ "${line}" =~ gigaspaces-Result:[0-9]+ && "${line}" =~ oracle-Result:[0-9]+ ]]
+function batchm_influx() {
+  local dvmax_out line result table table_type
+  dvmax_out="$( batch_max | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
+  #dvmax_out="$(cat /tmp/jrbatchmsed)"
+  > $_LOGM
+  while read line ; do 
+    read table result < <( echo "${line}" | awk -F\| '{ print $4 " " $5 }' )
+    echo $table $result >> $_LOGM
+    if [[ -z ${_INFLUX[${table}]} ]] ; then       # if not exist then add table with result
+      _INFLUX[${table}]=$result
+    elif [[ $result == "FAIL" ]] ; then           # if exist then set value only if result="FAIL" - At least one FAIL = FAIL
+        _INFLUX[${table}]=$result
+    fi
+  done < <(echo "${dvmax_out}") 
+  #for table in ${!_INFLUX[@]} ; do echo $table ${_INFLUX[${table}]} ; done | sort > $_LOGM
+  sort $_LOGM > ${_LOGM}2
+}
+
+function batchc_influx() {
+  local dvcount_out line result table table_type
+  dvcount_out="$( batch_count | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g')"
+  #dvcount_out="$(cat /tmp/jrbatchc)"
+  > $_LOGC
+  while read line ; do 
+    read table result < <( echo "${line}" | awk -F\| '{ print $4 " " $5 }' )
+    echo $table $result >> $_LOGC
+    if [[ -z ${_INFLUX[${table}]} ]] ; then       # if not exist then add table with result
+      _INFLUX[${table}]=$result
+    elif [[ $result == "FAIL" ]] ; then           # if exist then set value only if result="FAIL" - At least one FAIL = FAIL
+        _INFLUX[${table}]=$result
+    fi
+  done < <(echo "${dvcount_out}") 
+  #for table in ${!_INFLUX[@]} ; do echo $table ${_INFLUX[${table}]} ; done | sort > $_LOGC
+  sort $_LOGC > ${_LOGC}2
+}
+
+# e.g. dvState,env=TAUS host=gstest-pivot obj_type=STUD.TM_SEGEL result=1 state=PASS table_type=CDC
+function batch_influx() {
+  local table result state table_type
+  for table in ${!_INFLUX[@]} ; do
+    if echo "${_CDC_TABLES[@]}" | grep -w "${table}" >/dev/null 2>&1 ; then table_type=CDC ; else table_type=FEEDER ; fi
+    result=1 ; [[ "${_INFLUX[${table}]}" == "FAIL" ]] && result=0
+    state=${_INFLUX[${table}]}
+    echo "dvState,env=${ENV_NAME},host=${HOST_NAME},obj_type=${table} result=${result}i,state=\"${state}\",table_type=\"${table_type}\""
+  done
+}
+
 
 usage() {
   cat << EOF
@@ -361,6 +444,9 @@ usage() {
 
   ACTIONS:
 
+    batch_influx     BATCH MAX and COUNT aggregation for influx
+    batchm_influx    BATCH MAX for influx
+    batchc_influx    BATCH COUNT for influx
     batchc           BATCH Compare COUNT
     batchm           BATCH Compare MAX
     batchm2          BATCH Compare MAX and convert from epoc to regular date and time as a list
@@ -395,11 +481,23 @@ do_menu() {
       "batchc") 
         batch_count ; exit
         ;;
+      "batchc_influx") 
+        batchc_influx ; exit
+        ;;
       "batchm") 
         batch_max ; exit
         ;;
+      "batchm_influx") 
+        batchm_influx ; exit
+        ;;
       "batchm2") 
-      do_batchm2 ; exit
+        exit
+        do_batchm2 ; exit
+        ;;
+      "batch_influx") 
+        batchm_influx
+        batchc_influx
+        batch_influx | sort | tee /gigalogs/dv_for_grafana ; exit
         ;;
       "batchcm") 
         auto_dv.sh batchc
