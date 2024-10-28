@@ -491,7 +491,6 @@ do_menu() {
         batchm_influx ; exit
         ;;
       "batchm2") 
-        exit
         do_batchm2 ; exit
         ;;
       "batch_influx") 

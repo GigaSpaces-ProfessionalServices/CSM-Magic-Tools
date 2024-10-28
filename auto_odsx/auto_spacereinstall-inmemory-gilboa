@@ -6,6 +6,20 @@ _FULL_LOG=/dbagigalogs/auto_odsx_full.log
 _WAIT=120
 _DI_SERVER1=$(runall -d -l | grep -v === | head -1)
 
+# Check if ORACLE AGENT is active 
+if [[ "${ENV_NAME}" == "TAUS" || "${ENV_NAME}" == "TAUP" ]] ; then
+  [[ "${ENV_NAME}" == "TAUS" ]] && oracle_agent=gstest-dbagent
+  [[ "${ENV_NAME}" == "TAUP" ]] && oracle_agent=gsprod-dbagent
+  if ssh $oracle_agent 'systemctl is-active iidr_oracle_inst.service' |grep active >/dev/null 2>&1 ; then
+    echo -e "Service iidr_oracle_inst.service is not active\nTrying to activate"
+    echo ssh $oracle_agent 'systemctl start iidr_oracle_inst.service'
+    ssh $oracle_agent 'systemctl start iidr_oracle_inst.service'
+    echo ssh $oracle_agent 'systemctl is-active iidr_oracle_inst.service'
+    ssh $oracle_agent 'systemctl is-active iidr_oracle_inst.service'
+    read -t 300 "Press ENTER if service started. Continuing installation after 5 min."
+  fi
+fi
+
 echo -e "$(date) ===Starting DIH space reinstall===" | tee -a $_LOG $_FULL_LOG
 
 if [[ "${ENV_NAME}" != "TAUG" ]] ; then
@@ -21,14 +35,12 @@ fi
 
 [[ "${ENV_NAME}" != "TAUG" ]] && { echo -e "Stopping Kapacitor" ; auto_kapacitorstop ; }
 
-if [[ "${ENV_NAME}" != "TAUG" ]] ; then
-  echo -e "$(date) Stopping spacedeck containers." | tee -a $_LOG $_FULL_LOG
-  runall -m 'hostname ; docker stop spacedeck-spacedeck-1'
-fi
+echo -e "$(date) Stopping spacedeck containers." | tee -a $_LOG $_FULL_LOG
+runall -m 'hostname ; docker stop spacedeck-spacedeck-1' | tee -a $_LOG $_FULL_LOG
 
 # Stopping DV services
 echo -e "$(date) Stopping DV services." | tee -a $_LOG $_FULL_LOG
-auto_dv.sh -stop
+auto_dv.sh -stop | tee -a $_LOG $_FULL_LOG
 
 ### Stop All Pipelines and exit 1 on fail
 if [[ "${ENV_NAME}" != "TAUG" ]] ; then
@@ -73,19 +85,12 @@ echo -e "$(date) Deploy space in-memory after all space GSC's are up" | tee -a $
 auto_inmemorydeploy_check | tee -a $_FULL_LOG
 
 echo -e "$(date) Starting spacedeck container on managers." | tee -a $_LOG $_FULL_LOG
-if [[ "${ENV_NAME}" != "TAUG" ]] ; then
-  [[ "${ENV_NAME}" == "TAUS" ]] && ssh $(runall -m -l |grep -v ==== | sed '2!d') 'hostname ; docker start spacedeck-spacedeck-1'
-  [[ "${ENV_NAME}" == "TAUP" ]] && ssh $(runall -m -l |grep -v ==== | sed '1!d') 'hostname ; docker start spacedeck-spacedeck-1'
-fi
+runall -m 'hostname ; docker start spacedeck-spacedeck-1'
 
-# Start DV services
+# Starting DV services
 #echo -e "$(date) Starting DV services." | tee -a $_LOG $_FULL_LOG
 #auto_datavalidator.sh -start
 
-#echo -e "$(date) Disable object-management.service" | tee -a $_LOG $_FULL_LOG
-#auto_objectdisable
-#echo -e "$(date) Enable object-management.service" | tee -a $_LOG $_FULL_LOG
-#auto_objectenable
 echo -e "$(date) Reinstalling objectmanagement.service before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
 auto_objectreinstall
 echo -e "$(date) Wait 10s before doing Register Type In Batch." | tee -a $_LOG $_FULL_LOG
@@ -113,7 +118,7 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
   echo -e "\n$(date) Waiting 30 seconds before running - Start all pipelines\n" | tee -a $_LOG $_FULL_LOG
   sleep 30
 
-  read -p "=========================== Shmulik to check MARK TABLE CAPTURE POINT FOR MIRRORING before Start all pipelines"
+  read -t 1800 -p "=========================== Shmulik to check MARK TABLE CAPTURE POINT FOR MIRRORING before Start all pipelines"
 
   ### Start all pipelines - try twice with 30 interval
   di_start_success=1 ; di_start_file=/tmp/di_start_file$$
@@ -159,5 +164,7 @@ if [[ "${ENV_NAME}" != "TAUG" ]] ; then
     ( crontab -l ; echo -e "${watchdog_line//#}" ) | crontab -
   fi
 fi
+
+[[ "${ENV_NAME}" != "TAUG" ]] && { echo -e "Starting Kapacitor" ; auto_kapacitorstart ; auto_kapacitorlist ; }
 
 exit 0
