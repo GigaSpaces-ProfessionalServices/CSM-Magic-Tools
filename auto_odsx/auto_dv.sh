@@ -282,14 +282,12 @@ echo exit_code=\$?
 mvn clean install -DskipTests
 echo mvn clean install exit_code=\$?
 "
-for h in dev stg prd ; do
-scp -3 gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/common/target/common-0.0.1-SNAPSHOT-jar-with-dependencies.jar \
-${h}:/gigashare/current/data-validator/jars/
-scp -3 gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-validator-server/target/data-validator-server-0.0.1-SNAPSHOT.jar \
-${h}:/gigashare/current/data-validator/jars/
-scp -3 gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-validator-agent/target/data-validator-agent-0.0.1-SNAPSHOT.jar \
-${h}:/gigashare/current/data-validator/jars/
-done
+scp gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/common/target/common-0.0.1-SNAPSHOT-jar-with-dependencies.jar \
+/gigashare/current/data-validator/jars/
+scp gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-validator-server/target/data-validator-server-0.0.1-SNAPSHOT.jar \
+/gigashare/current/data-validator/jars/
+scp gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-validator-agent/target/data-validator-agent-0.0.1-SNAPSHOT.jar \
+/gigashare/current/data-validator/jars/
 ls -l /gigashare/current/data-validator/jars/
 auto_dv.sh -reinstall
 }
@@ -538,7 +536,7 @@ do_menu() {
         ;;
       "-reinstall") 
         stop_services ; remove_services ; install_server_service ; start_server_service
-        echo -e "\nSleeping 15 sec ..." ; sleep 15 ; install_agents_service ; start_services ; auto_dv.sh -l ; exit
+        echo -e "\nSleeping 30 sec ..." ; sleep 30 ; install_agents_service ; start_services ; auto_dv.sh -l ; exit
         ;;
       "-c")
         git_compile_reinstall ; exit

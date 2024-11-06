@@ -16,6 +16,7 @@ _SLEEP_AFTER=1
 _MODE="daily"
 _VERBOSE=""
 _MANAGERS=( $( runall -m -l | grep -v === ) )
+_ALL_HOSTS=( $( runall -A -l | grep -iv "===\|x\.x" ) )
 _SPACE_NAME=dih-tau-service
 _PRINT=""
 }
@@ -333,7 +334,7 @@ check_disk_usage_all() {
   echo -e "\n==================== Show DISK USAGE on all servers' partitions above ${_DISK_USAGE_PERCENT}%\n"
   # Print the header of the table
   printf "%-20s %-40s %-10s %-10s\n" "Hostname" "Partition" "Usage (%)" "Total Size"
-  for h in $(runall -A -l | grep -v ====) ; do
+  for h in $(runall -A -l | grep -iv "====\|x\.x") ; do
     check_disk_usage $h "${usage_threshold}" | grep -v 'docker\|container'
   done
 }
@@ -370,7 +371,7 @@ check_ping() {
   echo -e "\n==================== Checking PING to all servers:\n"
   local ping_result="Success"
   echo -en "Ping result: "
-  for h in $(runall -l |grep -v '===\|None') ; do 
+  for h in $(runall -A -l | grep -iv '===\|x\.x') ; do
     ping -c1 -w2 $h > /dev/null 2>&1 
     [[ $? -ne 0 ]] && { echo "No ping to host: ${h}" ; ping_result="failed" ; }
   done
@@ -381,7 +382,7 @@ check_ssh() {
   echo -e "\n==================== Checking SSH execution on all servers:\n"
   local ssh_result="Success"  
   echo -en "SSH execution result: "
-  for h in $(runall -l | grep -v '===\|None') ; do 
+  for h in $(runall -A -l | grep -iv '===\|x\.x') ; do 
     timeout 5 ssh $h uptime  > /dev/null 2>&1 ; exit_code=$? 
     [[ $exit_code -ne 0 ]] && { echo "ssh execution failed on ${h}, exit_code=$exit_code" ; ssh_result="failed" ; }
   done
@@ -487,9 +488,9 @@ check_gigashare() {
   #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to check gigashare mount on all hosts." ; echo ; }
   echo -e "\n==================== Check gigashare mount on all hosts\n"
   echo -n "gigashare check: "
-  local check_gigashare=$(runall -A 'echo "$(hostname) $(df -h |grep gigashare)"' | grep -v '===\|^ *$' | grep -v gigashare)
+  local check_gigashare=$(for h in ${_ALL_HOSTS[@]} ; do ssh $h 'echo "$(hostname) $(df -h |grep gigashare)"' ; done | grep -v gigashare)
   [[ -z $check_gigashare ]] && echo Success || { echo -e failure ; echo -e "${check_gigashare}" ; }
-  [[ -n "${_VERBOSE}" ]]  && { echo ; runall -A 'echo "$(hostname) $(df -h |grep gigashare)"' | grep -v '===\|^ *$' ; }
+  [[ -n "${_VERBOSE}" ]]  && { echo ; for h in ${_ALL_HOSTS[@]} ; do ssh $h 'echo "$(hostname) $(df -h |grep gigashare)"' ; done ; }
 }
 
 check_nbapp_services() {
@@ -518,18 +519,21 @@ check_indexes() {
 check_sync_of_managers() {
   echo -e "\n==================== Check managers' SYNC: Compare PU and CONTAINER counts between managers.\n"
   echo -ne "manager sync: "
-  # In TEST env e.g.: space_pus=32, space_containers=102
-  local mng sync_failed=0 
-  local -A space_pus space_containers
+  # In TEST env e.g.: space_pus=32, non_empty_instances=102
+  local mng sync_failed=0 empty_instance_flag=0
+  local -A space_pus non_empty_instances empty_instances                # Associative arrays
   for mng in ${_MANAGERS[@]} ; do 
-    space_pus["${mng}"]="$(curl -sk -u "${_USER}:${_PASS}" http://${mng}:8090/v2/pus/$_SPACE_NAME | jq -r '.instances[]' | wc -l)"
-    space_containers["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | wc -l)"
+    space_pus["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/pus/$_SPACE_NAME | jq -r '.instances[]' | wc -l)"
+    non_empty_instances["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | wc -l)"
+    #curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | sort > /tmp/check-env-$mng
+    empty_instances["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[] | select(.instances | length == 0) | .zones[]'|wc -l)"
+    [[ ${empty_instances["${mng}"]} -ne 0 ]] && empty_instance_flag=1
     [[ space_pus["${_MANAGERS[0]}"] -ne space_pus["${mng}"] ]] && sync_failed=1
-    [[ space_containers["${_MANAGERS[0]}"] -ne space_containers["${mng}"] ]] && sync_failed=1
+    [[ non_empty_instances["${_MANAGERS[0]}"] -ne non_empty_instances["${mng}"] ]] && sync_failed=1
   done
-  [[ $sync_failed -eq 0 ]] && { echo Success ; return 0 ; }
-    echo failure
-    declare -p space_pus space_containers
+  [[ $sync_failed -eq 0 ]] && echo Success || { echo failure ; declare -p space_pus non_empty_instances ; }
+  [[ $empty_instance_flag -ne 0 ]] && declare -p empty_instances
+  [[ -n $_VERBOSE ]] && declare -p space_pus non_empty_instances empty_instances
 }
 
 check_spacedeck_on_managers() {
