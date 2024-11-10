@@ -473,6 +473,49 @@ get_total_service_Entring_for_date() {
   echo -e "\nNumber of \"Entring execute\" for date=${_EXECUTE_DATE} hour=${_HOUR} service=${service_name}: ${service_executes}\n"
 }
 
+function get_log() {
+  
+  # SERVICE GETS
+  local days_back=3         # How many days back to show 
+  local service_log=/gigalogs/service_access_stats.log
+  local service_gets idx=1 
+  [[ ! -f $service_log ]] && { echo "Log $service_log not found" ; exit 1 ; }
+  # Get date + its 3 following lines containing 8hr periods - tail x lines (days_back * 4) e.g. 3*4=12 lines
+  service_gets=$( grep -A3 'Display number of GET' $service_log | grep -v '^[[:space:]]*$\|--' | tail -$(( days_back * 4  )) )
+  echo -e "\n------Service Gets $days_back days back\n" ; echo "${service_gets}" | grep 'Display number of GET'
+  grep "Total service requests for date" $service_log | tail -$days_back ; echo
+  while read line ; do
+    echo -n "$(echo $line | awk '{print $NF}') "
+    [[ $(( idx++ % 3 )) -eq 0 ]] && echo
+  done < <(echo "${service_gets}" | grep 'service requests from')
+  echo
+
+  # TABLE SIZES
+  local days_back=2         # How many days back to show 
+  local table_log=/gigalogs/table_sizes.log
+  [[ ! -f $table_log ]] && { echo "Log $table_log not found" ; exit 1 ; }
+  # Get date of x days ago e.g. - Sun Nov 10 06:50:03 IST 2024
+  local day_num=$(date -d "${days_back} days ago" "+%d") ; day_num=${day_num#0}
+  local day_month_name=$(date -d "${days_back} days ago" "+%a %b") 
+  local year_num=$(date -d "${days_back} days ago" "+%Y")
+  # Use above date to get data from x days ago using sed
+  local table_sizes=$(sed -n '/^'"${day_month_name}[[:space:]]\+${day_num}.\+${year_num}.*tables total"'/,$p' $table_log)
+  echo -e "\n------Table Sizes $days_back days back\n\n$(echo "${table_sizes}" | grep "tables total$")"
+  echo "${table_sizes}" | grep "Ram total for all tables" ; echo
+  local line idx size_date=() ram_total_cdc=() ram_total_feeder=()
+  # Insert into array the date values e.g. - Nov 10 06:11
+  while read line ; do
+    size_date=( "${size_date[@]}" "${line}" )
+  done < <(echo "${table_sizes}" | grep -A3 "Ram total for all tables" | grep -v -- '^[[:space:]]*$\|total\|--' )
+  ram_total_cdc=( $(echo "${table_sizes}" | grep -A1 "CDC table count" | awk '/Ram total/ {print $NF}') )
+  ram_total_feeder=( $(echo "${table_sizes}" | grep -A1 "FEEDER table count" | awk '/Ram total/ {print $NF}') )
+  # Print out data as CSV e.g. - Nov 08 06:11,73797517,331286
+  for (( idx=0 ; idx < ${#size_date[@]} ; idx++ )) ; do
+    echo "${size_date[${idx}]},${ram_total_cdc[${idx}]},${ram_total_feeder[${idx}]}"
+  done
+  echo
+}
+
 usage() {
   cat << EOF
 
@@ -508,6 +551,7 @@ usage() {
     -dailyexec <service>                                # DAILY "Execute took" for ONE service on DATE for all instances on all space servers 
     -dailyexecall                                       # DAILY "Execute took" for ALL services on DATE for all instances on all space servers 
 
+    -getlog                                             # Show last 4 days' -g8hr stats
     -y                                                  # Show for yesterday's date
     -d <date>                                           # Set DATE for check, format: "$(date -d yesterday +%d/%b/%Y)"
     -hour <hour>                                        # Set HOUR for check
@@ -603,6 +647,9 @@ do_menu() {
         ;;
       "-y") 
         _YESTERDAY="yes"
+        ;;
+      "-getlog") 
+        get_log ; exit
         ;;
       *)
         echo -e "\n Option $1 not supported.\n" ; exit 1
