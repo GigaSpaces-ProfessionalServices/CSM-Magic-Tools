@@ -4,7 +4,7 @@
 
 python3 --version >/dev/null 2>&1 || { echo "\nInstall python3\n" ; exit 1 ; }
 cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
-# e.g. token file contents: "Authorization: Token -WiA1-MmPjMG_bhXYO$8nDZE5UZ4@cq1bGrBCvTpmO"
+# e.g. token file contents: "Authorization: Token -Wi..."
 [[ ! -s token ]] && { echo "\nPut token in file erag/token\n" ; exit 1 ; }
 [[ ! -s accuracy.tsv ]] && { echo "\nImport file erag/accuracy.tsv\n" ; exit 1 ; }
 
@@ -393,18 +393,15 @@ while [[ $# -ne 0 ]] ; do
         echo _MSG_BODY_ID=$_MSG_BODY_ID
         ;;
     "-g4") 
-        #echo "running get_applicationId" ; get_applicationId
-        get_applicationId
-        #echo _APPLICATIONID=$_APPLICATIONID
-        #echo "running get_topicid" ; get_topicid
-        get_topicid
-        ##echo _TOPICID=$_TOPICID $(LC_ALL=US date) >> topic-msg
-        #echo "running post_message" ; post_message
-        post_message
-        ##echo _MSG_BODY_ID=$_MSG_BODY_ID $(LC_ALL=US date) >> topic-msg
-        #echo "running get_message_details" ; get_message_details
-        get_message_details
-        echo $_SQL
+        echo -e "\n----------running get_applicationId\n" ; get_applicationId
+        echo -e _APPLICATIONID=$_APPLICATIONID
+        echo -e "\n----------running get_topicid\n" ; get_topicid
+        echo -e _TOPICID=$_TOPICID               # $(LC_ALL=US date) >> topic-msg
+        echo -e "\n----------running post_message\n" ; post_message
+        echo -e _MSG_BODY_ID=$_MSG_BODY_ID       # $(LC_ALL=US date) >> topic-msg
+        echo -e "\n----------running get_message_details\n" ; get_message_details
+        echo -e "\n_MSG_DETAILS=${_MSG_DETAILS}\n"
+        echo -e "\n_SQL=${_SQL}\n"
         ;;
     "-sql") 
         do_compare_sqls
