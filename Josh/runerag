@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#/opt/homebrew/bin/bash - new bash v5
 
 # Check requirements
 
@@ -10,7 +11,10 @@ cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
 
 # ENVIRONMENT
 
-tok="$(cat token)"
+_CURL_RESPONSE="/tmp/erag_curl_response"
+declare -A _EXIT_CODE
+declare -A _HTTP_CODE
+_TOK="$(cat token)"
 _APPLICATIONID=""
 _USERID=1
 _TOPICID=""
@@ -21,11 +25,18 @@ _SQL_SED=""                       # New SQL statement - escaping double quotes a
 _SQL_ORIG=""                      # Original SQL statement
 _SQL_ORIG_SED=""                  # Original SQL statement - double quotes are escaped: \"
 _MSG_DETAILS=""
-# Variables for 3 columns of eRAG Accuracy Dashboard
+_NL_RESULT=""                     # Get Natural Language answer to SQL
+_NL_RESULT_ORIG=""                # Get Natural Language answer to SQL_ORIG
+_FIRST_ID=1
+_LAST_ID=50
+LC_ALL=US date > HTTP_CODE        # Hold http codes for current run
+LC_ALL=US date > GET_NL_RESULT
+# Variables for report
 _SERIAL=""                        # Question ID
 _QUESTION=""                      # Question asked - double quotes are escaped: \"
 _RESULT=""                        # Current Query result
 _RESULT_ORIG=""                   # Confirmed Query result
+
 
 check_python_venv() {
 
@@ -51,67 +62,85 @@ fi
 
 # FUNCTIONS
 
-# Get applicationId - eRAG experimental app/Get All Applications
-function get_applicationId() {
-  export _APPLICATIONID=$( curl -sX 'GET' \
+# GET 1 - Get application id - eRAG experimental app/Get All Applications
+function get_applicationid() {
+  _HTTP_CODE["${FUNCNAME[0]}"]=$( curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
   'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/applications' \
   -H 'accept: application/json' \
-  -H "$tok" | jq '.[].applicationId' )
+  -H "${_TOK}")
+  #_HTTP_CODE["${FUNCNAME[0]}"]="${_APPLICATIONID}"
+  _APPLICATIONID="$(jq '.[].applicationId' < ${_CURL_RESPONSE})"
   #echo _APPLICATIONID=$_APPLICATIONID
 }
 
-# Get topic id - FastAPI/get all topics for this app for this user
+# GET 2 - Get topic id - FastAPI/get all topics for this app for this user
 function get_topicid() {
-  export _TOPICID=$(curl -sX 'GET' \
+  _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
   "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
-  -H "${tok}" | jq '.[].id' )
-  #echo _TOPICID=$_TOPICID
+  -H "${_TOK}")
+  _TOPICID="$(jq '.[].id' < ${_CURL_RESPONSE})"
+  #declare -p _HTTP_CODE
+  #echo _TOPICID="${_TOPICID}"
 }
 
-# Get FastAPI/Submit a new question to the topic
+# GET 3 - Get message body id - FastAPI/Submit a new question to the topic
 function post_message() {
-  _MSG_BODY=$(curl -sX 'POST' \
+  _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'POST' \
   "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
-  -H "${tok}" \
+  -H "${_TOK}" \
   -H 'Content-Type: application/json' \
   -d '{ "message": "'"${_QUESTION}"'" }')
-  export _MSG_BODY_ID=$(echo "${_MSG_BODY}" | jq '.[] | select(.role? == "assistant") | .id')
+  _MSG_BODY="$(cat ${_CURL_RESPONSE})"
+  _MSG_BODY_ID="$(echo "${_MSG_BODY}" | jq '.[] | select(.role == "assistant") | .id')"
+  #echo _MSG_BODY="${_MSG_BODY}"
+  #echo _MSG_BODY_ID="${_MSG_BODY_ID}"
+  #declare -p _HTTP_CODE
 }
 
-# Get FastAPI/Get message details
+# GET 4 - Use message_id to get sql "Current SQL statement - generated" - FastAPI/Get message details
 function get_message_details() {
-  _MSG_DETAILS=$(curl -sX 'GET' \
+  _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
   "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages/${_MSG_BODY_ID}" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
-  -H "${tok}")
-  export _SQL=$(echo "${_MSG_DETAILS}" | jq -r '.sql')
-  export _SQL_SED=$(echo "${_SQL}" | sed 's/"/\\"/g')
+  -H "${_TOK}")
+  _MSG_DETAILS="$(cat ${_CURL_RESPONSE})"
+  _SQL=$(echo "${_MSG_DETAILS}" | jq -r '.sql')
+  _SQL_SED=$(echo "${_SQL}" | sed 's/"/\\"/g')
+  declare -p _HTTP_CODE >> HTTP_CODE
+  #echo _MSG_DETAILS="${_MSG_DETAILS}"
+  #echo _SQL="${_SQL}"
+  #echo _SQL_SED="${_SQL_SED}"
 }
 
+# Use sql/sql_orig to get "data" and "nl_result" - eRAG experimental app - Sql Nlp Query
+# $1 - sql statement
 get_nl_result() {
-local run_sql="${1}"
-curl -sX 'POST' \
+  local run_sql="$(echo -n "${1}" | tr -d '\n\r')"
+  _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'POST' \
   'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/toucan-sql/sql-nlp-query' \
   -H 'accept: application/json' \
-  -H "${tok}" \
+  -H "${_TOK}" \
   -H 'Content-Type: application/json' \
   -d '{
   "query": "",
   "sql": "'"${run_sql}"'",
   "model": "azure-openai-gpt4o-2024-08-06",
-  "applicationId": '"${_APPLICATIONID}"'
+  "applicationId": "'"${_APPLICATIONID}"'"
   }'
+  )           # End of curl subprocess
+  echo -e "\n$(LC_ALL=US date)" >> GET_NL_RESULT
+  cat ${_CURL_RESPONSE} | tee -a GET_NL_RESULT
 }
 
 html_to_text() {
 html="${1}"
 
-# Convert HTML to a single line of text using BeautifulSoup
+# Convert HTML to a single line of text using BeautifulSoup, TR and SED
 text=$(python3 <<EOF
 import sys
 from bs4 import BeautifulSoup
@@ -140,149 +169,77 @@ echo -ne "$(echo "${text}" | tr '\n' ' ' | sed 's/  */ /g')"
 # col3 = Query
 # Date, question ID, question, Confirmed query, Current query, comparison results (correct, not correct, inconclusive)
 # put it in a CSV
-do_compare_sqls2() {
+do_compare_sqls() {
   while IFS=$'\t' read -r col1 col2 col3 ; do
+    [[ $col1 -lt $_FIRST_ID ]] && { continue ; }
     _QUESTION=$(echo "${col2}" | sed 's/"/\\"/g')
-    _SQL_ORIG="${col3}"
+    _SQL_ORIG="$(echo -n "${col3}" | tr -d '\r\n')"
     _SQL_ORIG_SED="$(echo ${col3} | sed 's/"/\\"/g')"
-    get_applicationId                         # set _APPLICATIONID
+
+    get_applicationid                         # set _APPLICATIONID
     get_topicid                               # set _TOPICID
+    echo "${_QUESTION}" > QUESTION
     post_message                              # set _MSG_BODY and _MSG_BODY_ID
 
     #echo -e "\n $col1 \n"
-    #echo -e "\n _MSG_BODY_ID=$_MSG_BODY_ID\n"
     #echo -e "\n _MSG_BODY=$_MSG_BODY\n"
+    #echo -e "\n _MSG_BODY_ID=$_MSG_BODY_ID\n"
     get_message_details                       # set _MSG_DETAILS, _SQL and _SQL_SED 
+    #echo -e "\n${_MSG_DETAILS}\n"
     #echo -e "\n_SQL_SED=${_SQL_SED}\n"
     #echo -e "\n_SQL_ORIG_SED=${_SQL_ORIG_SED}\n"
 
-    _NL_RESULT_ORIG=$(get_nl_result "${_SQL_ORIG_SED}" | jq -r '.nl_result')      # Get nl_result from _SQL_ORIG_SED
-    _NL_RESULT=$(get_nl_result "${_SQL_SED}" | jq -r '.nl_result')                # Get nl_result from _SQL_SED
-    #echo -e "\n${_NL_RESULT_ORIG}"             # CONFIRMED query (response to SQL query)
-    #echo -e "\n${_NL_RESULT}"                  # CURRENT query (response to SQL query)
+    # Get Natural Language answer according to SQL statement
+    # _SQL_ORIG_SED
+    echo "${_SQL_ORIG_SED}" > SQL_ORIG_SED
+    _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}")"
+    echo "${_NL_RESULT_ORIG}" > NL_RESULT_ORIG
+    _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
+    declare -p _HTTP_CODE >> HTTP_CODE
+    # _SQL_SED
+    echo "${_SQL_SED}" > SQL_SED
+    _NL_RESULT="$(get_nl_result "${_SQL_SED}")"
+    echo "${_NL_RESULT}" > NL_RESULT
+    _DATA="$(echo ${_NL_RESULT} | jq '.tabular_data.data' | tr -d '\n' | tee DATA)"
+    declare -p _HTTP_CODE >> HTTP_CODE
 
-    # save values to files for do_compare func
-    #echo "${_NL_RESULT_ORIG}" > r1
-    #echo "${_NL_RESULT}" > r2
-    html_to_text "${_NL_RESULT_ORIG}" > r1
-    html_to_text "${_NL_RESULT}" > r2
+    #============================================ COMPARISON
+    r1_empty="$(echo -n "${_DATA_ORIG}" | tr -d '[] \n')"
+    r2_empty="$(echo -n "${_DATA}" | tr -d '[] \n')"
+
 
     # Print report
     echo -ne "$(date '+%Y/%m/%d')\t"            # DATE
     echo -ne "${col1}\t"                        # QUESTION ID
     echo -ne "${col2}\t"                        # QUESTION
-    #echo -ne "$(echo ${_NL_RESULT_ORIG} | tr '\n' ' ')\t"             # CONFIRMED query (response to SQL)
-    #echo -ne "$(echo ${_NL_RESULT} | tr '\n' ' ')\t"                  # CURRENT query (response to SQL)
 
     echo -ne "${_SQL_ORIG}\t"
-    echo -ne "$(html_to_text "${_NL_RESULT_ORIG}")\t"           # CONFIRMED query (response to SQL)
-    echo -ne "${_SQL}\t"
-    echo -ne "$(html_to_text "${_NL_RESULT}")\t"                # CURRENT query (response to SQL)
+    if [[ $(echo ${_DATA_ORIG} | wc -c) -gt 49999 ]] ; then
+      echo -ne "FIELD TOO LARGE\t"
+    else
+      echo -ne ${_DATA_ORIG}"\t"
+    fi
+    #echo -ne "${_ERAG_ORIG_ANSWER}\t"
 
-    [[ "$(md5sum r1)" == "$(md5sum r2)" ]] && echo -ne "correct\t" || echo -ne "incorrect\t"   # COMPARISON
-    do_compare                                  # SIMILARITY
-    [[ $col1 -eq 2 ]] && { break ; }
+    echo -ne "${_SQL}\t"
+    if [[ $(echo ${_DATA} | wc -c) -gt 49999 ]] ; then
+      echo -ne "FIELD TOO LARGE\t"
+    else
+      echo -ne ${_DATA}"\t"
+    fi
+    #echo -ne "${_ERAG_ANSWER}\t"
+
+    if [[ -z $r1_empty && -z $r2_empty ]] ; then 
+      echo -ne "same\t"
+    else
+      [[ "$(echo -n "${_DATA_ORIG}" | md5sum)" == "$(echo -n "${_DATA}" | md5sum)" ]] && echo -ne "same\t" || echo -ne "different\t"   
+    fi
+    do_compare                                  # SIMILARITY in percentage 0-100%
+
+    [[ $col1 -ge $_LAST_ID ]] && { break ; }
   done < <(cat accuracy.tsv ) | tee /tmp/jrout
   pbcopy < /tmp/jrout
   echo -e "\n Results copied to clipboard.\n"
-}
-
-
-###################################
-# Compare original sql with new sql
-# col1 = Serial
-# col2 = Question
-# col3 = Query
-do_compare_sqls() {
-  while IFS=$'\t' read -r col1 col2 col3 ; do
-    echo '--------------------------------------------------------------'
-    echo Serial: $col1
-    _QUESTION=$(echo "${col2}" | sed 's/"/\\"/g')
-    _SQL_ORIG="${col3}"
-    echo _QUESTION=$_QUESTION
-    get_applicationId
-    echo _APPLICATIONID=$_APPLICATIONID
-    get_topicid
-    echo _TOPICID=$_TOPICID
-    post_message
-    echo _MSG_BODY=$_MSG_BODY
-    echo _MSG_BODY_ID=$_MSG_BODY_ID
-    get_message_details
-    echo _MSG_DETAILS=$_MSG_DETAILS
-    echo =========== _SQL=$_SQL
-    echo "${_SQL}" | md5sum
-    echo =========== _SQL_ORIG=$_SQL_ORIG
-    echo "${_SQL_ORIG}" | md5sum
-    [[ $col1 -eq 1 ]] && { break ; }
-  done < <(cat accuracy.tsv )
-}
-
-do_compare_sqls_test() {
-  while IFS=$'\t' read -r col1 col2 col3 ; do
-    echo '--------------------------------------------------------------'
-    echo Serial: $col1
-    _QUESTION=$(echo "${col2}" | sed 's/"/\\"/g')
-    _SQL_ORIG="${col3}"
-    #_QUESTION="$(cat myquestion)"
-    echo _QUESTION=$_QUESTION
-    get_applicationId
-    echo _APPLICATIONID=$_APPLICATIONID
-    get_topicid
-    echo _TOPICID=$_TOPICID
-    post_message
-    echo _MSG_BODY=$_MSG_BODY
-    echo _MSG_BODY_ID=$_MSG_BODY_ID
-    get_message_details
-    echo _MSG_DETAILS=$_MSG_DETAILS
-    echo =========== _SQL=$_SQL
-    echo "${_SQL}" | md5sum
-    echo =========== _SQL_ORIG=$_SQL_ORIG
-    echo "${_SQL_ORIG}" | md5sum
-    [[ $col1 -eq 2 ]] && { break ; }
-  done < <(cat accuracy.tsv )
-}
-
-function do_query1() {
-curl -s \
-  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/toucan-sql/nlp-query' \
-  -H "$tok" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "context": "",
-  "score": 0.8,
-  "query": "give me details about 3 different institutes",
-  "evidence": "",
-  "limit": 10,
-  "model": "azure-openai-gpt4o-2024-08-06",
-  "applicationId": 1,
-  "skipCacheSearch": false,
-  "useReasoning": false,
-  "useSqlSyntaxCorrector": false,
-  "useSqlRegenerateCorrector": false,
-  "useSqlExecutionValidator": false
-}' > r1
-}
-
-function do_query2() {
-local tok="$(cat token)"
-curl -s \
-  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/toucan-sql/nlp-query' \
-  -H "$tok" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "context": "",
-  "score": 0.8,
-  "query": "give me details about 3 different institutes",
-  "evidence": "",
-  "limit": 10,
-  "model": "azure-openai-gpt4o-2024-08-06",
-  "applicationId": 1,
-  "skipCacheSearch": false,
-  "useReasoning": false,
-  "useSqlSyntaxCorrector": false,
-  "useSqlRegenerateCorrector": false,
-  "useSqlExecutionValidator": false
-}' > r2
 }
 
 function do_compare() {
@@ -291,11 +248,11 @@ import sys
 from difflib import SequenceMatcher
 
 # Load the raw HTML from r1
-with open('r1', 'r', encoding='utf-8') as f:
+with open('DATA_ORIG', 'r', encoding='utf-8') as f:
     html_1 = f.read()
 
 # Load the raw HTML from r2
-with open('r2', 'r', encoding='utf-8') as f:
+with open('DATA', 'r', encoding='utf-8') as f:
     html_2 = f.read()
 
 # Compare the two HTML strings with difflib
@@ -305,27 +262,6 @@ similarity_ratio = matcher.ratio()  # returns a value between 0 and 1
 similarity_percentage = similarity_ratio * 100
 #print(f"Similarity: {similarity_percentage:.2f}%")
 print(f"{similarity_percentage:.2f}%")
-EOF
-}
-
-function do_compare_json() {
-python3 << EOF
-import json
-from difflib import SequenceMatcher
-# Load and parse JSON from r1
-with open('r1', 'r', encoding='utf-8') as f:
-    data1 = json.load(f)
-nl_result_1 = data1['nl_result']
-# Load and parse JSON from r2
-with open('r2', 'r', encoding='utf-8') as f:
-    data2 = json.load(f)
-nl_result_2 = data2['nl_result']
-# Use difflib to compare the two strings
-matcher = SequenceMatcher(None, nl_result_1, nl_result_2)
-similarity_ratio = matcher.ratio()  # returns a value between 0 and 1
-
-similarity_percentage = similarity_ratio * 100
-print(f"Similarity: {similarity_percentage:.2f}%")
 EOF
 }
 
@@ -339,17 +275,13 @@ function usage() {
 
   OPTIONS:
 
-    -g1               Get applicationId
-    -g2               Get 2
-    -g3               Get 3
-    -g4               Get 4
+    -g1               Get Application ID  - Run: get_applicationid
+    -g2               Get Topic ID        - Run: get_applicationid get_topicid
+    -g3               Get Message ID      - Run: get_applicationid get_topicid post_message
+    -g4               Get SQL             - Run: get_applicationid get_topicid post_message get_message_details
     -sql              Compare SQL's in loop
-    -sql2             Compare SQL's in loop v2
-    -t                Test
-    -q1               Save query to r1
-    -q2               Save query to r2
-    -c                Compare r1 to r2
-    -l [count]        Loop "count" times (save query to r2 and compare r1 with r2). Default is count=1
+    -f                Set first ID to process
+    -l                Set last ID to process
     -h                Help - Display usage
 
   DEFAULT
@@ -376,16 +308,17 @@ while [[ $# -ne 0 ]] ; do
 
   case $1 in
     "-g1") 
-        get_applicationId
-        #echo _APPLICATIONID=$_APPLICATIONID
+        get_applicationid
+        #echo _HTTP_CODE="${_HTTP_CODE["get_applicationid"]}"
+        #echo _APPLICATIONID="${_APPLICATIONID}"
         ;;
     "-g2") 
-        get_applicationId
+        get_applicationid
         get_topicid
         #echo _TOPICID=$_TOPICID
         ;;
     "-g3") 
-        echo "running get_applicationId" ; get_applicationId
+        echo "running get_applicationid" ; get_applicationid
         echo _APPLICATIONID=$_APPLICATIONID
         echo "running get_topicid" ; get_topicid
         echo _TOPICID=$_TOPICID
@@ -393,7 +326,7 @@ while [[ $# -ne 0 ]] ; do
         echo _MSG_BODY_ID=$_MSG_BODY_ID
         ;;
     "-g4") 
-        echo -e "\n----------running get_applicationId\n" ; get_applicationId
+        echo -e "\n----------running get_applicationid\n" ; get_applicationid
         echo -e _APPLICATIONID=$_APPLICATIONID
         echo -e "\n----------running get_topicid\n" ; get_topicid
         echo -e _TOPICID=$_TOPICID               # $(LC_ALL=US date) >> topic-msg
@@ -406,17 +339,11 @@ while [[ $# -ne 0 ]] ; do
     "-sql") 
         do_compare_sqls
         ;;
-    "-sql2") 
-        do_compare_sqls2
+    "-f") 
+        shift ; _FIRST_ID=$1
         ;;
-    "-t") 
-        do_compare_sqls_test
-        ;;
-    "-q1") 
-        do_query1
-        ;;
-    "-q2") 
-        do_query2
+    "-l") 
+        shift ; _LAST_ID=$1
         ;;
     "-h") 
         usage
