@@ -3,18 +3,22 @@
 
 # Check requirements
 
-python3 --version >/dev/null 2>&1 || { echo "\nInstall python3\n" ; exit 1 ; }
-cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
+python3 --version >/dev/null 2>&1 || { echo -e "\nInstall python3\n" ; exit 1 ; }
+[[ ! "$(basename $(pwd))" == "erag" ]] && { echo -e "\nRun script inside folder named \"erag\"\n" ; exit 1 ; }
+#cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
 # e.g. token file contents: "Authorization: Token -Wi..."
 [[ ! -s token ]] && { echo "\nPut token in file erag/token\n" ; exit 1 ; }
 [[ ! -s accuracy.tsv ]] && { echo "\nImport file erag/accuracy.tsv\n" ; exit 1 ; }
 
 # ENVIRONMENT
 
+FastAPI='https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab'
+eRAG_experimental_app='https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend'
+_ACCURACY_FILE="accuracy.tsv"
 _CURL_RESPONSE="/tmp/erag_curl_response"
 declare -A _EXIT_CODE
 declare -A _HTTP_CODE
-_TOK="$(cat token)"
+_TOK='Authorization: Token -WiA1-MmPjMG_BHxyo$8Ndze5uz4@CQ1BgRbcVtPMo'
 _APPLICATIONID=""
 _USERID=1
 _TOPICID=""
@@ -29,7 +33,7 @@ _NL_RESULT=""                     # Get Natural Language answer to SQL
 _NL_RESULT_ORIG=""                # Get Natural Language answer to SQL_ORIG
 _FIRST_ID=1
 _LAST_ID=50
-LC_ALL=US date > HTTP_CODE        # Hold http codes for current run
+LC_ALL=US date >> HTTP_CODE        # Hold http codes for current run
 LC_ALL=US date > GET_NL_RESULT
 # Variables for report
 _SERIAL=""                        # Question ID
@@ -63,11 +67,13 @@ fi
 # FUNCTIONS
 
 # GET 1 - Get application id - eRAG experimental app/Get All Applications
+##  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/applications' \
 function get_applicationid() {
   _HTTP_CODE["${FUNCNAME[0]}"]=$( curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
-  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/applications' \
+  "${eRAG_experimental_app}/v1/applications" \
   -H 'accept: application/json' \
   -H "${_TOK}")
+  #cat ${_CURL_RESPONSE}
   #_HTTP_CODE["${FUNCNAME[0]}"]="${_APPLICATIONID}"
   _APPLICATIONID="$(jq '.[].applicationId' < ${_CURL_RESPONSE})"
   #echo _APPLICATIONID=$_APPLICATIONID
@@ -76,7 +82,7 @@ function get_applicationid() {
 # GET 2 - Get topic id - FastAPI/get all topics for this app for this user
 function get_topicid() {
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
-  "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics" \
+  "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
   -H "${_TOK}")
@@ -88,7 +94,7 @@ function get_topicid() {
 # GET 3 - Get message body id - FastAPI/Submit a new question to the topic
 function post_message() {
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'POST' \
-  "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages" \
+  "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
   -H "${_TOK}" \
@@ -104,7 +110,7 @@ function post_message() {
 # GET 4 - Use message_id to get sql "Current SQL statement - generated" - FastAPI/Get message details
 function get_message_details() {
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
-  "https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages/${_MSG_BODY_ID}" \
+  "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages/${_MSG_BODY_ID}" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
   -H "${_TOK}")
@@ -122,7 +128,7 @@ function get_message_details() {
 get_nl_result() {
   local run_sql="$(echo -n "${1}" | tr -d '\n\r')"
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'POST' \
-  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/toucan-sql/sql-nlp-query' \
+  "${eRAG_experimental_app}/v1/toucan-sql/sql-nlp-query" \
   -H 'accept: application/json' \
   -H "${_TOK}" \
   -H 'Content-Type: application/json' \
@@ -169,7 +175,7 @@ echo -ne "$(echo "${text}" | tr '\n' ' ' | sed 's/  */ /g')"
 # col3 = Query
 # Date, question ID, question, Confirmed query, Current query, comparison results (correct, not correct, inconclusive)
 # put it in a CSV
-do_compare_sqls() {
+do_compare_data() {
   while IFS=$'\t' read -r col1 col2 col3 ; do
     [[ $col1 -lt $_FIRST_ID ]] && { continue ; }
     _QUESTION=$(echo "${col2}" | sed 's/"/\\"/g')
@@ -237,7 +243,7 @@ do_compare_sqls() {
     do_compare                                  # SIMILARITY in percentage 0-100%
 
     [[ $col1 -ge $_LAST_ID ]] && { break ; }
-  done < <(cat accuracy.tsv ) | tee /tmp/jrout
+  done < <(cat $_ACCURACY_FILE ) | tee /tmp/jrout
   pbcopy < /tmp/jrout
   echo -e "\n Results copied to clipboard.\n"
 }
@@ -275,13 +281,14 @@ function usage() {
 
   OPTIONS:
 
+    -file <filename>  Give name of accurracy file to use. If not provided then should exist in erag directory.
+    -c                Compare answers (data fields) in loop.
     -g1               Get Application ID  - Run: get_applicationid
     -g2               Get Topic ID        - Run: get_applicationid get_topicid
     -g3               Get Message ID      - Run: get_applicationid get_topicid post_message
     -g4               Get SQL             - Run: get_applicationid get_topicid post_message get_message_details
-    -sql              Compare SQL's in loop
-    -f                Set first ID to process
-    -l                Set last ID to process
+    -f                Set FIRST ID to process
+    -l                Set LAST ID to process
     -h                Help - Display usage
 
   DEFAULT
@@ -293,6 +300,7 @@ function usage() {
   EXAMPLES:
 
    $(basename $0) -c
+   $(basename $0) -f 1 -l 1 -c            Test only ID=1
 
 EOF
 exit
@@ -302,6 +310,7 @@ exit
 function do_menu() {
 
 [[ $# -eq 0 || $1 == "-h" ]] && usage
+[[ "$(echo "${@}" | grep -o -- '-file')" != "-file" && ! -s accuracy.tsv ]] &&  { echo -e "\nAccuracy file argument missing\n" ; exit 1 ; }
 
 check_python_venv
 while [[ $# -ne 0 ]] ; do
@@ -336,11 +345,14 @@ while [[ $# -ne 0 ]] ; do
         echo -e "\n_MSG_DETAILS=${_MSG_DETAILS}\n"
         echo -e "\n_SQL=${_SQL}\n"
         ;;
-    "-sql") 
-        do_compare_sqls
+    "-c") 
+        do_compare_data
         ;;
     "-f") 
         shift ; _FIRST_ID=$1
+        ;;
+    "-file") 
+        shift ; [[ ! -s $1 ]] && { echo -e "\nNo accuracy filename given\n" ; exit 1 ; } || _ACCURACY_FILE=$1
         ;;
     "-l") 
         shift ; _LAST_ID=$1
