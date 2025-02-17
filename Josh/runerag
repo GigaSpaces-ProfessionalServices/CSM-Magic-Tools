@@ -3,28 +3,46 @@
 
 # Check requirements
 
+function requirements() {
+[[ $# -eq 0 || $1 == "-h" ]] && usage
 python3 --version >/dev/null 2>&1 || { echo -e "\nInstall python3\n" ; exit 1 ; }
 [[ ! "$(basename $(pwd))" == "erag" ]] && { echo -e "\nRun script inside folder named \"erag\"\n" ; exit 1 ; }
 #cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
 # e.g. token file contents: "Authorization: Token -Wi..."
-[[ ! -s token ]] && { echo "\nPut token in file erag/token\n" ; exit 1 ; }
-[[ ! -s accuracy.tsv ]] && { echo "\nImport file erag/accuracy.tsv\n" ; exit 1 ; }
+#[[ ! -s token ]] && { echo "\nPut token in file erag/token\n" ; exit 1 ; }
+#[[ ! -s accuracy.tsv ]] && { echo "\nImport file erag/accuracy.tsv\n" ; exit 1 ; }
+if [[ "$(echo "${@}" | grep -o -- '-file')" != "-file" && ! -s accuracy.tsv ]] ; then
+  echo ; [[ "$(echo "${@}" | grep -o -- '-file')" != "-file" ]] && echo -e "The \"-file\" argument is missing."
+  [[ ! -s accuracy.tsv ]] && echo -e "The file \"accuracy.tsv\" is missing or empty."
+  echo ; exit 1
+fi
+}
 
 # ENVIRONMENT
 
-FastAPI='https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab'
-eRAG_experimental_app='https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend'
+function do_env() {
+# goldenset API
+# FastAPI='https://tenant-goldenset.erag-c1.gigaspaces.net/api/data-lab'
+# eRAG_experimental_app='https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend'
+# tempo2 API
+# https://tenant-tempo2.erag-c1.gigaspaces.net/api/data-lab/docs
+# https://tenant-tempo2.erag-c1.gigaspaces.net/api/erag-backend/docs
+FastAPI=""
+eRAG_experimental_app=""
+_OUTPUT=""
 _ACCURACY_FILE="accuracy.tsv"
 _CURL_RESPONSE="/tmp/erag_curl_response"
-declare -A _EXIT_CODE
-declare -A _HTTP_CODE
-echo "add token to file" ; exit 1
-_TOK='Authorization: Token ...'
+declare -g -A _EXIT_CODE
+declare -g -A _HTTP_CODE
+# goldenset token - Authorization: Token -WiA1-MmPjMG_BHxyo$8Ndze5uz4@CQ1BgRbcVtPMo
+# tempo2 token - Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5
+_TOK='Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5'
 _APPLICATIONID=""
 _USERID=1
 _TOPICID=""
 _MSG_BODY=""
 _MSG_BODY_ID=""
+_ASSISTANT_MSG=""                 # Verbal eRAG answer
 _SQL=""                           # New SQL statement
 _SQL_SED=""                       # New SQL statement - escaping double quotes are escaped: \"
 _SQL_ORIG=""                      # Original SQL statement
@@ -34,14 +52,17 @@ _NL_RESULT=""                     # Get Natural Language answer to SQL
 _NL_RESULT_ORIG=""                # Get Natural Language answer to SQL_ORIG
 _FIRST_ID=1
 _LAST_ID=50
-LC_ALL=US date >> HTTP_CODE        # Hold http codes for current run
-LC_ALL=US date > GET_NL_RESULT
+LC_ALL=US date '+%Y-%m-%d %H:%M:%S' >> HTTP_CODE        # Hold http codes for current run
+LC_ALL=US date '+%Y-%m-%d %H:%M:%S' > GET_NL_RESULT
 # Variables for report
 _SERIAL=""                        # Question ID
 _QUESTION=""                      # Question asked - double quotes are escaped: \"
 _RESULT=""                        # Current Query result
 _RESULT_ORIG=""                   # Confirmed Query result
-
+_SLEEP=""
+_ERR_LOG=/tmp/erag-error.log
+_ERR_LOG_TMP=/tmp/erag-error-tmp.log
+}
 
 check_python_venv() {
 
@@ -76,7 +97,8 @@ function get_applicationid() {
   -H "${_TOK}")
   #cat ${_CURL_RESPONSE}
   #_HTTP_CODE["${FUNCNAME[0]}"]="${_APPLICATIONID}"
-  _APPLICATIONID="$(jq '.[].applicationId' < ${_CURL_RESPONSE})"
+  _APPLICATIONID="$( jq -e '.[].applicationId' < ${_CURL_RESPONSE} 2> $_ERR_LOG_TMP )"
+  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_applicationid " ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
   #echo _APPLICATIONID=$_APPLICATIONID
 }
 
@@ -87,7 +109,8 @@ function get_topicid() {
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
   -H "${_TOK}")
-  _TOPICID="$(jq '.[].id' < ${_CURL_RESPONSE})"
+  _TOPICID="$(jq -e '.[].id' < ${_CURL_RESPONSE} 2> $_ERR_LOG_TMP )"
+  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _TOPICID" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
   #declare -p _HTTP_CODE
   #echo _TOPICID="${_TOPICID}"
 }
@@ -101,8 +124,15 @@ function post_message() {
   -H "${_TOK}" \
   -H 'Content-Type: application/json' \
   -d '{ "message": "'"${_QUESTION}"'" }')
-  _MSG_BODY="$(cat ${_CURL_RESPONSE})"
-  _MSG_BODY_ID="$(echo "${_MSG_BODY}" | jq '.[] | select(.role == "assistant") | .id')"
+  _MSG_BODY=$(<${_CURL_RESPONSE})
+  #_MSG_BODY_ID="$(echo "${_MSG_BODY}" | jq -e '.[] | select(.role == "assistant") | .id')"
+  # jq -er '...' <<< "$myvar"                    # Using a here-string
+  # jq -er '.name' < <(echo "$myvar")            # Using process substitution
+  _MSG_BODY_ID="$( jq -e '.[] | select(.role == "assistant") | .id' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
+  [[ $? -ne 0 ]] && { printf "%s\n%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _MSG_BODY_ID" "$(<${_ERR_LOG_TMP})" ; } >> $_ERR_LOG
+  #_ASSISTANT_MSG="$(echo "${_MSG_BODY}" | jq -e '.[] | select(.role == "assistant") | .message')"
+  _ASSISTANT_MSG="$( jq -e '.[] | select(.role == "assistant") | .message' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
+  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _ASSISTANT_MSG" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
   #echo _MSG_BODY="${_MSG_BODY}"
   #echo _MSG_BODY_ID="${_MSG_BODY_ID}"
   #declare -p _HTTP_CODE
@@ -115,8 +145,10 @@ function get_message_details() {
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
   -H "${_TOK}")
-  _MSG_DETAILS="$(cat ${_CURL_RESPONSE})"
-  _SQL=$(echo "${_MSG_DETAILS}" | jq -r '.sql')
+  _MSG_DETAILS=$(<${_CURL_RESPONSE})
+  #_SQL=$(echo "${_MSG_DETAILS}" | jq -er '.sql')
+  _SQL=$( jq -er '.sql' <<< "${_MSG_DETAILS}" 2> $_ERR_LOG_TMP )
+  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_message_details _SQL" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
   _SQL_SED=$(echo "${_SQL}" | sed 's/"/\\"/g')
   declare -p _HTTP_CODE >> HTTP_CODE
   #echo _MSG_DETAILS="${_MSG_DETAILS}"
@@ -140,34 +172,9 @@ get_nl_result() {
   "applicationId": "'"${_APPLICATIONID}"'"
   }'
   )           # End of curl subprocess
-  echo -e "\n$(LC_ALL=US date)" >> GET_NL_RESULT
+  echo -e "\n$(LC_ALL=US date '+%Y-%m-%d %H:%M:%S')" >> GET_NL_RESULT
   cat ${_CURL_RESPONSE} | tee -a GET_NL_RESULT
 }
-
-html_to_text() {
-html="${1}"
-
-# Convert HTML to a single line of text using BeautifulSoup, TR and SED
-text=$(python3 <<EOF
-import sys
-from bs4 import BeautifulSoup
-
-html_data = """$html"""
-soup = BeautifulSoup(html_data, 'html.parser')
-
-# Get all the text, separated by spaces instead of newlines
-plain_text = soup.get_text(separator=' ')
-
-# Strip leading/trailing spaces
-plain_text = plain_text.strip()
-
-print(plain_text)
-EOF
-)
-
-echo -ne "$(echo "${text}" | tr '\n' ' ' | sed 's/  */ /g')"
-}
-
 
 ###################################
 # Compare original sql with new sql
@@ -175,10 +182,12 @@ echo -ne "$(echo "${text}" | tr '\n' ' ' | sed 's/  */ /g')"
 # col2 = Question
 # col3 = Query
 # Date, question ID, question, Confirmed query, Current query, comparison results (correct, not correct, inconclusive)
-# put it in a CSV
-do_compare_data() {
+# Output to TSV
+do_test_data() {
   while IFS=$'\t' read -r col1 col2 col3 ; do
     [[ $col1 -lt $_FIRST_ID ]] && { continue ; }
+    _SERIAL=$col1
+    echo -e "$(LC_ALL=US date) ID=${_SERIAL}" >> HTTP_CODE
     _QUESTION=$(echo "${col2}" | sed 's/"/\\"/g')
     _SQL_ORIG="$(echo -n "${col3}" | tr -d '\r\n')"
     _SQL_ORIG_SED="$(echo ${col3} | sed 's/"/\\"/g')"
@@ -188,7 +197,7 @@ do_compare_data() {
     echo "${_QUESTION}" > QUESTION
     post_message                              # set _MSG_BODY and _MSG_BODY_ID
 
-    #echo -e "\n $col1 \n"
+    #echo -e "\n $_SERIAL \n"
     #echo -e "\n _MSG_BODY=$_MSG_BODY\n"
     #echo -e "\n _MSG_BODY_ID=$_MSG_BODY_ID\n"
     get_message_details                       # set _MSG_DETAILS, _SQL and _SQL_SED 
@@ -201,55 +210,71 @@ do_compare_data() {
     echo "${_SQL_ORIG_SED}" > SQL_ORIG_SED
     _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}")"
     echo "${_NL_RESULT_ORIG}" > NL_RESULT_ORIG
-    _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
-    declare -p _HTTP_CODE >> HTTP_CODE
+    _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
+    echo -e "_SQL_ORIG_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
     # _SQL_SED
     echo "${_SQL_SED}" > SQL_SED
     _NL_RESULT="$(get_nl_result "${_SQL_SED}")"
     echo "${_NL_RESULT}" > NL_RESULT
-    _DATA="$(echo ${_NL_RESULT} | jq '.tabular_data.data' | tr -d '\n' | tee DATA)"
-    declare -p _HTTP_CODE >> HTTP_CODE
+    _DATA="$(echo ${_NL_RESULT} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA)"
+    echo -e "_SQL_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
 
     #============================================ COMPARISON
     r1_empty="$(echo -n "${_DATA_ORIG}" | tr -d '[] \n')"
     r2_empty="$(echo -n "${_DATA}" | tr -d '[] \n')"
 
 
-    # Print report
-    echo -ne "$(date '+%Y/%m/%d')\t"            # DATE
-    echo -ne "${col1}\t"                        # QUESTION ID
-    echo -ne "${col2}\t"                        # QUESTION
+    #================
+    #================
+    #= PRINT REPORT =
+    #================
+    #================
 
+    #--------------- DATE
+    echo -ne "$(date '+%Y/%m/%d')\t"
+    #--------------- QUESTION ID
+    echo -ne "${_SERIAL}\t"
+    #--------------- QUESTION
+    echo -ne "${col2}\t"
+    #--------------- SQL_ORIG
     echo -ne "${_SQL_ORIG}\t"
+    #--------------- DATA_ORIG
     if [[ $(echo ${_DATA_ORIG} | wc -c) -gt 49999 ]] ; then
       echo -ne "FIELD TOO LARGE\t"
     else
       echo -ne ${_DATA_ORIG}"\t"
     fi
     #echo -ne "${_ERAG_ORIG_ANSWER}\t"
-
-    echo -ne "${_SQL}\t"
+    #--------------- SQL
+    echo -ne "$(echo -en "${_SQL}"  | tr '\n' ' ')\t"
+    #echo -ne "${_SQL}\t"
+    #--------------- DATA
     if [[ $(echo ${_DATA} | wc -c) -gt 49999 ]] ; then
       echo -ne "FIELD TOO LARGE\t"
     else
       echo -ne ${_DATA}"\t"
     fi
     #echo -ne "${_ERAG_ANSWER}\t"
-
+    #--------------- ASSISTANT_MSG
+    echo -ne "$(echo -en "${_ASSISTANT_MSG}" | tr '\n' ' ' | sed -E 's/<[^>]*>//g; s/[[:space:]]+/ /g')\t"
+    #--------------- COMPARISON
     if [[ -z $r1_empty && -z $r2_empty ]] ; then 
       echo -ne "same\t"
     else
       [[ "$(echo -n "${_DATA_ORIG}" | md5sum)" == "$(echo -n "${_DATA}" | md5sum)" ]] && echo -ne "same\t" || echo -ne "different\t"   
     fi
-    do_compare                                  # SIMILARITY in percentage 0-100%
+    #--------------- SIMILARITY in percentage 0-100%
+    do_similarity
 
-    [[ $col1 -ge $_LAST_ID ]] && { break ; }
-  done < <(cat $_ACCURACY_FILE ) | tee /tmp/jrout
-  pbcopy < /tmp/jrout
-  echo -e "\n Results copied to clipboard.\n"
+
+    [[ $_SERIAL -ge $_LAST_ID ]] && { break ; }
+    [[ -n $_SLEEP ]] && sleep $_SLEEP
+  done < <(cat $_ACCURACY_FILE ) | tee /tmp/erag-out-$_OUTPUT
+#  pbcopy < /tmp/erag-out-$_OUTPUT
+#  echo -e "\n Results copied to clipboard.\n"
 }
 
-function do_compare() {
+function do_similarity() {
 python3 << EOF
 import sys
 from difflib import SequenceMatcher
@@ -272,6 +297,12 @@ print(f"{similarity_percentage:.2f}%")
 EOF
 }
 
+# Debug options
+#   -g1               Get Application ID  - Run: get_applicationid
+#   -g2               Get Topic ID        - Run: get_applicationid get_topicid
+#   -g3               Get Message ID      - Run: get_applicationid get_topicid post_message
+#   -g4               Get SQL             - Run: get_applicationid get_topicid post_message get_message_details
+
 function usage() {
 
   cat << EOF
@@ -282,14 +313,13 @@ function usage() {
 
   OPTIONS:
 
-    -file <filename>  Give name of accurracy file to use. If not provided then should exist in erag directory.
-    -c                Compare answers (data fields) in loop.
-    -g1               Get Application ID  - Run: get_applicationid
-    -g2               Get Topic ID        - Run: get_applicationid get_topicid
-    -g3               Get Message ID      - Run: get_applicationid get_topicid post_message
-    -g4               Get SQL             - Run: get_applicationid get_topicid post_message get_message_details
+    -t                Test accuracy file
+    -file <filename>  Give name of accurracy file to use. Default: use file "accuracy.tsv" in current directory.
+    -tok <value>      Set TOKEN
+    -api <name>       Set API
     -f                Set FIRST ID to process
     -l                Set LAST ID to process
+    -s                Set sleep value between each line test
     -h                Help - Display usage
 
   DEFAULT
@@ -300,8 +330,11 @@ function usage() {
 
   EXAMPLES:
 
-   $(basename $0) -c
-   $(basename $0) -f 1 -l 1 -c            Test only ID=1
+   $(basename $0) -file tempo2.tsv -t     Specify file to test
+   $(basename $0) -f 1 -l 1 -t            Test only ID=1
+   $(basename $0) -api tempo2             Change API's "eRAG experimental app" and "FastAPI" to tempo2
+   $(basename $0) -tok '9K@hTAEmdlpTF7r_$@1VjZ8UsUKkJ@HWYuikAUFQE5'       
+   $(basename $0) -f 1 -l 1 -api tempo2 -tok '9K@hTAEmdlpTF7r_$@1VjZ8UsUKkJ@HWYuikAUFQE5' -file tempo2.tsv -t
 
 EOF
 exit
@@ -309,9 +342,6 @@ exit
 }
 
 function do_menu() {
-
-[[ $# -eq 0 || $1 == "-h" ]] && usage
-[[ "$(echo "${@}" | grep -o -- '-file')" != "-file" && ! -s accuracy.tsv ]] &&  { echo -e "\nAccuracy file argument missing\n" ; exit 1 ; }
 
 check_python_venv
 while [[ $# -ne 0 ]] ; do
@@ -345,23 +375,36 @@ while [[ $# -ne 0 ]] ; do
         echo -e "\n----------running get_message_details\n" ; get_message_details
         echo -e "\n_MSG_DETAILS=${_MSG_DETAILS}\n"
         echo -e "\n_SQL=${_SQL}\n"
+        echo -e "${_ASSISTANT_MSG}" | tr '\n' ' ' | sed -E 's/<[^>]*>//g; s/[[:space:]]+/ /g'
         ;;
-    "-c") 
-        do_compare_data
+    "-t") 
+        do_test_data
         ;;
     "-f") 
         shift ; _FIRST_ID=$1
         ;;
     "-file") 
-        shift ; [[ ! -s $1 ]] && { echo -e "\nNo accuracy filename given\n" ; exit 1 ; } || _ACCURACY_FILE=$1
+        shift ; [[ ! -s $1 ]] && { echo -e "\nAccuracy file not given, is empty or does not exist.\n" ; exit 1 ; } || _ACCURACY_FILE=$1
         ;;
     "-l") 
         shift ; _LAST_ID=$1
         ;;
+    "-s") 
+        shift ; _SLEEP=$1
+        ;;
+    "-tok"|"-token") 
+        shift ; _TOK="Authorization: Token ${1}"
+        ;;
+    "-api") 
+        shift
+        FastAPI="https://tenant-${1}.erag-c1.gigaspaces.net/api/data-lab"
+        eRAG_experimental_app="https://tenant-${1}.erag-c1.gigaspaces.net/api/erag-backend"
+        _OUTPUT="${1}"
+        ;;
     "-h") 
         usage
         ;;
-    *) echo -e "\nOption \"${1}\" unknown\n"
+    *) echo -e "\nOption \"${1}\" is unknown.\n" ; exit 1 
        ;;
   esac
   shift
@@ -372,5 +415,7 @@ done
 
 ########## MAIN ##########
 
+requirements "${@}"
+do_env
 do_menu "${@}"
 
