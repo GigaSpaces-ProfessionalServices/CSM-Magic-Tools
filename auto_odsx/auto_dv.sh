@@ -1,6 +1,9 @@
 #!/bin/bash
 
+# tail -10000f /gigalogs/datavalidatoragent.log | grep ': ### Admin API: Count\|: val:\|### Optimized Get Max value'
+
 do_env() {
+source ~/.bash_profile
 export ENV_CONFIG=/gigashare/env_config
 # Get user/pass creds
 _USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
@@ -25,10 +28,12 @@ _TABLES=""
 _ONE_TABLE=()
 _FAIL_ONLY=""
 _TABLE_NUM=0
-_LOGC=/tmp/jrbatchc_influx
-_LOGM=/tmp/jrbatchm_influx
+_LOGC=/gigalogs/dv_batchc_influx.log
+_LOGM=/gigalogs/dv_batchm_influx.log
 _DV_MAX_LOG=/gigalogs/auto_dv_max.log
 _DV_COUNT_LOG=/gigalogs/auto_dv_count.log
+_DV_BATCH_LOG=/gigalogs/dv_batch.log
+_GRAFANA_LOG=/gigalogs/dv_for_grafana
 declare -g -A _INFLUX
 # Create and indexed array holding all CDC tables
 #[[ "${ENV_NAME}" != "TAUG" ]] && _CDC_TABLES=( $( ssh $(runall -d -l |grep -v === | head -1) /giga/scripts/listPipelineTables.sh |grep STUD) )
@@ -292,55 +297,30 @@ ls -l /gigashare/current/data-validator/jars/
 auto_dv.sh -reinstall
 }
 
-batch_count() {
-/usr/bin/expect -c '
+batch_execute() {
+/usr/bin/expect -c "
 set timeout -1
 set force_conservative 1
 
 cd /dbagiga/gs-odsx
 spawn ./odsx.py datavalidator batchexecute execute
-expect "Select Test type"
-sleep .5
-send -- "c"
-sleep .5
-send -- "o"
-sleep .5
-send -- "u"
-sleep .5
-send -- "n"
-sleep .5
-send -- "t"
-sleep .5
-send -- "\r"
+expect \"Select Test type\"
 
-expect eof
-'
+set input \"$1\"
+foreach char [split \$input \"\"] {
+    sleep 0.5
+    send -- \"\$char\"
 }
-
-batch_max() {
-/usr/bin/expect -c '
-set timeout -1
-set force_conservative 1
-
-cd /dbagiga/gs-odsx
-spawn ./odsx.py datavalidator batchexecute execute
-expect "Select Test type"
-sleep .5
-send -- "m"
-sleep .5
-send -- "a"
-sleep .5
-send -- "x"
-sleep .5
-send -- "\r"
+sleep 0.5
+send -- \"\r\"
 
 expect eof
-'  
+"
 }
 
 function do_batchm2() {
   local num=1 dvmax_out dvmax line table gigaspaces oracle table_type
-  dvmax_out="$( batch_max | tee -a $_DV_MAX_LOG | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
+  dvmax_out="$( batch_execute max | tee -a $_DV_MAX_LOG | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
   echo -e "\nNumber of tables processed: $(echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' | wc -l)"
   dvmax=$( echo -e "${dvmax_out}" | grep 'dbo\.\|STUD\.' )
   while read line ; do 
@@ -371,7 +351,7 @@ done < <(curl -u ${_USER}:${_PASS} -sk "${BASE_URL}/spaces/${SPACE_ID}/statistic
 # [[ "${line}" =~ gigaspaces-Result:[0-9]+ && "${line}" =~ oracle-Result:[0-9]+ ]]
 function batchm_influx() {
   local dvmax_out line result table table_type
-  dvmax_out="$( batch_max | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
+  dvmax_out="$( batch_execute max | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g' )"
   #dvmax_out="$(cat /tmp/jrbatchmsed)"
   > $_LOGM
   while read line ; do 
@@ -385,11 +365,13 @@ function batchm_influx() {
   done < <(echo "${dvmax_out}") 
   #for table in ${!_INFLUX[@]} ; do echo $table ${_INFLUX[${table}]} ; done | sort > $_LOGM
   sort $_LOGM > ${_LOGM}2
+  echo -e "----------\n$(date '+%Y-%m-%d %H:%M:%S') MAX\n----------" >> $_DV_BATCH_LOG
+  cat ${_LOGM}2 >> $_DV_BATCH_LOG
 }
 
 function batchc_influx() {
   local dvcount_out line result table table_type
-  dvcount_out="$( batch_count | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g')"
+  dvcount_out="$( batch_execute count | grep 'dbo\.\|STUD\.' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g ; s/[^[:print:]]//g ; s/[ \t]//g')"
   #dvcount_out="$(cat /tmp/jrbatchc)"
   > $_LOGC
   while read line ; do 
@@ -403,6 +385,8 @@ function batchc_influx() {
   done < <(echo "${dvcount_out}") 
   #for table in ${!_INFLUX[@]} ; do echo $table ${_INFLUX[${table}]} ; done | sort > $_LOGC
   sort $_LOGC > ${_LOGC}2
+  echo -e "----------\n$(date '+%Y-%m-%d %H:%M:%S') COUNT\n----------" >> $_DV_BATCH_LOG
+  cat ${_LOGC}2 >> $_DV_BATCH_LOG
 }
 
 # e.g. dvState,env=TAUS host=gstest-pivot obj_type=STUD.TM_SEGEL result=1 state=PASS table_type=CDC
@@ -477,13 +461,13 @@ do_menu() {
         _MEASUREMENT_TYPE=max
         ;;
       "batchc") 
-        batch_count ; exit
+        batch_execute count ; exit
         ;;
       "batchc_influx") 
         batchc_influx ; exit
         ;;
       "batchm") 
-        batch_max ; exit
+        batch_execute max ; exit
         ;;
       "batchm_influx") 
         batchm_influx ; exit
@@ -492,9 +476,19 @@ do_menu() {
         do_batchm2 ; exit
         ;;
       "batch_influx") 
+        dv_test_log=/tmp/dv-test.log
+        echo -e "----------\n$(date '+%Y-%m-%d %H:%M:%S') Begin execution in batch\n----------" >> $_DV_BATCH_LOG
+        echo "$(date '+%Y-%m-%d %H:%M:%S.%3N') Begin batchm_influx" > $dv_test_log
         batchm_influx
+        echo "$(date '+%Y-%m-%d %H:%M:%S.%3N') Begin batchc_influx" >> $dv_test_log
         batchc_influx
-        batch_influx | sort | tee /gigalogs/dv_for_grafana ; exit
+        echo "$(date '+%Y-%m-%d %H:%M:%S.%3N') Begin batch_influx" >> $dv_test_log
+        batch_influx | sort > $_GRAFANA_LOG
+        echo -e "----------\n$(date '+%Y-%m-%d %H:%M:%S') GRAFANA\n----------" >> $_DV_BATCH_LOG
+        cat $_GRAFANA_LOG >> $_DV_BATCH_LOG
+        echo -e "----------\n$(date '+%Y-%m-%d %H:%M:%S') LIST FILES\n----------" >> $_DV_BATCH_LOG
+        ls -ltr $_GRAFANA_LOG $_DV_BATCH_LOG $_LOGM ${_LOGM}2 $_LOGC ${_LOGC}2 >> $_DV_BATCH_LOG
+        exit
         ;;
       "batchcm") 
         auto_dv.sh batchc

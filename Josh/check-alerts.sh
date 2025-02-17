@@ -16,14 +16,27 @@ esac
   _ERROR_SWITCH=0
   _EMAIL_SUBJECT=""
   _ERROR_OUT=""
+  _GS_ALERT_LOG=/gigalogs/jr-gs-alert.log
+}
+
+function get_auth() {
+# Get user/pass creds
+_USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
+if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
+  _VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
+  _PASS=$(java -Dapp.db.path=/dbagigawork/sqlite/ -jar /dbagigashare/current/gs/jars/gs-vault-1.0-SNAPSHOT-jar-with-dependencies.jar --get ${_VAULT_PASS})
+else
+  _PASS=$(awk -F= '/app.manager.security.password=/ {print $2}' ${ENV_CONFIG}/app.config)
+fi
 }
 
 function clear_alert() {
-  [[ ! -f $_LOG ]] && { touch $_LOG ; return ; }
-  if [[ ! -s $_LOG ]] ; then
+  [[ ! -f $_LOG ]] && { touch $_LOG ; return ; }      # Create log if not exist 
+  if [[ ! -s $_LOG ]] ; then                          # Return if empty    
     return
   else
     logger -t GS-ALERTS "${_EMAIL_SUBJECT}"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}" loggr exit_code=$?" >> $_GS_ALERT_LOG
     echo "" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
     > $_LOG
   fi
@@ -31,17 +44,19 @@ function clear_alert() {
 
 function send_alert() {
   if [[ ! -f $_LOG || ! -s $_LOG ]] ; then          # if no logfile or logfile is empty 
+    logger -t GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}""
+    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}"" logger exit_code=$?" >> $_GS_ALERT_LOG
+    echo -e "${_ALERT_NAME}:\n"${_ERROR_OUT[@]}"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
     date +%s > $_LOG
-    logger -t GS-ALERTS "NB failed services: "${_ERROR_OUT}""
-    echo -e "NB failed services:\n\"${_ERROR_OUT}\"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
     return
   fi
   # Send alert only once a day
   local sec=$( echo "$(date +%s) - $(cat ${_LOG})" | bc )
   [[ $sec -lt 86400 ]] && return
   # After 1 day send another alert
-  logger -t GS-ALERTS "NB failed services: "${_ERROR_OUT}""
-  echo -e "NB failed services:\n\"${_ERROR_OUT}\"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
+  logger -t GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}""
+  echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}"" logger exit_code=$?" >> $_GS_ALERT_LOG
+  echo -e "${_ALERT_NAME}:\n"${_ERROR_OUT[@]}"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
   date +%s > $_LOG
 }
 
@@ -49,6 +64,7 @@ function check_one_nb_service() {
   local result host_name=$1 svc=$2 exit_code
   result=$( timeout $_NB_TIMEOUT ssh $host_name "systemctl is-active ${svc}" )
   exit_code=$?
+  #[[ "${host_name}" == "gstest-manager2.tau.ac.il" ]] && { exit_code=124 ; result=inactive ; } 
   if [[ $result != "active" ]] ; then
     if [[ $exit_code -eq 124 ]] ; then 
       result="timeout"
@@ -62,6 +78,8 @@ function check_one_nb_service() {
 
 function check_nb_services() {
   _ERROR_OUT=""
+  _ERROR_SWITCH=0
+  _ALERT_NAME="NB SERVICES"
   _LOG=/giga/utils/check_nb_services.log
   local h s result host_name exit_code
 
@@ -82,10 +100,55 @@ function check_nb_services() {
   done
 
   if [[ $_ERROR_SWITCH -eq 1 ]] ; then
-    _EMAIL_SUBJECT="${_TAU_ENV} :: NB SERVICES ALERT."
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: ALERT"
     send_alert
   else
-    _EMAIL_SUBJECT="${_TAU_ENV} :: NB SERVICES OK."
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: OK"
+    clear_alert 
+  fi
+}
+
+# Alert if replicationMode of instance IDs != SYNC
+function check_replicationmode() {
+  _ERROR_OUT=()
+  _ERROR_SWITCH=0
+  _ALERT_NAME="SPACE INSTANCE ID REPLICATIONMODE"
+  _LOG=/giga/utils/check_replicationmode.log
+
+  local inst_id mode
+
+  # Get Space PRIMARY instance ID's
+  get_auth
+  _MANAGERS=( $( runall -m -l | grep -v === ) )
+  instance_ids=$(timeout 10 curl -s -u ${_USER}:${_PASS} "http://${_MANAGERS[0]}:8090/v2/spaces/dih-tau-space/instances" | jq -r '.[] | select(.mode =="PRIMARY").id')
+  if [[ $? -ne 0 ]] ; then 
+    _ERROR_OUT=( "Failed to get instance IDs" )
+    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+    _ERROR_SWITCH=1 
+  else
+    for inst_id in $instance_ids ; do
+      mode=$(timeout 10 curl -s -u ${_USER}:${_PASS} "http://${_MANAGERS[0]}:8090/v2/spaces/dih-tau-space/instances/${inst_id}/statistics/replication" | jq -r '.channels | to_entries[] | select(.value.replicationMode == "BACKUP_SPACE") | .value.operatingMode')
+      if [[ $? -ne 0 ]] ; then 
+        _ERROR_OUT=( ${_ERROR_OUT[@]} $(echo -e "\nFailed to get replicationMode of instance ID ${inst_id}.") )
+        echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+        _ERROR_SWITCH=1 
+      elif [[ "${mode}" != "SYNC" ]] ; then
+      #elif [[ "${mode}" != "SYNC" || "${inst_id}" == "dih-tau-space~5_1" ]] ; then
+      #elif [[ "${mode}" != "SYNC" || "${inst_id}" == "dih-tau-space~5_1" || "${inst_id}" == "dih-tau-space~10_1" ]] ; then
+        _ERROR_OUT=( ${_ERROR_OUT[@]} $(echo -e "\n${inst_id} replicationMode=${mode}") )
+        echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+        _ERROR_SWITCH=1
+      fi
+      #echo -e "\n${inst_id} replicationMode=${mode}"
+    done
+  fi
+
+  # Process if error occurred
+  if [[ $_ERROR_SWITCH -eq 1 ]] ; then
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: ALERT"
+    send_alert
+  else
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: OK"
     clear_alert 
   fi
 }
@@ -94,3 +157,5 @@ function check_nb_services() {
 
 do_env
 check_nb_services
+check_replicationmode
+
