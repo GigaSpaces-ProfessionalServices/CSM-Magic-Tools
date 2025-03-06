@@ -7,11 +7,7 @@ case $ENV_NAME in
   "TAUP") _TAU_ENV=PROD ;;
   *) echo "Wrong env" ; exit 1 ;;
 esac
-  _NB_APP_SERVERS=$( runall -na -l | grep -v "==" )
   _SPACE_SERVERS=$( runall -s -l | grep -v "==" )
-  _NB_APP_SERVICES=( nginx.service consul.service consul-template.service telegraf.service northbound.target )
-  _NB_AGENT_SERVICES=( consul.service telegraf.service northbound.target ) 
-  _NB_TIMEOUT=10
   _LOG=""
   _ERROR_SWITCH=0
   _EMAIL_SUBJECT=""
@@ -76,7 +72,14 @@ function check_one_nb_service() {
   fi
 }
 
+# Check NB servers and services
 function check_nb_services() {
+
+  _NB_APP_SERVERS=$( runall -na -l | grep -v "==" )
+  _NB_APP_SERVICES=( nginx.service consul.service consul-template.service telegraf.service northbound.target )
+  _NB_AGENT_SERVICES=( consul.service telegraf.service northbound.target ) 
+  _NB_TIMEOUT=10
+
   _ERROR_OUT=""
   _ERROR_SWITCH=0
   _ALERT_NAME="NB SERVICES"
@@ -153,9 +156,43 @@ function check_replicationmode() {
   fi
 }
 
+# Alert if replicationMode of instance IDs != SYNC
+function check_pl_restarting() {
+
+  _DIH1_SERVER=$( runall -d -l | grep -v === | head -1 )
+
+  _ERROR_OUT=""
+  _ERROR_SWITCH=0
+  _ALERT_NAME="PIPELINE STATE RESTARTING"
+  _LOG=/giga/utils/check_pipeline_state_running.log
+
+  _ERROR_OUT=$( ssh ${_DIH1_SERVER} 'su - gsods -c /dbagiga/scripts/statusPipelines.sh' | grep '^PL.*RESTARTING' )
+  #_ERROR_OUT=$( cat /tmp/jrpltest )
+  if [[ -n $_ERROR_OUT ]] ; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT}"" >> $_GS_ALERT_LOG
+    _ERROR_SWITCH=1
+  fi
+
+  # Process if error occurred
+  if [[ $_ERROR_SWITCH -eq 1 ]] ; then
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: ALERT"
+    send_alert
+  else
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: OK"
+    clear_alert
+  fi
+ 
+}
+
+function send_clear_alert() {
+echo
+}
+
+
 ############### MAIN ###############
 
 do_env
 check_nb_services
 check_replicationmode
+check_pl_restarting
 
