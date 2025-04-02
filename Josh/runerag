@@ -38,7 +38,7 @@ declare -g -A _HTTP_CODE
 # tempo2 token - Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5
 _TOK='Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5'
 _APPLICATIONID=""
-_USERID=1
+_USERID="24050ffc-9cf9-4ddc-9dec-35be40f164c0"
 _TOPICID=""
 _MSG_BODY=""
 _MSG_BODY_ID=""
@@ -104,15 +104,15 @@ function get_applicationid() {
 
 # GET 2 - Get topic id - FastAPI/get all topics for this app for this user
 function get_topicid() {
-  _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
+
+_TOPICID=$( curl -sX 'POST' \
   "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
-  -H "${_TOK}")
-  _TOPICID="$(jq -e '.[].id' < ${_CURL_RESPONSE} 2> $_ERR_LOG_TMP )"
-  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _TOPICID" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
-  #declare -p _HTTP_CODE
-  #echo _TOPICID="${_TOPICID}"
+  -H "${_TOK}" \
+  -H 'Content-Type: application/json' \
+  -d '{ "name": "Topic creation for testing." }' | jq '.id' )
+
 }
 
 # GET 3 - Get message body id - FastAPI/Submit a new question to the topic
@@ -176,6 +176,15 @@ get_nl_result() {
   cat ${_CURL_RESPONSE} | tee -a GET_NL_RESULT
 }
 
+function delete_topic() {
+curl -sX 'DELETE' \
+  "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}" \
+  -H 'accept: application/json' \
+  -H "user-id: ${_USERID}" \
+  -H "${_TOK}"
+
+}
+
 ###################################
 # Compare original sql with new sql
 # col1 = Serial
@@ -184,7 +193,12 @@ get_nl_result() {
 # Date, question ID, question, Confirmed query, Current query, comparison results (correct, not correct, inconclusive)
 # Output to TSV
 do_test_data() {
+
+  get_applicationid                         # set _APPLICATIONID
+  get_topicid                               # set _TOPICID
+
   while IFS=$'\t' read -r col1 col2 col3 ; do
+    # echo -e "$col1 $col2 $col3 "
     [[ $col1 -lt $_FIRST_ID ]] && { continue ; }
     _SERIAL=$col1
     echo -e "$(LC_ALL=US date) ID=${_SERIAL}" >> HTTP_CODE
@@ -192,8 +206,8 @@ do_test_data() {
     _SQL_ORIG="$(echo -n "${col3}" | tr -d '\r\n')"
     _SQL_ORIG_SED="$(echo ${col3} | sed 's/"/\\"/g')"
 
-    get_applicationid                         # set _APPLICATIONID
-    get_topicid                               # set _TOPICID
+#   get_applicationid                         # set _APPLICATIONID
+#   get_topicid                               # set _TOPICID
     echo "${_QUESTION}" > QUESTION
     post_message                              # set _MSG_BODY and _MSG_BODY_ID
 
@@ -210,13 +224,13 @@ do_test_data() {
     echo "${_SQL_ORIG_SED}" > SQL_ORIG_SED
     _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}")"
     echo "${_NL_RESULT_ORIG}" > NL_RESULT_ORIG
-    _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
+    _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | sort | tr -d '\n' | tee DATA_ORIG)"
     echo -e "_SQL_ORIG_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
     # _SQL_SED
     echo "${_SQL_SED}" > SQL_SED
     _NL_RESULT="$(get_nl_result "${_SQL_SED}")"
     echo "${_NL_RESULT}" > NL_RESULT
-    _DATA="$(echo ${_NL_RESULT} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA)"
+    _DATA="$(echo ${_NL_RESULT} | jq -e '.tabular_data.data' | sort | tr -d '\n' | tee DATA)"
     echo -e "_SQL_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
 
     #============================================ COMPARISON
@@ -270,6 +284,8 @@ do_test_data() {
     [[ $_SERIAL -ge $_LAST_ID ]] && { break ; }
     [[ -n $_SLEEP ]] && sleep $_SLEEP
   done < <(cat $_ACCURACY_FILE ) | tee /tmp/erag-out-$_OUTPUT
+  
+  delete_topic
 #  pbcopy < /tmp/erag-out-$_OUTPUT
 #  echo -e "\n Results copied to clipboard.\n"
 }
@@ -316,7 +332,7 @@ function usage() {
     -t                Test accuracy file
     -file <filename>  Give name of accurracy file to use. Default: use file "accuracy.tsv" in current directory.
     -tok <value>      Set TOKEN
-    -api <name>       Set API
+    -api <name>       Set API. Supported: tempo2, goldenset
     -f                Set FIRST ID to process
     -l                Set LAST ID to process
     -s                Set sleep value between each line test
@@ -334,7 +350,8 @@ function usage() {
    $(basename $0) -f 1 -l 1 -t            Test only ID=1
    $(basename $0) -api tempo2             Change API's "eRAG experimental app" and "FastAPI" to tempo2
    $(basename $0) -tok '9K@hTAEmdlpTF7r_$@1VjZ8UsUKkJ@HWYuikAUFQE5'       
-   $(basename $0) -f 1 -l 1 -api tempo2 -tok '9K@hTAEmdlpTF7r_$@1VjZ8UsUKkJ@HWYuikAUFQE5' -file tempo2.tsv -t
+   $(basename $0) -f 1 -l 5 -api tempo2 -tok '...' -file tempo2.tsv -t    # Run queries found between 1-5
+   $(basename $0) -api goldenset -tok '...' -file goldenset.tsv -t        # Run all queries
 
 EOF
 exit
