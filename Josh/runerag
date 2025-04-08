@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-#/opt/homebrew/bin/bash - new bash v5
+
+# Comments:
+# /opt/homebrew/bin/bash - new bash v5
+# cd ; tail -100f HTTP_CODE | grep "[13456][0-9][0-9]\|ID="
 
 # Check requirements
 
@@ -283,7 +286,7 @@ do_test_data() {
 
     [[ $_SERIAL -ge $_LAST_ID ]] && { break ; }
     [[ -n $_SLEEP ]] && sleep $_SLEEP
-  done < <(cat $_ACCURACY_FILE ) | tee /tmp/erag-out-$_OUTPUT
+  done < <(cat $_ACCURACY_FILE ) | tr -d '\r' | tee /tmp/erag-out-$_OUTPUT
   
   delete_topic
 #  pbcopy < /tmp/erag-out-$_OUTPUT
