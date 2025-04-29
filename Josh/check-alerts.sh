@@ -1,6 +1,7 @@
 #!/bin/bash
 
 function do_env() {
+export TERM=xterm
 case $ENV_NAME in
   "TAUG") _TAU_ENV=DEV ;;
   "TAUS") _TAU_ENV=TEST ;;
@@ -13,6 +14,12 @@ esac
   _EMAIL_SUBJECT=""
   _ERROR_OUT=""
   _GS_ALERT_LOG=/gigalogs/jr-gs-alert.log
+  _ERR_LIST=""
+  if [[ "${_TAU_ENV}" == "PROD" ]] ; then
+    _RECIPIENTS="josh.roden@gigaspaces.com shmulik.kaufman@gigaspaces.com veronikap@tauex.tau.ac.il"
+  else
+    _RECIPIENTS="josh.roden@gigaspaces.com"
+  fi
 }
 
 function get_auth() {
@@ -26,33 +33,36 @@ else
 fi
 }
 
+function email_and_logs() {
+  logger -t GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}""
+  echo -e "==========================\n$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS ${_EMAIL_SUBJECT}:\n${_ERROR_OUT[@]}" >> $_GS_ALERT_LOG
+  echo -e "${_ALERT_NAME}:\n"${_ERROR_OUT[@]}"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il "${_RECIPIENTS}" >/dev/null 2>&1
+}
+
 function clear_alert() {
   [[ ! -f $_LOG ]] && { touch $_LOG ; return ; }      # Create log if not exist 
   if [[ ! -s $_LOG ]] ; then                          # Return if empty    
     return
   else
-    logger -t GS-ALERTS "${_EMAIL_SUBJECT}"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}" loggr exit_code=$?" >> $_GS_ALERT_LOG
-    echo "" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
+    email_and_logs
     > $_LOG
   fi
 }
 
 function send_alert() {
+  # Send email alert and write logs
   if [[ ! -f $_LOG || ! -s $_LOG ]] ; then          # if no logfile or logfile is empty 
-    logger -t GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}""
-    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}"" logger exit_code=$?" >> $_GS_ALERT_LOG
-    echo -e "${_ALERT_NAME}:\n"${_ERROR_OUT[@]}"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
+    email_and_logs
     date +%s > $_LOG
     return
   fi
-  # Send alert only once a day
+
+  # Send email alert and write logs - ONLY ONCE A DAY
+  echo -e "==========================\n$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS ${_EMAIL_SUBJECT}:\n${_ERROR_OUT[@]}" >> $_GS_ALERT_LOG
   local sec=$( echo "$(date +%s) - $(cat ${_LOG})" | bc )
-  [[ $sec -lt 86400 ]] && return
+  [[ $sec -lt 21600 ]] && return
   # After 1 day send another alert
-  logger -t GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}""
-  echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_EMAIL_SUBJECT}: "${_ERROR_OUT[@]}"" logger exit_code=$?" >> $_GS_ALERT_LOG
-  echo -e "${_ALERT_NAME}:\n"${_ERROR_OUT[@]}"" | mailx -s "${_EMAIL_SUBJECT}" -r kapacitor-alerts@tau.ac.il josh.roden@gigaspaces.com >/dev/null 2>&1
+  email_and_logs
   date +%s > $_LOG
 }
 
@@ -184,6 +194,94 @@ function check_pl_restarting() {
  
 }
 
+function check_count_primary_backup() {
+
+  _ERROR_OUT=()
+  _ERROR_SWITCH=0
+  _ALERT_NAME="SPACE INSTANCE P/B COUNT"
+  _LOG=/giga/utils/check_count_primary_backup.log
+
+  local inst_id mode
+
+  # Get Space PRIMARY instance ID's
+  get_auth
+  _MANAGERS=( $( runall -m -l | grep -v === ) )
+  #instance_backup=$(timeout 10 curl -s -u ${_USER}:${_PASS} "http://${_MANAGERS[0]}:8090/v2/spaces/dih-tau-space/instances" | jq -r '.[] | select(.mode =="BACKUP").id')
+  instance_primary=$(timeout 10 curl -s -u ${_USER}:${_PASS} "http://${_MANAGERS[0]}:8090/v2/spaces/dih-tau-space/instances" | jq -r '.[] | select(.mode =="PRIMARY").id')
+
+  # Check: 1. If the curl request times out or 2. If the jq command fails to parse the response.
+  if [[ $? -ne 0 ]] ; then 
+    _ERROR_OUT=( "Failed to get instance IDs" )
+    echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+    _ERROR_SWITCH=1 
+  else
+    for inst_id in $instance_ids ; do
+      mode=$(timeout 10 curl -s -u ${_USER}:${_PASS} "http://${_MANAGERS[0]}:8090/v2/spaces/dih-tau-space/instances/${inst_id}/statistics/replication" | jq -r '.channels | to_entries[] | select(.value.replicationMode == "BACKUP_SPACE") | .value.operatingMode')
+      if [[ $? -ne 0 ]] ; then 
+        _ERROR_OUT=( ${_ERROR_OUT[@]} $(echo -e "\nFailed to get replicationMode of instance ID ${inst_id}.") )
+        echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+        _ERROR_SWITCH=1 
+      elif [[ "${mode}" != "SYNC" ]] ; then
+      #elif [[ "${mode}" != "SYNC" || "${inst_id}" == "dih-tau-space~5_1" ]] ; then
+      #elif [[ "${mode}" != "SYNC" || "${inst_id}" == "dih-tau-space~5_1" || "${inst_id}" == "dih-tau-space~10_1" ]] ; then
+        _ERROR_OUT=( ${_ERROR_OUT[@]} $(echo -e "\n${inst_id} replicationMode=${mode}") )
+        echo "$(date '+%Y-%m-%d %H:%M:%S') GS-ALERTS "${_ERROR_OUT[@]}"" >> $_GS_ALERT_LOG
+        _ERROR_SWITCH=1
+      fi
+      #echo -e "\n${inst_id} replicationMode=${mode}"
+    done
+  fi
+
+  # Process if error occurred
+  if [[ $_ERROR_SWITCH -eq 1 ]] ; then
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: ALERT"
+    send_alert
+  else
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: OK"
+    clear_alert 
+  fi
+}
+
+
+function check_pl_running_count() {
+
+  _ERROR_OUT=()
+  _ERROR_SWITCH=0
+  _ALERT_NAME="PL JOBS RUNNING COUNT"
+  _LOG=/giga/utils/check_pl_running_count.log
+  _ERR_LIST=""
+  
+  local dih1 api_base_url running_count job_ids pl_name 
+
+  dih1=$(runall -d -l | grep -v == | head -1)
+  api_base_url="http://${dih1}:8081/jobs"
+
+  # Get the list of job IDs
+  job_ids=$(curl -s "${api_base_url}" | jq -r '.jobs[] | .id')
+  #job_ids=$(curl -s "${api_base_url}" | jq -r '.jobs[] | select(.status == "RUNNING") | .id')
+
+  # Loop through each job ID and fetch its RUNNING count
+  for job_id in $job_ids ; do
+    running_count=$(curl -s "${api_base_url}/$job_id" | jq '.["status-counts"].RUNNING')
+    if [[ $running_count -ne 3 ]] ; then
+      pl_name=$( curl -s "${api_base_url}/$job_id" | jq -r '.name' | cut -d"|" -f1 )
+      _ERR_LIST="${_ERR_LIST}PL name: ${pl_name}, Job ID: $job_id, RUNNING: ${running_count}"$'\n'
+      _ERROR_SWITCH=1
+    fi
+  done
+
+  # Process if error occurred
+  if [[ $_ERROR_SWITCH -eq 1 ]] ; then
+    _ERROR_OUT=( "${_ERR_LIST}" )
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: ALERT"
+    send_alert
+  else
+    _EMAIL_SUBJECT="${_TAU_ENV} :: ${_ALERT_NAME} :: OK"
+    clear_alert 
+  fi
+}
+
+# TBD
 function send_clear_alert() {
 echo
 }
@@ -191,8 +289,10 @@ echo
 
 ############### MAIN ###############
 
+source ~/.bashrc
 do_env
-check_nb_services
-check_replicationmode
-check_pl_restarting
-
+#check_nb_services
+#check_replicationmode
+#check_pl_restarting
+#check_count_primary_backup
+check_pl_running_count
