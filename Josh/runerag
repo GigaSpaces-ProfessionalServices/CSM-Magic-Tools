@@ -10,10 +10,6 @@ function requirements() {
 [[ $# -eq 0 || $1 == "-h" ]] && usage
 python3 --version >/dev/null 2>&1 || { echo -e "\nInstall python3\n" ; exit 1 ; }
 [[ ! "$(basename $(pwd))" == "erag" ]] && { echo -e "\nRun script inside folder named \"erag\"\n" ; exit 1 ; }
-#cd ; cd erag || { echo "\nCreate erag directory\n" ; exit 1 ; }
-# e.g. token file contents: "Authorization: Token -Wi..."
-#[[ ! -s token ]] && { echo "\nPut token in file erag/token\n" ; exit 1 ; }
-#[[ ! -s accuracy.tsv ]] && { echo "\nImport file erag/accuracy.tsv\n" ; exit 1 ; }
 if [[ "$(echo "${@}" | grep -o -- '-file')" != "-file" && ! -s accuracy.tsv ]] ; then
   echo ; [[ "$(echo "${@}" | grep -o -- '-file')" != "-file" ]] && echo -e "The \"-file\" argument is missing."
   [[ ! -s accuracy.tsv ]] && echo -e "The file \"accuracy.tsv\" is missing or empty."
@@ -46,7 +42,6 @@ _TOPICID=""
 _TOPIC_IDS=""                     # Contains all topicids when specifying -getids argument 
 _MSG_BODY=""
 _MSG_BODY_ID=""
-_ASSISTANT_MSG=""                 # Verbal eRAG answer
 _SQL=""                           # New SQL statement
 _SQL_SED=""                       # New SQL statement - escaping double quotes are escaped: \"
 _SQL_ORIG=""                      # Original SQL statement
@@ -70,10 +65,6 @@ _ERR_LOG_TMP=/tmp/erag-error-tmp.log
 
 check_python_venv() {
 
-#python3 -m venv myvenv
-#source myvenv/bin/activate
-#pip install beautifulsoup4
-
 # Define the virtual environment path
 VENV_PATH="myvenv"
 # Step 1: Check if the virtual environment exists
@@ -95,15 +86,15 @@ fi
 # GET 1 - Get application id - eRAG experimental app/Get All Applications
 ##  'https://tenant-goldenset.erag-c1.gigaspaces.net/api/erag-backend/v1/applications' \
 function get_applicationid() {
+
   _HTTP_CODE["${FUNCNAME[0]}"]=$( curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
   "${eRAG_experimental_app}/v1/applications" \
   -H 'accept: application/json' \
   -H "${_TOK}")
-  #cat ${_CURL_RESPONSE}
-  #_HTTP_CODE["${FUNCNAME[0]}"]="${_APPLICATIONID}"
   _APPLICATIONID="$( jq -e '.[].applicationId' < ${_CURL_RESPONSE} 2> $_ERR_LOG_TMP )"
   [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_applicationid " ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
   echo "${_APPLICATIONID}" > debug/${my_id}_APPLICATIONID-$_OUTPUT   #debug
+
 }
 
 # GET 2 - Get topic ids - FastAPI/get all topics for this app for this user
@@ -133,7 +124,9 @@ _TOPICID=$( curl -sX 'POST' \
 }
 
 # GET 3 - Get message body id - FastAPI/Submit a new question to the topic
+# The _MSG_BODY_ID always is equal (e.g. 2990)
 function post_message() {
+
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'POST' \
   "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages" \
   -H 'accept: application/json' \
@@ -147,19 +140,18 @@ function post_message() {
   # jq -er '...' <<< "$myvar"                    # Using a here-string
   # jq -er '.name' < <(echo "$myvar")            # Using process substitution
   _MSG_BODY_ID="$( jq -e '.[] | select(.role == "assistant") | .id' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
-  echo "${_MSG_BODY_ID}" > debug/${my_id}_MSG_BODY_ID-$_OUTPUT   #debug
   [[ $? -ne 0 ]] && { printf "%s\n%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _MSG_BODY_ID" "$(<${_ERR_LOG_TMP})" ; } >> $_ERR_LOG
+  echo "${_MSG_BODY_ID}" > debug/${my_id}_MSG_BODY_ID-$_OUTPUT   #debug
   #_ASSISTANT_MSG="$(echo "${_MSG_BODY}" | jq -e '.[] | select(.role == "assistant") | .message')"
-  _ASSISTANT_MSG="$( jq -e '.[] | select(.role == "assistant") | .message' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
-  echo "${_ASSISTANT_MSG}" > debug/${my_id}_ASSISTANT_MSG-$_OUTPUT   #debug
-  [[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _ASSISTANT_MSG" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
-  #echo _MSG_BODY="${_MSG_BODY}"
-  #echo _MSG_BODY_ID="${_MSG_BODY_ID}"
-  #declare -p _HTTP_CODE
+  #_ASSISTANT_MSG="$( jq -e '.[] | select(.role == "assistant") | .message' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
+  #[[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _ASSISTANT_MSG" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
+  #echo "${_ASSISTANT_MSG}" > debug/${my_id}_ASSISTANT_MSG-$_OUTPUT   #debug
+
 }
 
 # GET 4 - Use message_id to get sql "Current SQL statement - generated" - FastAPI/Get message details
 function get_message_details() {
+
   _HTTP_CODE["${FUNCNAME[0]}"]=$(curl -s -o $_CURL_RESPONSE -w "%{http_code}" -X 'GET' \
   "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages/${_MSG_BODY_ID}" \
   -H 'accept: application/json' \
@@ -174,35 +166,36 @@ function get_message_details() {
   _SQL_SED=$(echo "${_SQL}" | sed 's/"/\\"/g')
   echo "${_SQL_SED}" > debug/${my_id}_SQL_SED-$_OUTPUT   #debug
   declare -p _HTTP_CODE >> HTTP_CODE
-  #echo _MSG_DETAILS="${_MSG_DETAILS}"
-  #echo _SQL="${_SQL}"
-  #echo _SQL_SED="${_SQL_SED}"
+
 }
 
-# Use sql/sql_orig to get "data" and "nl_result" - eRAG experimental app - Sql Nlp Query
+# Use sql/sql_orig to get "data" and "nl_result" - eRAG experimental app/Sql Nlp Query
 # $1 - sql statement
+# $2 - NL_RESULT_ORIG or NL_RESULT
 function get_nl_result() {
 
-  local run_sql="$(echo -n "${1}" | tr -d '\n\r')"
-  echo "${run_sql}" > debug/${my_id}_get_nl_result_run_sql-$_OUTPUT   #debug
+  local run_sql="$(echo -n "${1}" | sed "s/'/'\\\''/g" | tr -d '\n\r')"
+  #local run_sql="$(echo -n "${1}" | tr -d '\n\r')"
+  echo "${run_sql}" > debug/${my_id}_${2}_get_nl_result_run_sql-$_OUTPUT   #debug
 
   # Build the curl command in an array
-  local curl_cmd=(curl -s -o "$_CURL_RESPONSE" -w "%{http_code}" \
-  -X 'POST' "${eRAG_experimental_app}/v1/toucan-sql/sql-nlp-query" \
-  -H 'accept: application/json' \
-  -H "${_TOK}" \
-  -H 'Content-Type: application/json' \
+  cat << EOF > debug/${my_id}_${2}_get_nl_result_curl_cmd-$_OUTPUT
+  curl -s -o "${_CURL_RESPONSE}" -w "%{http_code}" \\
+  -X 'POST' '${eRAG_experimental_app}/v1/toucan-sql/sql-nlp-query' \\
+  -H 'accept: application/json' \\
+  -H '${_TOK}' \\
+  -H 'Content-Type: application/json' \\
   -d '{
   "query": "",
-  "sql": "'"${run_sql}"'",
+  "sql": "${run_sql}",
   "model": "azure-openai-gpt4o-2024-08-06",
-  "applicationId": "'"${_APPLICATIONID}"'"
-  }')
-  echo "${curl_cmd[@]}" > debug/${my_id}_get_nl_result_curl_cmd-$_OUTPUT   #debug
+  "applicationId": ${_APPLICATIONID},
+  "inputLanguage": ""
+  }'
+EOF
 
-  # Execute the command stored in the array
-  _HTTP_CODE["${FUNCNAME[0]}"]=$("${curl_cmd[@]}")
-
+  _HTTP_CODE["${FUNCNAME[0]}"]=$(bash debug/${my_id}_${2}_get_nl_result_curl_cmd-$_OUTPUT)
+  cat ${_CURL_RESPONSE} > debug/${my_id}_${2}_CURL_RESPONSE-$_OUTPUT   #debug
   cat ${_CURL_RESPONSE}                 # Return result to function caller
 
 }
@@ -245,7 +238,6 @@ do_test_data() {
 
   while IFS=$'\t' read -r col1 col2 col3 ; do
     (( my_id++ ))
-    # echo -e "$col1 $col2 $col3 "
     [[ $col1 -lt $_FIRST_ID ]] && { continue ; }
     _SERIAL=$col1
     echo "${_SERIAL}" > debug/${my_id}_SERIAL-$_OUTPUT   #debug
@@ -254,7 +246,6 @@ do_test_data() {
     echo "${_QUESTION}" > debug/${my_id}_QUESTION-$_OUTPUT   #debug
     _SQL_ORIG="$( echo -n "${col3}" | tr -d '\r\n' )"
     echo "${_SQL_ORIG}" > debug/${my_id}_SQL_ORIG-$_OUTPUT   #debug
-    #_SQL_ORIG_SED="$( echo ${col3} | sed 's/"/\\"/g' )"    #debug
     _SQL_ORIG_SED="$( echo -n "${col3}" | tr -d '\r\n' | sed 's/"/\\"/g' | sed 's/;$//' )"
     echo "${_SQL_ORIG_SED}" > debug/${my_id}_SQL_ORIG_SED-$_OUTPUT   #debug
 
@@ -264,8 +255,11 @@ do_test_data() {
 
     # Get Natural Language answer according to SQL statement
     # _SQL_ORIG_SED
-    _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}")"
+    echo get_nl_result "${_SQL_ORIG_SED}" > debug/${my_id}_NL_RESULT_ORIG-CALL-$_OUTPUT    #debug
+    _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}" NL_RESULT_ORIG)"
     echo "${_NL_RESULT_ORIG}" > debug/${my_id}_NL_RESULT_ORIG-$_OUTPUT    #debug
+
+
     # _DATA_ORIG
     _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
     _DATA_ORIG_SORTED="$( echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | jq 'sort' | tee DATA_ORIG_SORTED )"
@@ -273,7 +267,8 @@ do_test_data() {
     echo "${_DATA_ORIG_SORTED}" > debug/${my_id}_DATA_ORIG_SORTED-$_OUTPUT    #debug
     echo -e "_SQL_ORIG_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
     # _SQL_SED
-    _NL_RESULT="$(get_nl_result "${_SQL_SED}")"
+    echo get_nl_result "${_SQL_SED}" > debug/${my_id}_NL_RESULT-CALL-$_OUTPUT    #debug
+    _NL_RESULT="$(get_nl_result "${_SQL_SED}" NL_RESULT)"
     echo "${_NL_RESULT}" > debug/${my_id}_NL_RESULT-$_OUTPUT   #debug
     # _DATA
     _DATA="$( echo ${_NL_RESULT} | jq -e '.tabular_data.data' | tr -d '\n' )"
@@ -307,7 +302,8 @@ do_test_data() {
     else
       echo -ne ${_DATA_ORIG}"\t"
     fi
-
+    #--------------- NL_RESULT_ORIG: Natural language result (Verbal eRAG answer)
+    echo -ne "$(jq '.nl_result' < debug/${my_id}_NL_RESULT_ORIG_CURL_RESPONSE-$_OUTPUT | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g')\t" | tr '\n\r' '  ' | tr -s ' '
     #--------------- SQL
     echo -ne "$(echo -en "${_SQL}"  | tr '\n' ' ')\t"
 
@@ -317,23 +313,22 @@ do_test_data() {
     else
       echo -ne ${_DATA}"\t"
     fi
-
-    #--------------- ASSISTANT_MSG
-    echo -ne "$(echo -en "${_ASSISTANT_MSG}" | tr '\n' ' ' | sed -E 's/<[^>]*>//g; s/[[:space:]]+/ /g')\t"
-    #--------------- COMPARISON
+    #--------------- NL_RESULT: Natural language result (Verbal eRAG answer)
+    echo -ne "$(jq '.nl_result' < debug/${my_id}_NL_RESULT_CURL_RESPONSE-$_OUTPUT | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g')\t" | tr '\n\r' '  ' | tr -s ' '
+    #--------------- COMPARISON: same/different
     if [[ -z $r1_empty && -z $r2_empty ]] ; then 
       echo -ne "same\t"
     else
       [[ "$(echo -n "${_DATA_ORIG}" | md5sum)" == "$(echo -n "${_DATA}" | md5sum)" ]] && echo -ne "same\t" || echo -ne "different\t"   
     fi
-    #--------------- SIMILARITY in percentage 0-100%
+    #--------------- SIMILARITY: 0-100%
     do_similarity
 
     [[ $_SERIAL -ge $_LAST_ID ]] && { break ; }
     [[ -n $_SLEEP ]] && sleep $_SLEEP
   done < "${_ACCURACY_FILE}" | tr -d '\r' | tee /tmp/erag-out-$_OUTPUT
   
-  #delete_topic   #debug
+  delete_topic   #debug
 
 }
 
@@ -444,7 +439,6 @@ while [[ $# -ne 0 ]] ; do
         echo -e "\n----------running get_message_details\n" ; get_message_details
         echo -e "\n_MSG_DETAILS=${_MSG_DETAILS}\n"
         echo -e "\n_SQL=${_SQL}\n"
-        echo -e "${_ASSISTANT_MSG}" | tr '\n' ' ' | sed -E 's/<[^>]*>//g; s/[[:space:]]+/ /g'
         echo -e "\n----------running delete_topic\n" ; delete_topic
         exit
         ;;
