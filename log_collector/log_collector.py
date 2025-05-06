@@ -7,7 +7,7 @@ import subprocess
 import pyfiglet
 from signal import signal, SIGINT
 from datetime import datetime, date, time
-
+import shutil
 
 class Bcolors:
     HEADER = '\033[95m'
@@ -141,10 +141,20 @@ def listAllScripts(list_files_path):
     """
     if os.path.exists(list_files_path):
         files = [file for file in os.listdir(list_files_path) if
-            os.path.isfile(os.path.join(list_files_path, file))]
+                 os.path.isfile(os.path.join(list_files_path, file))]
     else:
         files = []
     return files
+
+def is_enough_disk_space(path='/', required_gb=2):
+    total, used, free = shutil.disk_usage(path)
+    free_gb = free / (1024 ** 3)
+
+    if free_gb >= required_gb:  # Change '/' to another path if needed
+        print("At least 4 GB of free disk space is available.")
+    else:
+        print("Less than 4 GB of free disk space.")
+        exit()
 
 if __name__ == '__main__':
     signal(SIGINT, handler)
@@ -184,6 +194,7 @@ if __name__ == '__main__':
     print()
 
     run_this = True
+    is_enough_disk_space("/",4)
     if run_this:
         Run_Gc_log = True
         Remove_GC_Log = False
@@ -206,7 +217,7 @@ if __name__ == '__main__':
             get_date_time('end')
             if epoch_start_date_time >= epoch_end_date_time:
                 print(f'{Bcolors.FAIL}ERROR:{Bcolors.ENDC} End '
-                'timestamp is expected to be greater than Start timestamp.')
+                      'timestamp is expected to be greater than Start timestamp.')
             else:
                 break
 
@@ -228,14 +239,19 @@ if __name__ == '__main__':
 
     print(f"[ INFO ] Log files location: '{tmp_dir}'")
     for node in list_of_servers:
+        is_enough_disk_space("/",4)
         node_path = f"{tmp_dir}/{node}"
         if path_not_exists(node_path):
             os.mkdir(node_path)
         # get file count
         sh_cmd = f'ssh {node} "find {REMOTE_LOGS_DIR} -type f | wc -l"'
         num_of_files = str(subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()).strip('\n')
-        # copy file to designated node
-        sh_cmd = f"scp -qrC {node}:{REMOTE_LOGS_DIR}/* {node_path}/"
+        # copy only files to designated node
+        sh_cmd = f"scp -qC {node}:{REMOTE_LOGS_DIR}/* {node_path}/"
+
+        # copy only files and folders to designated node
+        # sh_cmd = f"scp -qrC {node}:{REMOTE_LOGS_DIR}/* {node_path}/"
+
         # print(f'[ INFO ] Getting {num_of_files} log files from node {node} ... ', flush=True ,end="")
         print(f'[ INFO ] Getting log files from node {node} ... ', flush=True ,end="")
         subprocess.run([sh_cmd], shell=True)
