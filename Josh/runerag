@@ -51,6 +51,8 @@ _SQL_ORIG_SED=""                  # Original SQL statement - double quotes are e
 _MSG_DETAILS=""
 _NL_RESULT=""                     # Get Natural Language answer to SQL
 _NL_RESULT_ORIG=""                # Get Natural Language answer to SQL_ORIG
+_NL_RESULT2=""                     # Get Natural Language answer to SQL
+_NLP_RESULT2=""
 _FIRST_ID=1
 _LAST_ID=50
 LC_ALL=US date '+%Y-%m-%d %H:%M:%S' >> HTTP_CODE        # Hold http codes for current run
@@ -206,6 +208,36 @@ EOF
 
 }
 
+# Get npl query - eRAG experimental app/Nlp Query
+function get_nl_result2() {
+
+local outfile="debug/${my_id}_NL_RESULT_get_nl_result_curl_cmd-$_OUTPUT"
+cat << EOF > $outfile
+curl -s -o "${_CURL_RESPONSE}" -w "%{http_code}" \\
+  -X 'POST' '${eRAG_experimental_app}/v1/toucan-sql/nlp-query' \\
+  -H 'accept: application/json' \\
+  -H 'correlation-id: ${_CORRELATION_UID}' \\
+  -H 'user-id: ${_USERID}' \\
+  -H '${_TOK}' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+  "query": "${_QUESTION}",
+  "queryEn": "",
+  "queriesHistorical": [],
+  "evidence": "",
+  "model": "azure-openai-gpt4o-2024-08-06",
+  "applicationId": ${_APPLICATIONID},
+  "skipCacheSearch": true,
+  "skipSchemaFiltering": true
+  }'
+EOF
+
+  _HTTP_CODE["${FUNCNAME[0]}"]=$( bash $outfile )
+  cat ${_CURL_RESPONSE} > debug/${my_id}_NL_RESULT_CURL_RESPONSE-$_OUTPUT   #debug
+  cat ${_CURL_RESPONSE}                 # Return result to function caller
+
+}
+
 function delete_topic() {
 
 curl -sX 'DELETE' \
@@ -270,28 +302,45 @@ do_test_data() {
     get_message_details                       # set _MSG_DETAILS, _SQL and _SQL_SED 
 
     # Get Natural Language answer according to SQL statement
+
+    # Confirmed:
     # _SQL_ORIG_SED
     echo get_nl_result "${_SQL_ORIG_SED}" > debug/${my_id}_NL_RESULT_ORIG-CALL-$_OUTPUT    #debug
     _NL_RESULT_ORIG="$(get_nl_result "${_SQL_ORIG_SED}" NL_RESULT_ORIG)"
     echo "${_NL_RESULT_ORIG}" > debug/${my_id}_NL_RESULT_ORIG-$_OUTPUT    #debug
-
-
     # _DATA_ORIG
     _DATA_ORIG="$(echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | tr -d '\n' | tee DATA_ORIG)"
     _DATA_ORIG_SORTED="$( echo ${_NL_RESULT_ORIG} | jq -e '.tabular_data.data' | jq 'sort' | tee DATA_ORIG_SORTED )"
     echo "${_DATA_ORIG}" > debug/${my_id}_DATA_ORIG-$_OUTPUT    #debug
     echo "${_DATA_ORIG_SORTED}" > debug/${my_id}_DATA_ORIG_SORTED-$_OUTPUT    #debug
     echo -e "_SQL_ORIG_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
+
+    # Non-confirmed:
+    _NL_RESULT2="$(get_nl_result2 NL_RESULT)"
+    echo "${_NL_RESULT2}" > debug/${my_id}_NL_RESULT2-$_OUTPUT    #debug
     # _SQL_SED
-    echo get_nl_result "${_SQL_SED}" > debug/${my_id}_NL_RESULT-CALL-$_OUTPUT    #debug
-    _NL_RESULT="$(get_nl_result "${_SQL_SED}" NL_RESULT)"
-    echo "${_NL_RESULT}" > debug/${my_id}_NL_RESULT-$_OUTPUT   #debug
+    _SQL="$(jq '.sql_result' <<<"${_NL_RESULT2}" )"
+    _SQL_SED="$(jq '.sql_result' <<<"${_NL_RESULT2}" )"
     # _DATA
-    _DATA="$( echo ${_NL_RESULT} | jq -e '.tabular_data.data' | tr -d '\n' )"
-    _DATA_SORTED="$( echo ${_NL_RESULT} | jq -e '.tabular_data.data' | jq 'sort' | tee DATA_SORTED )"
-    echo "${_DATA}" > debug/${my_id}_DATA-$_OUTPUT   #debug
-    echo "${_DATA_SORTED}" > debug/${my_id}_DATA_SORTED-$_OUTPUT   #debug
-    echo -e "_SQL_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
+    _DATA="$( jq -e '.tabular_data.data' <<<"${_NL_RESULT2}" | tr '\r\n' '  ' | tr -s ' ' )"
+    _DATA_SORTED="$( jq 'sort' <<<"${_DATA}" | tee DATA_SORTED )"
+    echo "${_DATA}" > debug/${my_id}_DATA-$_OUTPUT    #debug
+    echo "${_DATA_SORTED}" > debug/${my_id}_DATA_SORTED-$_OUTPUT    #debug
+    # Natural language result
+    _NLP_RESULT2=$( jq '.nl_result' <<<"${_NL_RESULT2}" | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g' | tr '\n\r' '  ' | tr -s ' ' | tr -d '\\n' )
+    echo "${_NLP_RESULT2}" > debug/${my_id}_NLP_RESULT2-$_OUTPUT    #debug
+
+#   # _SQL_SED
+#   echo get_nl_result "${_SQL_SED}" > debug/${my_id}_NL_RESULT-CALL-$_OUTPUT    #debug
+#   _NL_RESULT="$(get_nl_result "${_SQL_SED}" NL_RESULT)"
+#   echo "${_NL_RESULT}" > debug/${my_id}_NL_RESULT-$_OUTPUT   #debug
+
+#   # _DATA
+#   _DATA="$( echo ${_NL_RESULT} | jq -e '.tabular_data.data' | tr -d '\n' )"
+#   _DATA_SORTED="$( echo ${_NL_RESULT} | jq -e '.tabular_data.data' | jq 'sort' | tee DATA_SORTED )"
+#   echo "${_DATA}" > debug/${my_id}_DATA-$_OUTPUT   #debug
+#   echo "${_DATA_SORTED}" > debug/${my_id}_DATA_SORTED-$_OUTPUT   #debug
+#   echo -e "_SQL_SED $(declare -p _HTTP_CODE)" >> HTTP_CODE
 
     #============================================ COMPARISON
     r1_empty="$(echo -n "${_DATA_ORIG}" | tr -d '[] \n\r')"
@@ -320,6 +369,7 @@ do_test_data() {
     fi
     #--------------- NL_RESULT_ORIG: Natural language result (Verbal eRAG answer)
     echo -ne "$(jq '.nl_result' < debug/${my_id}_NL_RESULT_ORIG_CURL_RESPONSE-$_OUTPUT | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g')\t" | tr '\n\r' '  ' | tr -s ' '
+
     #--------------- SQL
     echo -ne "$(echo -en "${_SQL}"  | tr '\n' ' ')\t"
 
@@ -329,14 +379,28 @@ do_test_data() {
     else
       echo -ne ${_DATA}"\t"
     fi
+
     #--------------- NL_RESULT: Natural language result (Verbal eRAG answer)
-    echo -ne "$(jq '.nl_result' < debug/${my_id}_NL_RESULT_CURL_RESPONSE-$_OUTPUT | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g')\t" | tr '\n\r' '  ' | tr -s ' '
+    #echo -ne "$(jq '.nl_result' < debug/${my_id}_NL_RESULT_CURL_RESPONSE-$_OUTPUT | sed -E 's/<[^>]*>//g ; s/[[:space:]]+/ /g')\t" | tr '\n\r' '  ' | tr -s ' '
+    echo -ne "${_NLP_RESULT2}\t"
+
+
     #--------------- COMPARISON: same/different
-    if [[ -z $r1_empty && -z $r2_empty ]] ; then 
+#   if [[ -z $r1_empty && -z $r2_empty ]] ; then 
+#     echo -ne "same\t"
+#   else
+#     [[ "$(echo -n "${_DATA_ORIG}" | md5sum)" == "$(echo -n "${_DATA}" | md5sum)" ]] && echo -ne "same\t" || echo -ne "different\t"   
+#   fi
+    if [[ "$(echo -n "${_DATA_ORIG_SORTED}" | md5sum)" == "$(echo -n "${_DATA_SORTED}" | md5sum)" ]] ; then
       echo -ne "same\t"
     else
-      [[ "$(echo -n "${_DATA_ORIG}" | md5sum)" == "$(echo -n "${_DATA}" | md5sum)" ]] && echo -ne "same\t" || echo -ne "different\t"   
+      echo -ne "different\t"
     fi
+    #echo -n "${_DATA_ORIG_SORTED}" | md5sum > debug/${my_id}_DATA_ORIG_SORTED_md5-$_OUTPUT    #debug
+    #echo -n "${_DATA_ORIG_SORTED}" > debug/${my_id}_DATA_ORIG_SORTED_echo-$_OUTPUT    #debug
+    #echo -n "${_DATA_SORTED}" | md5sum > debug/${my_id}_DATA_SORTED_md5-$_OUTPUT    #debug
+    #echo -n "${_DATA_SORTED}" > debug/${my_id}_DATA_SORTED_echo-$_OUTPUT    #debug
+
     #--------------- SIMILARITY: 0-100%
     do_similarity
 
