@@ -37,7 +37,9 @@ declare -g -A _HTTP_CODE
 # tempo2 token - Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5
 _TOK='Authorization: Token 7K@htaemdlptf7R_$@1VjZ8USukKj@hwyuikAUFQE5'
 _APPLICATIONID=""
-_USERID="24050ffc-9cf9-4ddc-9dec-35be40f164c0"      # goto env webpage -> f1 -> login -> Network:Fetch/XHR:Name(Headers) user-id
+#_USERID="24050ffc-9cf9-4ddc-9dec-35be40f164c0"      # goto env webpage -> f1 -> login -> Network:Fetch/XHR:Name(Headers) user-id
+_USERID=b1cd3e11-f689-435e-939a-8eb83491b8e6
+_CORRELATION_UID=""
 _TOPICID=""
 _TOPIC_IDS=""                     # Contains all topicids when specifying -getids argument 
 _MSG_BODY=""
@@ -131,9 +133,14 @@ function post_message() {
   "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
+  -H "correlation-id: ${_CORRELATION_UID}" \
   -H "${_TOK}" \
   -H 'Content-Type: application/json' \
-  -d '{ "message": "'"${_QUESTION}"'" }')
+  -d '{
+    "message": "'"${_QUESTION}"'",
+    "historical_message_id": null
+  }')
+
   _MSG_BODY=$(<${_CURL_RESPONSE})
   echo "${_MSG_BODY}" > debug/${my_id}_MSG_BODY-$_OUTPUT   #debug
   #_MSG_BODY_ID="$(echo "${_MSG_BODY}" | jq -e '.[] | select(.role == "assistant") | .id')"
@@ -142,10 +149,6 @@ function post_message() {
   _MSG_BODY_ID="$( jq -e '.[] | select(.role == "assistant") | .id' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
   [[ $? -ne 0 ]] && { printf "%s\n%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _MSG_BODY_ID" "$(<${_ERR_LOG_TMP})" ; } >> $_ERR_LOG
   echo "${_MSG_BODY_ID}" > debug/${my_id}_MSG_BODY_ID-$_OUTPUT   #debug
-  #_ASSISTANT_MSG="$(echo "${_MSG_BODY}" | jq -e '.[] | select(.role == "assistant") | .message')"
-  #_ASSISTANT_MSG="$( jq -e '.[] | select(.role == "assistant") | .message' <<< "${_MSG_BODY}" 2> $_ERR_LOG_TMP )"
-  #[[ $? -ne 0 ]] && { printf "%s\n" "$(date '+%Y-%m-%d %H:%M:%S') $_SERIAL get_topicid _ASSISTANT_MSG" ; cat $_ERR_LOG_TMP ; } >> $_ERR_LOG
-  #echo "${_ASSISTANT_MSG}" > debug/${my_id}_ASSISTANT_MSG-$_OUTPUT   #debug
 
 }
 
@@ -156,6 +159,7 @@ function get_message_details() {
   "${FastAPI}/v1/applications/${_APPLICATIONID}/data-lab/topics/${_TOPICID}/messages/${_MSG_BODY_ID}" \
   -H 'accept: application/json' \
   -H "user-id: ${_USERID}" \
+  -H "correlation-id: ${_CORRELATION_UID}" \
   -H "${_TOK}")
   _MSG_DETAILS=$(<${_CURL_RESPONSE})
   echo "${_MSG_DETAILS}" > debug/${my_id}_MSG_DETAILS-$_OUTPUT   #debug
@@ -175,22 +179,24 @@ function get_message_details() {
 function get_nl_result() {
 
   local run_sql="$(echo -n "${1}" | sed "s/'/'\\\''/g" | tr -d '\n\r')"
+  local nl_result_type=$2                          # either NL_RESULT or NL_RESULT_ORIG
   #local run_sql="$(echo -n "${1}" | tr -d '\n\r')"
-  echo "${run_sql}" > debug/${my_id}_${2}_get_nl_result_run_sql-$_OUTPUT   #debug
+  echo "${run_sql}" > debug/${my_id}_${nl_result_type}_get_nl_result_run_sql-$_OUTPUT   #debug
 
   # Build the curl command in an array
-  cat << EOF > debug/${my_id}_${2}_get_nl_result_curl_cmd-$_OUTPUT
+  cat << EOF > debug/${my_id}_${nl_result_type}_get_nl_result_curl_cmd-$_OUTPUT
   curl -s -o "${_CURL_RESPONSE}" -w "%{http_code}" \\
   -X 'POST' '${eRAG_experimental_app}/v1/toucan-sql/sql-nlp-query' \\
   -H 'accept: application/json' \\
+  -H 'correlation-id: ${_CORRELATION_UID}' \\
+  -H 'user-id: ${_USERID}' \\
   -H '${_TOK}' \\
   -H 'Content-Type: application/json' \\
   -d '{
-  "query": "",
+  "query": "${_QUESTION}",
   "sql": "${run_sql}",
   "model": "azure-openai-gpt4o-2024-08-06",
-  "applicationId": ${_APPLICATIONID},
-  "inputLanguage": ""
+  "applicationId": ${_APPLICATIONID}
   }'
 EOF
 
@@ -223,6 +229,14 @@ function delete_all_topicids() {
 
 }
 
+function get_correlation_id() {
+
+  _CORRELATION_UID=$(uuidgen)
+  echo "${_CORRELATION_UID}" > debug/${my_id}_CORRELATION_UID-$_OUTPUT   #debug
+
+}
+
+
 ###################################
 # Compare original sql with new sql
 # col1 = Serial
@@ -248,6 +262,8 @@ do_test_data() {
     echo "${_SQL_ORIG}" > debug/${my_id}_SQL_ORIG-$_OUTPUT   #debug
     _SQL_ORIG_SED="$( echo -n "${col3}" | tr -d '\r\n' | sed 's/"/\\"/g' | sed 's/;$//' )"
     echo "${_SQL_ORIG_SED}" > debug/${my_id}_SQL_ORIG_SED-$_OUTPUT   #debug
+
+    get_correlation_id
 
     post_message                              # set _MSG_BODY and _MSG_BODY_ID
 
@@ -468,8 +484,10 @@ while [[ $# -ne 0 ]] ; do
         ;;
     "-api") 
         shift
-        FastAPI="https://tenant-${1}.erag-c1.gigaspaces.net/api/data-lab"
-        eRAG_experimental_app="https://tenant-${1}.erag-c1.gigaspaces.net/api/erag-backend"
+        FastAPI="https://${1}.ws-euc1.gigaspaces.net/api/data-lab"
+        eRAG_experimental_app="https://${1}.ws-euc1.gigaspaces.net/api/erag-backend"
+        #FastAPI="https://tenant-${1}.erag-c1.gigaspaces.net/api/data-lab"
+        #eRAG_experimental_app="https://tenant-${1}.erag-c1.gigaspaces.net/api/erag-backend"
         _OUTPUT="${1}"
         ;;
     "-h") 
