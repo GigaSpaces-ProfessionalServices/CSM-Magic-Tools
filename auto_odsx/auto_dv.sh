@@ -1,11 +1,41 @@
 #!/bin/bash
-
 # tail -10000f /gigalogs/datavalidatoragent.log | grep ': ### Admin API: Count\|: val:\|### Optimized Get Max value'
+#set -eo pipefail
+
+function acquire_lock() {
+
+  # if lockfile exists, check for stale vs live
+  if [[ -f "${PIDFILE}" ]]; then
+    oldpid=$(<"${PIDFILE}")
+    if [[ -n "${oldpid}" ]] && kill -0 "${oldpid}" 2>/dev/null; then
+      echo "[$(date)] Another instance (PID ${oldpid}) is running. Exiting." >&2 >> $_DV_BATCH_LOG
+      exit 1
+    else
+      echo "[$(date)] Stale PIDfile found (PID ${oldpid}). Cleaning up." >&2 >> $_DV_BATCH_LOG
+      : > "${PIDFILE}"
+    fi
+  fi
+
+  # write our own PID
+  echo $$ > "${PIDFILE}"
+
+  # ensure removal on any exit
+  trap 'rm -f "${PIDFILE}"' EXIT
+
+}
 
 do_env() {
+
+_DV_BATCH_LOG=/gigalogs/dv_batch.log
+# PID-file lock configuration
+PIDFILE=/gigalogs/auto_dv.pid
+mkdir -p "$(dirname "${PIDFILE}")"
+# Enforce single running instance using a PID-file lock.
+acquire_lock
+
 source ~/.bash_profile
-export ENV_CONFIG=/gigashare/env_config
 # Get user/pass creds
+[[ ! -f ${ENV_CONFIG}/app.config ]] && { echo -e "\n File app.config not found.\n" ; exit 1 ; }
 _USER=$(awk -F= '/app.manager.security.username=/ {print $2}' ${ENV_CONFIG}/app.config)
 if grep '^app.vault.use=true' ${ENV_CONFIG}/app.config > /dev/null ; then
   _VAULT_PASS=$(awk -F= '/app.manager.security.password.vault=/ {print $2}' ${ENV_CONFIG}/app.config)
@@ -32,28 +62,18 @@ _LOGC=/gigalogs/dv_batchc_influx.log
 _LOGM=/gigalogs/dv_batchm_influx.log
 _DV_MAX_LOG=/gigalogs/auto_dv_max.log
 _DV_COUNT_LOG=/gigalogs/auto_dv_count.log
-_DV_BATCH_LOG=/gigalogs/dv_batch.log
+# _DV_BATCH_LOG=/gigalogs/dv_batch.log    - defnined above
 _GRAFANA_LOG=/gigalogs/dv_for_grafana
 declare -g -A _INFLUX
-# Create and indexed array holding all CDC tables
-#[[ "${ENV_NAME}" != "TAUG" ]] && _CDC_TABLES=( $( ssh $(runall -d -l |grep -v === | head -1) /giga/scripts/listPipelineTables.sh |grep STUD) )
 _CDC_TABLES=()
 get_CDC_object_data
 HOST_NAME=$(hostname)
-#_CDC_TABLES=( $(cat /tmp/jrcdctables) )
-# Temporary file treatment code
-#_TMPFILE=/tmp/data-validator-tmp$$
 _TMP_COMPARE=""
-# Function to clean up temporary file
-#cleanup() {
-#  #echo "Cleaning up..."
-#  rm -f "${_TMPFILE}"
-#}
-## Set trap to call cleanup function on script exit
-#trap cleanup EXIT
+
 }
 
 get_tables() {
+
   if [[ -n $_ONE_TABLE ]] ; then
     _TABLES=( "${_ONE_TABLE[@]}" )
   else
@@ -64,11 +84,14 @@ get_tables() {
     fi
   fi
   [[ -z $_TABLES ]] && { echo -e "No TYPES are loaded\n" ; exit 1 ; }
+
 }
 
 # $1 is the name of the table e.g. 
 get_measurement_ids() {
+
   cd /dbagiga/gs-odsx ; ./odsx.py datavalidator measurement list | grep "${_MEASUREMENT_TYPE}" | awk -F'|' '/'\'''"${1}"''\''/ {print $2}' | sed -E 's/\x1B\[[0-9;]*[a-zA-Z]//g; s/[^[:print:]]//g; s/[ \t]//g'
+
 }
 
 # Compare measurement (e.g. count) between space and source db
@@ -78,6 +101,7 @@ get_measurement_ids() {
 #Details: Results matched. gigaspaces-Result: 3979  oracle-Result: 3979
 #------------------------------------------------------------
 do_compare() {
+
 compare1="${1}" compare2="${2}" /usr/bin/expect -c '
     set num1 "$env(compare1)"
     set num2 "$env(compare2)"
@@ -125,9 +149,11 @@ compare1="${1}" compare2="${2}" /usr/bin/expect -c '
 
     expect eof
     '
+
 }
 
 stop_services() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -144,9 +170,11 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 start_services() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -163,9 +191,11 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 start_server_service() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -185,9 +215,11 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 remove_services() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -205,9 +237,11 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 install_server_service() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -220,9 +254,11 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 install_agents_service() {
+
 /usr/bin/expect -c '
 set timeout -1
 set force_conservative 1
@@ -235,10 +271,12 @@ send -- "\r"
 
 expect eof
 '
+
 }
 
 
 compare_tables() {
+
   get_tables
   for t in ${_TABLES[@]} ; do
     echo -e "----------------------------------------------------------------"
@@ -260,16 +298,20 @@ compare_tables() {
       #[[ "${t}" != "${_TABLES[-1]}" ]] && { echo "sleep 5s" ; sleep 5 ; }
     fi
   done
+
 }
 
 list_tables_column() {
+
   get_tables ; echo -e "=== Number of tables: $( echo -e "${_TABLES[@]}" | wc -w)"
   for t in ${_TABLES[@]} ; do
     [[ $(echo ${_CDC_TABLES[@]} | grep -w "${t}" >/dev/null 2>&1 ; echo $?) -eq 0 ]] && echo $t CDC || echo $t
   done
+
 }
 
 git_compile_reinstall() {
+
 #[[ ! -d /dbagiga/REPOS/CSM-Magic-Tools/ ]] && { echo -e "/dbagiga/REPOS/CSM-Magic-Tools does not exist" ; exit ; }
 ssh gs-jenkins.tau.ac.il "
 cd /dbagiga/REPOS/CSM-Magic-Tools/
@@ -294,7 +336,8 @@ scp gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-vali
 scp gs-jenkins.tau.ac.il:/dbagiga/REPOS/CSM-Magic-Tools/data-validator/data-validator-agent/target/data-validator-agent-0.0.1-SNAPSHOT.jar \
 /gigashare/current/data-validator/jars/
 ls -l /gigashare/current/data-validator/jars/
-auto_dv.sh -reinstall
+dv_reinstall
+
 }
 
 batch_execute() {
@@ -401,7 +444,7 @@ function batch_influx() {
 }
 
 
-usage() {
+function usage() {
   cat << EOF
 
   USAGE: 
@@ -410,7 +453,46 @@ usage() {
 
   OPTIONS:      
 
-    -t <table name>   Give one TABLE NAME to check. If this parameter is missing 
+    -t <table name>   Give one TABLE NAME to compare COUNT. If this parameter is missing 
+                      then compare all tables.
+    -l                LIST STATUS of server and agents
+    -lm               LIST Measurements
+    -stop             STOP all server and agent services
+    -start            START all server and agent services
+    -restart          RESTART all server and agent services
+    -c                GIT PULL, COMPILE and REINSTALL server and agents from REPO on gs-jenkins.
+    -h                Display usage
+
+  ACTIONS:
+
+    batch_influx     BATCH compare MAX and COUNT aggregation for influx/Grafana
+    batchm_influx    BATCH compare MAX for influx
+    batchc_influx    BATCH compare COUNT for influx
+    batchc           BATCH Compare COUNT
+    batchm           BATCH Compare MAX
+    batchm2          BATCH Compare MAX and convert from epoc to regular date and time as a list
+    batchcm          BATCH Compare COUNT and MAX
+
+  EXAMPLES:
+
+    $(basename $0) max -t STUD.KR_CHEDER                                  # Compare MAX for single table named STUD.KR_CHEDER
+    $(basename $0) count -t STUD.KR_CHEDER                                # Compare MAX for single table named STUD.KR_CHEDER
+    $(basename $0) count -t "STUD.KR_CHEDER STUD.TB_032_MATZAV_BACHUG"    # Loop compare COUNT for more than 1 table
+    $(basename $0) batchc                                                 # BATCH Compare COUNT
+
+EOF
+exit
+}
+
+function usage2() {
+  cat << EOF
+
+  USAGE: 
+
+   $(basename $0) [<action>] [<option>]
+
+  OPTIONS:
+    -t <table name>   Give one TABLE NAME to check. If this parameter is missing
                       then compare all tables.
     -lt               lIST TABLES (REST call)
     -lt1              LIST TABLES 1 line per table (REST call)
@@ -425,7 +507,6 @@ usage() {
     -h                Display usage
 
   ACTIONS:
-
     batch_influx     BATCH MAX and COUNT aggregation for influx
     batchm_influx    BATCH MAX for influx
     batchc_influx    BATCH COUNT for influx
@@ -440,7 +521,6 @@ usage() {
     min              TBD - Minimum field
 
   EXAMPLES:
-
     $(basename $0) count                                            # Loop compare COUNT for all tables
     $(basename $0) max -t STUD.KR_CHEDER                            # Compare MAX for single table named STUD.KR_CHEDER
     $(basename $0) -t "STUD.KR_CHEDER STUD.TB_032_MATZAV_BACHUG"    # Loop compare COUNT (default) for more than 1 table
@@ -449,6 +529,14 @@ usage() {
 
 EOF
 exit
+}
+
+function dv_reinstall() {
+
+  stop_services ; remove_services ; install_server_service ; start_server_service
+  echo -e "\nSleeping 30 sec ..." ; sleep 30 ; install_agents_service ; start_services
+  cd /dbagiga/gs-odsx ; ./odsx.py datavalidator install list
+
 }
 
 do_menu() {
@@ -491,13 +579,15 @@ do_menu() {
         exit
         ;;
       "batchcm") 
-        auto_dv.sh batchc
-        auto_dv.sh batchm
+        batch_execute count
+        batch_execute max
         exit
         ;;
       "cm") 
-        auto_dv.sh count
-        auto_dv.sh max
+        _MEASUREMENT_TYPE=count
+        compare_tables
+        _MEASUREMENT_TYPE=max
+        compare_tables
         exit
         ;;
       "-t") 
@@ -529,14 +619,14 @@ do_menu() {
         stop_services ; start_services ; cd /dbagiga/gs-odsx ; ./odsx.py datavalidator install list ; exit
         ;;
       "-reinstall") 
-        stop_services ; remove_services ; install_server_service ; start_server_service
-        echo -e "\nSleeping 30 sec ..." ; sleep 30 ; install_agents_service ; start_services ; auto_dv.sh -l ; exit
+        dv_reinstall
+        exit
         ;;
       "-c")
         git_compile_reinstall ; exit
         ;;
-      "-h") 
-        usage
+      "-s30")
+        sleep 30 ; exit
         ;;
       *) 
         echo -e "\n Option $1 not supported.\n" ; exit 1
@@ -548,6 +638,7 @@ do_menu() {
 
 ################ MAIN ################
 [[ $# -eq 0 || "${1}" == "-h" ]] && usage
+[[ "${1}" == "-h2" ]] && usage2
 do_env
 do_menu "${@}"
 compare_tables
