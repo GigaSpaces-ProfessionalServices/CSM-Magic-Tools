@@ -18,10 +18,10 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ConfigurationReaderTest {
 
     public final  String SPACE_POLICY_NAME = "spaceRecoveryPolicy";
-    public final  String SPACE_POLICY_DEFINITION = "com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerRecoveryFlow";
+    public final  String SPACE_POLICY_DEFINITION = "com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerRecoveryFlow";
 
     public final  String TS_SPACE_POLICY_NAME = "tieredSpaceRecoveryPolicy";
-    public final  String TS_SPACE_POLICY_DEFINITION = "com.gigaspaces.odsx.noderebalancer.leumiflow.TieredStorageSpaceServerRecoveryFlow";
+    public final  String TS_SPACE_POLICY_DEFINITION = "com.gigaspaces.odsx.noderebalancer.customerflow.TieredStorageSpaceServerRecoveryFlow";
 
     static ClusterConfigurationReader configReader = null;
 

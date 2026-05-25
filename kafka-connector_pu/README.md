@@ -41,7 +41,7 @@ The project contains folder 'examples' which include build and run commands.
 * Update lookup locator address in the `N-start-connector.sh` script
 * Run steps according to their numbers one after another 
 
-# To build in Leumi site
+# To build in Customer site
 `mvn clean package -DskipTests -P pu  -s E:\.m2\settings.xml`
 
 # TODO

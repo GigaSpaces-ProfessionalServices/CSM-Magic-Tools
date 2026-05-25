@@ -36,9 +36,9 @@
         <bean id="contextSource"
                 class="org.springframework.security.ldap.DefaultSpringSecurityContextSource">
                 <!-- LDAP URI -->
-                <constructor-arg value="ldap://NTAS107778A3K.hq.il.leumi:389/dc=hq,dc=il,dc=leumi"/>
+                <constructor-arg value="ldap://NTAS107778A3K.hq.il.customer:389/dc=hq,dc=il,dc=customer"/>
                 <!-- BindDN -->
-                <property name="userDn" value="CN=#{@myPsdkPasswordRequestBean.userName},OU=Application Account,OU=Special Users,DC=hq,DC=il,DC=leumi" />
+                <property name="userDn" value="CN=#{@myPsdkPasswordRequestBean.userName},OU=Application Account,OU=Special Users,DC=hq,DC=il,DC=customer" />
 
                 <property name="password" value="#{@myPsdkPasswordRequestBean.password}" />
         </bean>

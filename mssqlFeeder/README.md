@@ -1,4 +1,4 @@
-# leumi-feeder-from-db2
+# customer-feeder-from-db2
 
 This is an ad-hoc DB2->GS feeder, for append-only tables with record creation date column. Works in incremental manner,
 i.e. reads only records that do not exist in space, with condition `record creation date >= latest value in space`.

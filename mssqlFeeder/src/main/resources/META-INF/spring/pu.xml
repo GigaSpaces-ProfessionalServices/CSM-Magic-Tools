@@ -10,5 +10,5 @@
     <!-- Enable Spring annotation support -->
     <context:annotation-config/>
     <!-- Bootstrap service configuration -->
-    <bean class="com.gigaspaces.Leumi.ServiceConfig" />
+    <bean class="com.gigaspaces.Customer.ServiceConfig" />
 </beans>

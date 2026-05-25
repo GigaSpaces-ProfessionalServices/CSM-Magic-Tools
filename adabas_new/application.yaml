@@ -24,7 +24,7 @@ mq:
   testMode: False
 
 test:
-  path: /Users/yoramweinreb/work/bankleumi/kafka/adabasMessages.xml
+  path: /Users/yoramweinreb/work/bankcustomer/kafka/adabasMessages.xml
 
 server:
   port: 8071
@@ -48,7 +48,7 @@ management:
 logging:
   level:
     org.springframework: INFO
-    com.gs.leumi: DEBUG
+    com.gs.customer: DEBUG
   pattern:
     console: "%d{HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"
     file: "%d %p %c{1.} [%t] %m%n"

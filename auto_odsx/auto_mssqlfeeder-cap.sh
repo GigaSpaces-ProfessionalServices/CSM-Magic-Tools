@@ -63,7 +63,7 @@ else
   echo -e "\nWrong ENV_NAME\n" ; exit
 fi
 
-# Leumi: auto_dataengine.sh -f db2 -t jotbmf01_tn_mati start
+# Customer: auto_dataengine.sh -f db2 -t jotbmf01_tn_mati start
 
 get_tables() {
   _TABLES=($( curl -u ${_USER}:${_PASS} -s http://${_ALL_MANAGERS}:8090/v2/internal/spaces/utilization  | jq '.[]."tieredConfiguration"|keys|.[]'|grep 'JOTB[MP]' | tr -d '"' |grep -v SEGMENT ))
