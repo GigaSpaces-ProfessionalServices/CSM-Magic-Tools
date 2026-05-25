@@ -13,7 +13,7 @@ clients:
     packages:
       - 'path/to/package1'
       - 'path/to/package2'
-  Bank Leumi:
+  Bank Customer:
     id: 3
     packages:
       - 'lib/platform/kubernetes'

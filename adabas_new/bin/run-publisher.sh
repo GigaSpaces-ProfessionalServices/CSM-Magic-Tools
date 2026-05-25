@@ -71,8 +71,8 @@ if [ -z "$CONSOLE_OUTPUT_FILE" ]; then
 fi
 
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
- nohup "$JAVA" $ADABAS_HEAP_OPTS $ADABAS_JVM_PERFORMANCE_OPTS $ADABAS_SLF4J_OPTS -cp "$CLASSPATH" $ADABAS_OPTS com.gs.leumi.adabase.AdabaseApplication "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+ nohup "$JAVA" $ADABAS_HEAP_OPTS $ADABAS_JVM_PERFORMANCE_OPTS $ADABAS_SLF4J_OPTS -cp "$CLASSPATH" $ADABAS_OPTS com.gs.customer.adabase.AdabaseApplication "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
- exec "$JAVA" $ADABAS_HEAP_OPTS $ADABAS_JVM_PERFORMANCE_OPTS $ADABAS_SLF4J_OPTS -cp "$CLASSPATH" $ADABAS_OPTS com.gs.leumi.adabase.AdabaseApplication "$@"
+ exec "$JAVA" $ADABAS_HEAP_OPTS $ADABAS_JVM_PERFORMANCE_OPTS $ADABAS_SLF4J_OPTS -cp "$CLASSPATH" $ADABAS_OPTS com.gs.customer.adabase.AdabaseApplication "$@"
 fi
 

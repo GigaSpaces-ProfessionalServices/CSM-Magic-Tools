@@ -1,6 +1,6 @@
 # Getting Started
 
-## Build in Leumi site
+## Build in Customer site
 
  `mvn clean package spring-boot:repackage -DskipTests -s E:\.m2\settings.xml`
 

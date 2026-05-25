@@ -36,11 +36,11 @@ _ALL_NB_MNG=($($_GET_HOSTS nm))    # variable holds names of all NB Manager serv
 _ALL_NB_APP=($($_GET_HOSTS na))    # variable holds names of all NB Space servers
 # _END_POINT is the loadbalancer or 1st manager
 case $ENV_NAME in
-  "GRG" ) _END_POINT="odsgs-mng-garage.hq.il.tleumi" ;;
-  "DEV" ) _END_POINT="odsgs-mng-dev.hq.il.tleumi" ;;
-  "STG" ) _END_POINT="odsgs-mng-stg.hq.il.bleumi" ;;
-  "DR"  ) _END_POINT="odsgs-mng-tlv-prd.hq.il.leumi" ;;
-  "PRD" ) _END_POINT="odsgs-mng-lod-prd.hq.il.leumi" ;;
+  "GRG" ) _END_POINT="odsgs-mng-garage.hq.il.tcustomer" ;;
+  "DEV" ) _END_POINT="odsgs-mng-dev.hq.il.tcustomer" ;;
+  "STG" ) _END_POINT="odsgs-mng-stg.hq.il.bcustomer" ;;
+  "DR"  ) _END_POINT="odsgs-mng-tlv-prd.hq.il.customer" ;;
+  "PRD" ) _END_POINT="odsgs-mng-lod-prd.hq.il.customer" ;;
   * ) _END_POINT=${_ALL_ODS_MNG} ;;
 esac
 # query grid state (INTACT, BROKEN, SCHEDULED) thru endpoint
