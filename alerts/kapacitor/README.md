@@ -35,7 +35,7 @@ If the conversation is OK, you can shut these messages by setting
 `log-enabled = false` at `[http]` section of `/etc/kapacitor/kapacitor.conf` file.  
 
 The kapacitor could be configured to send alerts in many mannors.
-Bank Leumi use servicenow, which documentations could be found here
+Bank Customer use servicenow, which documentations could be found here
 https://docs.servicenow.com/bundle/paris-it-operations-management/page/product/event-management/task/send-events-via-web-service.html
 
 This API requires POST custom JSON data.

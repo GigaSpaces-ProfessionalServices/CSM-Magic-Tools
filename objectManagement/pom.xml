@@ -15,9 +15,9 @@
     <description>Object management api</description>
     <properties>
         <java.version>8</java.version>
-        <gs.version.leumi>16.2.0-m18</gs.version.leumi>
+        <gs.version.customer>16.2.0-m18</gs.version.customer>
         <gs.version.old>16.2.0-m4-sun-10</gs.version.old>
-        <gs.version>16.3.0</gs.version>
+        <gs.version>16.4.3</gs.version>
     </properties>
     <repositories>
         <repository>

@@ -87,7 +87,7 @@ public class RunRebalancer {
       System.exit(-1);
     }
     final PolicyConfiguration policyConfiguration = new PolicyConfiguration();
-    Policy policy = new Policy("CustomRebalancerPolicy", "space", "com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerBalancerFlow");
+    Policy policy = new Policy("CustomRebalancerPolicy", "space", "com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerBalancerFlow");
     policyConfiguration.addPolicy(policy);
     PolicyAssociation policyAssociation = new PolicyAssociation(policy);
     ServerConfiguration serverConfiguration = new ServerConfiguration(launcher.hostIp, new ArrayList());

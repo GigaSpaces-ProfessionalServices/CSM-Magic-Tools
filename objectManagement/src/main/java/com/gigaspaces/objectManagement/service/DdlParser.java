@@ -246,7 +246,7 @@ public class DdlParser {
             case "BIGINT":
                 return java.math.BigInteger.class;
             case "NUMBER":
-                //           uncomment for TAU, not commited may cause issue for Leumi
+                //           uncomment for TAU, not commited may cause issue for Customer
                 //  ---- return java.math.BigDecimal.class;
 
                 // this is only a NUMBER without (...)
@@ -273,7 +273,7 @@ public class DdlParser {
                 return java.math.BigDecimal.class;
             case "DATE":
             case "DATETIME":
-//           commented for TAU, not commited may cause issue for Leumi     return java.sql.Date.class;
+//           commented for TAU, not commited may cause issue for Customer     return java.sql.Date.class;
 //                return java.util.Date.class;
                 //return java.sql.Timestamp.class;
                 return java.sql.Date.class;

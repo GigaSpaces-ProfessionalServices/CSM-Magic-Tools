@@ -1,8 +1,8 @@
 package com.gigaspaces.odsx.noderebalancer.engine;
 
-import com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerBalancerFlow;
-import com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerRecoveryFlow;
-import com.gigaspaces.odsx.noderebalancer.leumiflow.TieredStorageSpaceServerRecoveryFlow;
+import com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerBalancerFlow;
+import com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerRecoveryFlow;
+import com.gigaspaces.odsx.noderebalancer.customerflow.TieredStorageSpaceServerRecoveryFlow;
 import com.gigaspaces.odsx.noderebalancer.model.Flow;
 import com.gigaspaces.odsx.noderebalancer.policy.Policy;
 import com.gigaspaces.odsx.noderebalancer.policy.ServerConfiguration;
@@ -17,13 +17,13 @@ public class FlowBuilder {
     public static Flow build(String definition, String name, String ipAddress, Map<String, String> parameters) {
         //TODO: Instead of static checks against known names, use Reflection to instantiated specified class
         Flow flow=null;
-        if("com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerRecoveryFlow".equals(definition)){
+        if("com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerRecoveryFlow".equals(definition)){
             logger.info("Building SpaceServerRecoveryFlow workflow for server with ip address:  " + ipAddress);
             flow=SpaceServerRecoveryFlow.build(name, ipAddress, parameters);
-        }else if("com.gigaspaces.odsx.noderebalancer.leumiflow.TieredStorageSpaceServerRecoveryFlow".equals(definition)){
+        }else if("com.gigaspaces.odsx.noderebalancer.customerflow.TieredStorageSpaceServerRecoveryFlow".equals(definition)){
             logger.info("Building TieredStorageSpaceServerRecoveryFlow workflow for server with ip address:  " + ipAddress);
             flow=TieredStorageSpaceServerRecoveryFlow.build(name, ipAddress, parameters);
-        } else if("com.gigaspaces.odsx.noderebalancer.leumiflow.SpaceServerBalancerFlow".equals(definition)){
+        } else if("com.gigaspaces.odsx.noderebalancer.customerflow.SpaceServerBalancerFlow".equals(definition)){
             logger.info("Building SpaceServerBalancerFlow workflow for server with ip address:  " + ipAddress);
             flow= SpaceServerBalancerFlow.build(name, ipAddress, parameters);
         } else {

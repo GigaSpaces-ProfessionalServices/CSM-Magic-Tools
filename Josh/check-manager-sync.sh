@@ -23,11 +23,11 @@ else
   _SPACE_NAME=bllspace
 fi
 case $ENV_NAME in
-  "GRG" ) _ODSGS="odsgs-mng-garage.hq.il.tleumi" ;;
-  "DEV" ) _ODSGS="odsgs-mng-dev.hq.il.tleumi" ;;
-  "STG" ) _ODSGS="odsgs-mng-stg.hq.il.bleumi" ;;
-  "DR"  ) _ODSGS="odsgs-mng-tlv-prd.hq.il.leumi" ;;
-  "PRD" ) _ODSGS="odsgs-mng-lod-prd.hq.il.leumi" ;;
+  "GRG" ) _ODSGS="odsgs-mng-garage.hq.il.tcustomer" ;;
+  "DEV" ) _ODSGS="odsgs-mng-dev.hq.il.tcustomer" ;;
+  "STG" ) _ODSGS="odsgs-mng-stg.hq.il.bcustomer" ;;
+  "DR"  ) _ODSGS="odsgs-mng-tlv-prd.hq.il.customer" ;;
+  "PRD" ) _ODSGS="odsgs-mng-lod-prd.hq.il.customer" ;;
   *) _ODSGS=""
 esac
 # set user/pass for curl and gs.sh

@@ -141,7 +141,7 @@ public class RebalanceAction extends BaseAction {
 
         /**
          * Commented By: Himali Sathavara
-         * Desc : LEUMI-JIRA #378
+         * Desc : CUSTOMER-JIRA #378
          * Rebalancer did not work properly if this action tries to demote an instance that was already backup instance orignally.
          *
         for (SpaceInstance spaceInstance : instances) {
@@ -165,7 +165,7 @@ public class RebalanceAction extends BaseAction {
         }*/
         /**
          * Added By: Himali Sathavara
-         * Desc : LEUMI-JIRA #378
+         * Desc : CUSTOMER-JIRA #378
          * Rebalancer did not work properly if this action tries to demote an instance that was already backup instance orignally.
          */
         for (SpaceInstance spaceInstance : instances) {

@@ -15,7 +15,7 @@
     <description>Gigaspaces Data Validator Agen Services</description>
     <properties>
         <java.version>1.8</java.version>
-        <gs.version>16.3.0</gs.version>
+        <gs.version>16.4.3</gs.version>
     </properties>
 
     <repositories>
