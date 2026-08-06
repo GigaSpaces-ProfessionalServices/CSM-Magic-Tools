@@ -11,14 +11,21 @@ else
 fi
 
 _DI_HOST=$(runall -d -l | grep -v === | head -1)
-_DISK_USAGE_PERCENT=70
+_DISK_USAGE_PERCENT=75
 _SLEEP_AFTER=1
 _MODE="daily"
 _VERBOSE=""
 _MANAGERS=( $( runall -m -l | grep -v === ) )
+_SPACE_SERVERS=( $( runall -s -l | grep -v === ) )
 _ALL_HOSTS=( $( runall -A -l | grep -iv "===\|x\.x" ) )
 _SPACE_NAME=dih-tau-service
 _PRINT=""
+# NB
+_ENV_KEY=""
+_ENV_CERT=""
+_ENV_CACERT=""
+_SSL_DIR=""
+
 }
 
 usage() {
@@ -118,7 +125,10 @@ list_of_checks() {
   20  check_sync_of_managers
   21  check_spacedeck_on_managers
   22  check_nbagent_services
-  23  check_indexes                               # "-l" insert into log, "-c" show count
+  23  check_indexes_for_dv_max                     # "-l" insert into log, "-c" show count
+  24  check_indexes_count                          # Show tablename and index count
+  25  check_indexes_count_less_than_2              # Show tables with index count less than 2 except SHOB_GA
+  26  check_mng_connection                         # Show check manager connection files if exist (tesst -f)
 
 
 EOF
@@ -149,7 +159,10 @@ do_one_check() {
     "20") check_sync_of_managers ;;
     "21") check_spacedeck_on_managers ;;
     "22") check_nbagent_services ;;
-    "23") check_indexes $3 ;;
+    "23") check_indexes_for_dv_max $3 ;;
+    "24") check_indexes_count ;;
+    "25") check_indexes_count_less_than_2 ;;
+    "26") check_mng_connection ;;
     *)    echo -e "\nChoice unknown" ;;
   esac
   echo
@@ -161,15 +174,8 @@ list_service_names() {
 }
 
 query_one_service() {
-  case ${ENV_NAME} in
-    "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;;
-    "TAUS") local ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ;;
-    "TAUP") local ssl_dir="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ;;
-    *) echo -e "\nEnv not supported.\n" ; exit 1 ;;
-  esac
-  local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-  cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
 
+  get_certs
   # Query service in /giga/microservices/curls
   microservice=$(grep $1 /giga/microservices/curls | tail -1)
   local service_string=${microservice##*8443/}
@@ -177,51 +183,59 @@ query_one_service() {
 
   # Only print command
   if [[ -n "${_PRINT}" ]] ; then
-    echo -e "curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert https://${end_point}:8443/${service_string}" 
+    echo -e "curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT \"https://${_END_POINT}:8443/${service_string}\"" 
     return
   fi
 
   # Non verbose
   if [[ -z "${_VERBOSE}" ]] ; then 
-    local result=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
-    printf '%3d %-40s%-25s%s\n' "$((++srv_num))" "${service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')"
+    local result=$( { time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
+    printf '%3d %-45s%-25s%s\n' "$((++srv_num))" "${service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')"
     return 
   fi
 
   # Verbose
   printf '=%.0s' {1..50} ; echo " $((++srv_num)) ${service_name}"
-  time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo
+  time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | sed '$a\' ; echo
 }
 
-# ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ; cd $ssl_dir ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
+# ssl_dir="/gigashare/env_config/nb/applicative/ssl-2025/client" env_prefix="test" _END_POINT="dih-test.tau.ac.il" ; cd $ssl_dir ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-2025.crt"
 # Query health
-# ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il"
-# env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
+# ssl_dir="/gigashare/env_config/nb/applicative/ssl-2025/client" env_prefix="test" _END_POINT="dih-test.tau.ac.il"
+# env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-2025.crt"
 # cd $ssl_dir ; service_name=person_tziun_kurs_service 
-# printf "%3d %-35s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_name}/v1/actuator/health")"
+# printf "%3d %-35s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${_END_POINT}:8443/${service_name}/v1/actuator/health")"
 service_hc() {
   #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to display health check for services." ; echo ; }
   local srv_num=0
   local registered_services=$(ssh $(runall -s -l |grep -v == |head -1) 'consul catalog services' | grep -vw 'consul')
   local defined_services=$(cat /giga/microservices/curls | wc -l)
   echo -e "\n==================== Display health check of $(echo $registered_services | wc -w)/$defined_services services\n"
-  case ${ENV_NAME} in
-    "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;; 
-    "TAUS") local ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ;;
-    "TAUP") local ssl_dir="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ;;
-    *) echo -e "\nEnv not supported.\n" ; exit 1 ;;
-  esac
-  local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-  cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
+  get_certs
   for service_name in $registered_services ; do
-    printf "%3d %-40s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_name}/v1/actuator/health")"
+    printf "%3d %-45s%s\n" "$(( ++srv_num ))" "${service_name}:" "$(curl -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_name}/v1/actuator/health")"
   done
-  sleep $_SLEEP_AFTER
+  #sleep $_SLEEP_AFTER
 }
 
-# DEV: ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ; cd $ssl_dir ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-# STAGE: ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ; cd $ssl_dir ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-# PROD: ssl_dir="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ; cd $ssl_dir ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
+function get_certs() {
+
+  case ${ENV_NAME} in
+    "TAUG") _SSL_DIR="${ENV_CONFIG}/nb/applicative/ssl-2025/client" _END_POINT="dih-nb-dev.tau.ac.il" ;; 
+    "TAUS") _SSL_DIR="${ENV_CONFIG}/nb/applicative/ssl-2025/client" _END_POINT="dih-test.tau.ac.il" ;;
+    "TAUP") _SSL_DIR="${ENV_CONFIG}/nb/applicative/ssl-2025/client" _END_POINT="dih.tau.ac.il" ;;
+    *) echo -e "\nEnv not supported.\n" ; exit 1 ;;
+  esac
+  _ENV_KEY=$( ls -1tr ${_SSL_DIR}/*.key | tail -1 )
+  _ENV_CERT=$( ls -1tr ${_SSL_DIR}/*.cer | tail -1 )
+  _ENV_CACERT=$( ls -1tr ${_SSL_DIR}/*.crt | tail -1 )
+  cd $_SSL_DIR || { echo -e "\nDirectory $_SSL_DIR does not exist.\n" ; exit 1 ; }
+
+}
+
+# DEV: _SSL_DIR="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ; cd $_SSL_DIR ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-2025.crt"
+# STAGE: _SSL_DIR="/gigashare/env_config/nb/applicative/ssl-2025/client" env_prefix="test" end_point="dih-test.tau.ac.il" ; cd $_SSL_DIR ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-2025.crt"
+# PROD: _SSL_DIR="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ; cd $_SSL_DIR ; env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-2025.crt"
 # service=person_schedule ; microservice=$(grep ${service} /giga/microservices/curls) ; service_string=${microservice##*8443/} ;
 # time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo
 
@@ -229,14 +243,8 @@ service_query() {
   local srv_num=0             # enumerate service queries
   local services_count=$(curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier | wc -l)
   echo -e "\n==================== Display data query for all ${services_count} deployed services.\n"
-  case ${ENV_NAME} in
-    "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;; 
-    "TAUS") local ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ;;
-    "TAUP") local ssl_dir="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ;;
-    *) echo -e "\nEnv not supported.\n" ; exit 1 ;;
-  esac
-  local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-  cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
+  get_certs
+
   # Define local variables for below code
   local real_service_name             # Only PU's ending with "_service" except notifiers
   local service_name                  # Versioned (v2, v3) text removed from service for querying purposes
@@ -248,17 +256,16 @@ service_query() {
     service_name=$(echo $real_service_name | sed 's/_v[0-9]\+//')
     microservices_full_string=$(grep "/${service_name}/" /giga/microservices/curls)
     deploy_state=$( curl -s -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
-    [[ -z $microservices_full_string ]] && { printf '%3d %-40s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
+    [[ -z $microservices_full_string ]] && { printf '%3d %-45s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
     service_string=${microservices_full_string##*8443/}
-    #[[ $deploy_state != "intact" ]] && { printf '%3d %-35s%s\n' "$((++srv_num))" "${real_service_name}" "not intact" ; continue ; }
     if [[ -z "${_VERBOSE}" ]] ; then
-      local result=$( { time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
-      printf '%3d %-40s%-25s%-10s%-12s\n' "$((++srv_num))" "${real_service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')" "${deploy_state}"
+      local result=$( { time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | jq '.res | if length == 0 then "===== empty response" else "data returned" end' ; } 2>&1 )
+      printf '%3d %-45s%-25s%-10s%-12s\n' "$((++srv_num))" "${real_service_name}" "$(echo -e "${result}" | grep -v '^real' | grep -v '^user' | grep -v '^sys')" "$(echo "${result}" | grep ^real | awk '{print $2}')" "${deploy_state}"
       continue
     fi
     # Verbose
     printf '=%.0s' {1..50} ; echo " $((++srv_num)) ${real_service_name}"
-    time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo 
+    time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | sed '$a\' ; echo 
   done < <( curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier )
 }
 
@@ -389,6 +396,37 @@ check_ssh() {
   echo -e "${ssh_result}."
 }
 
+check_mng_connection() {
+  local selected_servers="gsprod-manager1 gsprod-manager2 gsprod-manager3 gsprod-space3 gsprod-space6 gsprod-space10"
+  [[ "${ENV_NAME}" != "TAUP" ]] && return 1
+  echo -e "\n==================== Checking connectivity between servers:\n"
+  local hst
+  for hst in $selected_servers ; do
+    ssh $hst 'test -f /gigalogs/check-ping-mng.log && { printf "%-17s %s\n" "$(hostname)" "$(ls -ld /gigalogs/check-ping-mng.log)" ; }'
+    ssh $hst 'test -f /gigalogs/check-port4174-mng.log && { printf "%-17s %s\n" "$(hostname)" "$(ls -ld /gigalogs/check-port4174-mng.log)" ; }'
+    ssh $hst 'test -f /gigalogs/check-zk-mng-errors.log && { printf "%-17s %s\n" "$(hostname)" "$(ls -ld /gigalogs/check-zk-mng-errors.log)" ; }'
+  done
+  echo -e "\nFIND ERROR: Client session timed out, have not heard from server in ~20000ms - for $(date "+%a %b %d")"
+  for hst in ${_SPACE_SERVERS[@]} ${_MANAGERS[@]} ; do
+    server_name=$( host ${hst} | awk '{print $NF}' | sed 's/\.$//' )
+    echo -e "\n=====${server_name}"
+    ssh $server_name 'grep "Client session timed out, have not heard from server in [2-9][0-9]\{4,\}ms" /gigalogs/$(date "+%Y-%m-%d")*.*log*' | wc -l
+  done
+  [[ -z $_VERBOSE ]] && return 0  
+  # VERBOSE
+  for hst in $selected_servers ; do
+    echo -e "\n=====${hst}"
+    ssh $hst 'test -f /gigalogs/check-port-ping-mng.log && sed -E "/$(date "+%a %b %d")/,\$!d" /gigalogs/check-port-ping-mng.log' | grep -v '^$'
+    ssh $hst 'test -f /gigalogs/check-port4174-mng.log && sed -E "/$(date "+%a %b %d")/,\$!d" /gigalogs/check-port4174-mng.log' | grep -v '^$'
+    ssh $hst 'test -f /gigalogs/check-zk-mng-errors.log && sed -E "/$(date "+%a %b %d")/,\$!d" /gigalogs/check-zk-mng-errors.log' | grep -v '^$'
+  done
+  for hst in ${_SPACE_SERVERS[@]} ${_MANAGERS[@]} ; do
+    server_name=$( host ${hst} | awk '{print $NF}' | sed 's/\.$//' )
+    echo -e "\n=====${server_name}"
+    ssh $server_name 'grep "Client session timed out, have not heard from server in [2-9][0-9]\{4,\}ms" /gigalogs/$(date "+%Y-%m-%d")*.*log*'
+  done
+}
+
 check_feeders() {
   echo -e "\n==================== Display feeders without status IN_PROGRESS/SUCCESS/IDLE\n"
   echo -e "Checking Gilboa full feeder"
@@ -397,6 +435,10 @@ check_feeders() {
   auto_gilboafeederupdatestatus | grep -v -- '-----\|Status\|Resources\|DataEngine' | grep -v 'IN_PROGRESS\|SUCCESS\|IDLE'
   echo -e "Checking Oracle feeders"
   auto_oraclefeederlist | grep -v -- '-----\|Status\|Resources\|DataEngine' | grep -v 'IN_PROGRESS\|SUCCESS\|IDLE'
+  echo -e "Checking Oracle ERP feeders"
+  auto_oracleerpfeederlist | grep -v -- '-----\|Status\|Resources\|DataEngine' | grep -v 'IN_PROGRESS\|SUCCESS\|IDLE'
+  echo -e "Checking MySQL feeders"
+  auto_mysqlfeederlist | grep -v -- '-----\|Status\|Resources\|DataEngine' | grep -v 'IN_PROGRESS\|SUCCESS\|IDLE'
 }
 
 run_pipelines_bg() {
@@ -489,7 +531,7 @@ check_gigashare() {
   echo -e "\n==================== Check gigashare mount on all hosts\n"
   echo -n "gigashare check: "
   local check_gigashare=$(for h in ${_ALL_HOSTS[@]} ; do ssh $h 'echo "$(hostname) $(df -h |grep gigashare)"' ; done | grep -v gigashare)
-  [[ -z $check_gigashare ]] && echo Success || { echo -e failure ; echo -e "${check_gigashare}" ; }
+  [[ -z $check_gigashare ]] && echo Success || { echo -e Failure ; echo -e "${check_gigashare}" ; }
   [[ -n "${_VERBOSE}" ]]  && { echo ; for h in ${_ALL_HOSTS[@]} ; do ssh $h 'echo "$(hostname) $(df -h |grep gigashare)"' ; done ; }
 }
 
@@ -507,13 +549,42 @@ check_nbagent_services() {
   [[ -z $result ]] && echo Success || { echo -e Failure ; echo "${result}" ; }
 }
 
-check_indexes() {
+check_indexes_for_dv_max() {
   local IDX=$( curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo | jq -r '.objectTypesMetadata[] | select(.indexes[] | select(.name == "T_IDKUN" and .method == "EQUAL_AND_ORDERED")).objectName' )
   local IDX_COUNT="Number of Types that have T_IDKUN EQUAL_AND_ORDERED index: $(echo -e "${IDX}" | wc -l)"
   [[ $1 == "-c" ]] && { echo -e "\n${IDX_COUNT}" ; return 0 ; }
   [[ $1 == "-l" ]] && { echo -e "$(date)\n${IDX_COUNT}\n${IDX}" >> /gigalogs/check-indexes.log ; return 0 ; }
   [[ -n $1 ]] && { echo "Option not supported" ; return 1 ; } 
   echo -e "\n${IDX}"
+}
+
+check_indexes_count() {
+  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo| jq -r '.objectTypesMetadata[] | "objectName: \(.objectName)\nindexCount: \(.indexes | length)"' )
+  echo -e "\n${IDX}"
+}
+
+check_indexes_count_less_than_2() {
+  echo -e "\n==================== Display tables with less than 2 indexes.\n"
+  echo -n "Index check: "
+  local IDX=$(curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo \
+  | jq -r '
+    .objectTypesMetadata[]
+    # Only proceed if the current element is indeed an object
+    | select(type == "object")
+
+    # Make sure we have an array in .indexes
+    | select(.indexes? | type == "array")
+
+    # Now we can safely count its length
+    | select(.indexes | length <= 1)
+
+    # Exclude objectName == "SHOB_GA"
+    | select(.objectName? != "SHOB_GA")
+
+    # Print desired fields
+    | "objectName: \(.objectName)\nindexCount: \(.indexes | length)"
+  ')
+  [[ -z $IDX ]] && echo Success || { echo  "Failure" ; echo -e "\n${IDX}" ; }
 }
 
 check_sync_of_managers() {
@@ -523,6 +594,11 @@ check_sync_of_managers() {
   local mng sync_failed=0 empty_instance_flag=0
   local -A space_pus non_empty_instances empty_instances                # Associative arrays
   for mng in ${_MANAGERS[@]} ; do 
+    if [[ -n $_PRINT ]] ; then
+      echo "curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/pus/$_SPACE_NAME | jq -r '.instances[]' | wc -l"
+      echo "curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | wc -l"
+      echo "curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[] | select(.instances | length == 0) | .zones[]'|wc -l"
+    fi
     space_pus["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/pus/$_SPACE_NAME | jq -r '.instances[]' | wc -l)"
     non_empty_instances["${mng}"]="$(curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | wc -l)"
     #curl -su "${_USER}:${_PASS}" http://${mng}:8090/v2/containers | jq -r '.[].instances?[]' | sort > /tmp/check-env-$mng
@@ -547,22 +623,15 @@ check_spacedeck_on_managers() {
 }
 
 person_schedule_query_2() {
-  case ${ENV_NAME} in
-    "TAUG") local ssl_dir="/giga/josh/ssl/dev" env_prefix="dev" end_point="dih-nb-dev.tau.ac.il" ;;
-    "TAUS") local ssl_dir="/giga/josh/ssl/stg" env_prefix="test" end_point="dih-test.tau.ac.il" ;;
-    "TAUP") local ssl_dir="/giga/josh/ssl/prd" env_prefix="prod" end_point="dih.tau.ac.il" ;;
-    *) echo -e "\nEnv not supported.\n" ; exit 1 ;;
-  esac
-  local env_key="${env_prefix}-client.key" env_cert="${env_prefix}-client.cer" env_cacert="tau-msca-ca.cer"
-  cd $ssl_dir || { echo -e "\nDirectory $ssl_dir does not exist.\n" ; exit 1 ; }
 
+  get_certs
   local service_string='person_schedule_service/v1/u1?idno=97545&from_date=2023-06-30&to_date=2023-07-30&limit=1'
   local service_name=person_schedule_service
   # Non verbose
-  [[ -z "${_VERBOSE}" ]] && { printf '%-40s%s\n' "${service_name}" "$(curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | jq '.res | if length == 0 then "=========== empty response" else "data returned" end')" ; return ; }
+  [[ -z "${_VERBOSE}" ]] && { printf '%-40s%s\n' "${service_name}" "$(curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | jq '.res | if length == 0 then "=========== empty response" else "data returned" end')" ; return ; }
   # Verbose
   printf '=%.0s' {1..50} ; echo "${service_name}"
-  time curl --max-time 10 -s --key $env_key --cert $env_cert --cacert $env_cacert "https://${end_point}:8443/${service_string}" | sed '$a\' ; echo
+  time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | sed '$a\' ; echo
 }
 
 do_daily() {
@@ -571,6 +640,7 @@ do_daily() {
   check_ping
   check_nbapp_services
   check_nbagent_services
+  check_indexes_count_less_than_2
   check_spacedeck_on_managers
   check_sync_of_managers
   check_notifiers
@@ -579,6 +649,7 @@ do_daily() {
   service_query
 # check_pipelines        # 7.3s
   check_ssh              # 7s
+  #check_mng_connection   # 7s
   check_feeders               # gfull 6.4s, gupd 6.6, ora 6.9
   check_disk_usage_all   # 5s
   check_ctm
