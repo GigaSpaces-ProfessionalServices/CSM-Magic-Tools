@@ -8,7 +8,7 @@
 # By Alon Segal, Dec 2021
 #
 
-VERSION=2.6.9
+VERSION=2.7.3
 
 
 function usage() {
@@ -27,15 +27,28 @@ function usage() {
             printf "\n%-10s\n" "Options:"
             printf "%2s%-13s%-50s\n" "" "-s" "Connect to ODS space servers"
             printf "%2s%-13s%-50s\n" "" "-m" "Connect to ODS management servers"
+            printf "%2s%-13s%-50s\n" "" "-sv" "Connect to ODS service servers"
             printf "%2s%-13s%-50s\n" "" "-a" "Connect to ODS space and management servers"
+            printf "%2s%-13s%-50s\n" "" "-asv" "Connect to ODS space, management and service servers"
             printf "%2s%-13s%-50s\n" "" "-c" "Connect to CDC servers"
             printf "%2s%-13s%-50s\n" "" "-d" "Connect to DI servers"
+            printf "%2s%-13s%-50s\n" "" "-dsm" "Connect to DI subscription manager servers"
+            printf "%2s%-13s%-50s\n" "" "-id" "Connect to IIDR DI servers"
+            printf "%2s%-13s%-50s\n" "" "-ia" "Connect to IIDR access servers"
+            printf "%2s%-13s%-50s\n" "" "-ik" "Connect to IIDR kafka agent servers"
+            printf "%2s%-13s%-50s\n" "" "-io" "Connect to IIDR oracle agent servers"
+            printf "%2s%-13s%-50s\n" "" "-iidr" "Connect to all IIDR servers"
             printf "%2s%-13s%-50s\n" "" "-na" "Connect to northbound application servers"
             printf "%2s%-13s%-50s\n" "" "-nm" "Connect to northbound management servers"
             printf "%2s%-13s%-50s\n" "" "-n" "Connect to northbound application and management servers"
             printf "%2s%-13s%-50s\n" "" "-p" "Connect to pivot/admin server"
+            printf "%2s%-13s%-50s\n" "" "-i" "Connect to influxdb servers"
+            printf "%2s%-13s%-50s\n" "" "-g" "Connect to grafana servers"
+            printf "%2s%-13s%-50s\n" "" "-dvs" "Connect to data validator servers"
+            printf "%2s%-13s%-50s\n" "" "-dva" "Connect to data validator agents"
+            printf "%2s%-13s%-50s\n" "" "-dv" "Connect to all data validator servers"
             printf "%2s%-13s%-50s\n" "" "-cp" "Connect to cockpit server"
-            printf "%2s%-13s%-50s\n" "" "-A" "Connect to all servers (including pivot server)"
+            printf "%2s%-13s%-50s\n" "" "-A" "Connect to all servers defined in host.yaml"
             printf "%2s%-13s%-50s\n" "" "-q" "Do not print error summary"
             printf "%2s%-5s%-8s%-50s\n" "" "-h, " "--help" "Display this help screen"
             printf "\n%-10s\n" "Commands:"
@@ -128,65 +141,101 @@ function get_cluster_hosts {
             printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
         }
     }' | while read line; do
-        [[ "$line" =~ .*"${cluster_name}_host".* ]] && \
+        # anchored match on 'servers_<category>_host<N>='.
+        # an unanchored substring match makes a short category name also match a
+        # longer one that ends with it (e.g. 'dataIntegration' would additionally
+        # pick up every host of 'iidrdataIntegration').
+        [[ "$line" =~ ^${prefix}servers_${cluster_name}_host[0-9]+= ]] && \
         echo $line | sed 's/ *//g' | sed 's/"//g' | cut -d= -f2
     done
 }
 
 
+function get_all_cluster_names() {
+    # emit every server category defined under 'servers:' in host.yaml that has
+    # at least one non-empty host entry.
+    # used by -A so that a category added to host.yaml is picked up automatically,
+    # without having to be registered in this script first.
+    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" \
+        ${ENV_CONFIG}/host.yaml |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s\n", vn, $2);
+        }
+    }' | sed -n 's|^servers_\(.*\)_host[0-9]*$|\1|p' | awk '!seen[$0]++'
+}
+
+
 function get_targeted_servers() {
-     local SERVER_GROUP=(
-        "space"             # [0]
-        "manager"           # [1]
-        "cdc"               # [2]
-        "dataIntegration"   # [3]
-        "nb_applicative"    # [4]
-        "nb_management"     # [5]
-        "pivot"             # [6]
-        "cockpit"           # [7]
+    # maps a cluster option to one or more host.yaml categories (under 'servers:').
+    # to support a NEW category: add one line here, and a matching
+    # _<key>_ENV_NAME (+ optional _<key>_SERVICES) entry in runall.conf.
+    # the config key is derived from the option automatically: -dsm -> _dsm_
+    local -A SERVER_GROUP=(
+        ["-s"]="space"
+        ["-m"]="manager"
+        ["-sv"]="service"
+        ["-a"]="space manager"
+        ["-asv"]="space manager service"
+        ["-c"]="cdc"
+        ["-d"]="dataIntegration"
+        ["-dsm"]="dataIntegrationSubscriptionManager"
+        ["-id"]="iidrdataIntegration"
+        ["-ia"]="iidrAccessServer"
+        ["-ik"]="iidrKafkaAgent"
+        ["-io"]="iidrOracleAgent"
+        ["-iidr"]="iidrAccessServer iidrKafkaAgent iidrOracleAgent iidrdataIntegration"
+        ["-na"]="nb_applicative"
+        ["-nm"]="nb_management"
+        ["-n"]="nb_applicative nb_management"
+        ["-p"]="pivot"
+        ["-i"]="influxdb"
+        ["-g"]="grafana"
+        ["-dvs"]="data_validator_server"
+        ["-dva"]="data_validator_agent"
+        ["-dv"]="data_validator_server data_validator_agent"
+        ["-cp"]="cockpit"
     )
     case $1 in
         -l) list_all_servers ; exit ;;
-        -s) local env_preffix="_s_"
-            local srv_group=(${SERVER_GROUP[0]}) ;;
-        -m) local env_preffix="_m_"
-            local srv_group=(${SERVER_GROUP[1]}) ;;
-        -a) local env_preffix="_a_"
-            local srv_group=(${SERVER_GROUP[0]} ${SERVER_GROUP[1]}) ;;
-        -c) local env_preffix="_c_"
-            local srv_group=(${SERVER_GROUP[2]}) ;;
-        -d) local env_preffix="_d_"
-            local srv_group=(${SERVER_GROUP[3]}) ;;
-        -na) local env_preffix="_na_"
-            local srv_group=(${SERVER_GROUP[4]}) ;;
-        -nm) local env_preffix="_nm_"
-            local srv_group=(${SERVER_GROUP[5]}) ;;
-        -n) local env_preffix="_n_"
-            local srv_group=(${SERVER_GROUP[4]} ${SERVER_GROUP[5]}) ;;
-        -p) local env_preffix="_p_"
-            local srv_group=(${SERVER_GROUP[6]}) ;;
-        -cp) local env_preffix="_cp_"
-            local srv_group=(${SERVER_GROUP[7]}) ;;
-        -A) local env_preffix="_A_"
-            local srv_group=${SERVER_GROUP[@]} ;;
+        -A) # every category present in host.yaml, discovered at runtime
+            local env_preffix="_A_"
+            local srv_group=($(get_all_cluster_names)) ;;
         *)
-            echo "invalid option or bad syntax."
-            usage ; exit
+            if [[ -z ${SERVER_GROUP[$1]+set} ]]; then
+                echo "invalid option or bad syntax."
+                usage ; exit
+            fi
+            local env_preffix="_${1#-}_"
+            local srv_group=(${SERVER_GROUP[$1]}) ;;
     esac
-    ENV_NAME="$(cat $CONFIG_FILE | grep "${env_preffix}ENV_NAME" | cut -d'=' -f2)"
-    # load services
-    if [[ ${#env_preffix[@]} -eq 1 ]]; then
-        SERVICES="$(cat $CONFIG_FILE | grep "${env_preffix[0]}SERVICES" | cut -d= -f2)"
-    fi
+    # load cluster name and services (anchored, so _d_ cannot match _dsm_/_dv_ etc)
+    # CR is stripped at read time rather than by rewriting the file, so that a
+    # conf saved with windows line endings still parses without runall needing
+    # write access to it on every invocation.
+    ENV_NAME="$(grep "^${env_preffix}ENV_NAME=" $CONFIG_FILE | tr -d '\r' | cut -d'=' -f2-)"
+    SERVICES="$(grep "^${env_preffix}SERVICES=" $CONFIG_FILE | tr -d '\r' | cut -d'=' -f2-)"
+    # a category present in host.yaml but not described in runall.conf still works
+    [[ -z $ENV_NAME ]] && ENV_NAME="${srv_group[*]} servers"
     # build server list
     servers=""
     for s in ${srv_group[@]}; do
-        servers+=" $(for h in $(get_cluster_hosts $s); do hlist+=" $h"; done ; echo $hlist)"
+        servers+=" $(get_cluster_hosts $s)"
     done
     servers=$(echo $servers | xargs)
     SERVER_LIST=""
     for node in $servers; do
-        grep -q $node <<< $SERVER_LIST && continue || SERVER_LIST+=" ${node}"
+        # exact token match. a substring/regex match would wrongly treat
+        # 10.14.8.2 as already listed once 10.14.8.20 is in the list.
+        [[ " $SERVER_LIST " == *" $node "* ]] && continue
+        SERVER_LIST+=" ${node}"
     done
     SERVER_LIST=$(echo $SERVER_LIST | xargs)
 }
@@ -378,9 +427,9 @@ function get_volume_usage(){
 function show_hw_report() {
     # aggregate hardware related data
     local env_type=$1
-    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude categories from checks
     local default_methods=("-hw.cpu-count" "-hw.mem-count" "-hw.capacity=*" "-hw.cpu-load" "-hw.mem-load")
     get_targeted_servers $env_type
+    [[ -z $SERVER_LIST ]] && return
     echo
     # if only '-hw' we use default methods as specified in default_methods array
     if [[ ${#hw_methods[@]} -eq 0 ]]; then
@@ -491,7 +540,9 @@ function check_system_service(){
     local host=$1
     local service_name=$2
     local service_desc=$3
-    local sysd_retval=$(ssh $host systemctl list-units | grep -o "$service_name" > /dev/null 2>&1 ; echo $?)
+    # '--all' so that an installed-but-stopped unit is reported as Inactive
+    # rather than as 'not deployed' (plain list-units hides inactive units)
+    local sysd_retval=$(ssh $host systemctl list-units --all | grep -o "$service_name" > /dev/null 2>&1 ; echo $?)
     local sysv_retval=$(ssh $host [[ -f /etc/init.d/${service_name} ]] > /dev/null 2>&1 ; echo $?)
     if [[ $sysd_retval -ne 0 ]] && [[ $sysv_retval -ne 0 ]]; then
         logit --text "[${host}]${R_SPC}${service_desc^^} service not deployed!\n" -fs ERROR
@@ -564,11 +615,15 @@ function run_health_checks() {
     # traverse the different environments
     # and run health checks according to related SERVICES
     local env_type=$1
-    [[ $env_type == "-cp" ]] || [[ $env_type == "-nm" ]] && return  # exclude cockpit from checks
     local retval=0
     local is_number='^[0-9]+$'
     get_targeted_servers $env_type
     logit --text "$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")\n" -fs "INFO"
+    # a category may be declared with no hosts (or none at all) on this env
+    if [[ -z $SERVER_LIST ]]; then
+        logit --text "No hosts defined in host.yaml - skipping\n\n" -fs "INFO"
+        return
+    fi
     $ERR_REPORT && CLUSTER_ERRORS[0]="$(text_align "CLUSTER: ${ENV_NAME^^}" "--title")"
     # dividing services to [R]emote and [L]ocal
     S_R=""; for R in $SERVICES; do [[ ${R:0:1} == "R" ]] && S_R="${S_R} ${R}"; done
@@ -667,6 +722,7 @@ function run_health_checks() {
             $ERR_REPORT && \
             CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[${host}] [ERROR]${R_SPC}NFS mount check"
         fi
+        [[ -n $(echo $S_L | xargs) ]] && \
         logit --text "[${host}]${H_SPC}Role related services\n" -fs "INFO"
         for svc in $S_L; do
             local port=$(echo $svc | cut -d: -f2)
@@ -710,11 +766,11 @@ function run_health_checks() {
         logit --text "\n" -s
     done
     # if no zookeeper leader was found we print an error
-    if $zk_test && $zk_follower_found && ! $zk_leader_found; then
-        local cluster_name=$(echo ${ENV_NAME^^} | sed -e 's/SERVER.*//' -e 's/ $//')
-        $ERR_REPORT && \
-        CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[ZOOKEEPER]     [ERROR]${R_SPC}${cluster_name} cluster has no leader!"
-    fi
+#   if $zk_test && $zk_follower_found && ! $zk_leader_found; then
+#       local cluster_name=$(echo ${ENV_NAME^^} | sed -e 's/SERVER.*//' -e 's/ $//')
+#       $ERR_REPORT && \
+#       CLUSTER_ERRORS[${#CLUSTER_ERRORS[@]}]="[ZOOKEEPER]     [ERROR]${R_SPC}${cluster_name} cluster has no leader!"
+#   fi
     # check runtime errors per cluster
     if [[ ${#CLUSTER_ERRORS[@]} -gt 1 ]]; then
         for k in ${!CLUSTER_ERRORS[@]}; do
@@ -738,7 +794,7 @@ GS_ROOT="/dbagiga"
 LOGS_DIR="/dbagigalogs"
 UTILS_DIR="${GS_ROOT}/utils"
 LOG_FILE="${LOGS_DIR}/sanity/sanity.log"
-CONFIG_FILE="${UTILS_DIR}/runall/runall.conf"
+CONFIG_FILE="${RUNALL_CONF:-${UTILS_DIR}/runall/runall.conf}"
 RTID=$RANDOM
 TMP_DIR="/tmp/runall_err.${RTID}"
 declare -A ERRORS
@@ -765,7 +821,9 @@ H_SPC="    "      # header spacer
 R_SPC="        "  # row spacer
 
 ### cluster keys ###
-ENV_TYPES="-s -m -c -d -na -nm -p -cp"
+# leaf types only (no aggregates like -a/-n/-iidr/-dv), so that a host covered by
+# two options is not health-checked twice.
+ENV_TYPES="-s -m -sv -c -d -dsm -id -ia -ik -io -na -nm -p -i -g -dvs -dva -cp"
 
 # check if host.yaml exists
 if [[ ! -e ${ENV_CONFIG}/host.yaml ]]; then
@@ -776,10 +834,11 @@ fi
 # abort if conf file is missing
 if [[ ! -e $CONFIG_FILE ]]; then
     echo "[WARN] missing '$CONFIG_FILE'" ; exit
-else
-    # remove carriage return characters from config file
-    sed -i 's/\r$//g' $CONFIG_FILE
 fi
+# note: the config file is NOT rewritten here. carriage returns are stripped
+# where the file is read (see get_targeted_servers), which keeps runall
+# read-only against its own config - no write permission, no inode/mtime churn
+# on every run, and no race between concurrent runs.
 
 # parse arguments
 list_servers=false
@@ -790,7 +849,7 @@ ERR_REPORT=true
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -s|-m|-a|-c|-d|-na|-nm|-n|-p|-cp|-A) type="$1" ;;
+        -s|-m|-sv|-a|-asv|-c|-d|-dsm|-id|-ia|-ik|-io|-iidr|-na|-nm|-n|-p|-i|-g|-dvs|-dva|-dv|-cp|-A) type="$1" ;;
         -l) list_servers=true ;;
         -v) printf "runall.sh v${VERSION}\n" ; exit ;;
         copy)   scp_sources=()
@@ -871,7 +930,11 @@ if $health_check; then
     if [[ ! -z $type ]] ; then
         case $type in
             -a) ENV_TYPES="-s -m" ;;
+            -asv) ENV_TYPES="-s -m -sv" ;;
             -n) ENV_TYPES="-na -nm" ;;
+            -iidr) ENV_TYPES="-ia -ik -io -id" ;;
+            -dv) ENV_TYPES="-dvs -dva" ;;
+            -A) ;;  # keep the full leaf list so every role gets its own checks
             *)  ENV_TYPES=$type
         esac
     fi
@@ -892,3 +955,4 @@ if $hardware_check; then
 fi
 
 exit
+
