@@ -239,7 +239,7 @@ do_one_check() {
 }
 
 list_service_names() {
-  awk -F'8443/' '{print $2}' /giga/microservices/curls | sort | sed 's/\/.*$//' | sed '=' | sed 'N;s/\n/\t/' 
+  awk -F'8443/' 'NF>1{print $2}' /giga/microservices/curls | sed 's/\/.*$//' | sort -u | sed '=' | sed 'N;s/\n/\t/' 
 }
 
 query_one_service() {
@@ -278,7 +278,7 @@ service_hc() {
   #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to display health check for services." ; echo ; }
   local srv_num=0
   local registered_services=$(ssh $(runall -s -l |grep -v == |head -1) 'consul catalog services' | grep -vw 'consul')
-  local defined_services=$(cat /giga/microservices/curls | wc -l)
+  local defined_services=$(awk -F'8443/' 'NF>1{print $2}' /giga/microservices/curls | sed 's/\/.*$//' | sort -u | wc -l)
   echo -e "\n==================== Display health check of $(echo $registered_services | wc -w)/$defined_services services\n"
   get_certs
   for service_name in $registered_services ; do
