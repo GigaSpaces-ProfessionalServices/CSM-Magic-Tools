@@ -16,6 +16,7 @@ _SLEEP_AFTER=1
 _MODE="daily"
 _VERBOSE=""
 _MANAGERS=( $( runall -m -l | grep -v === ) )
+_MGR="${_MANAGERS[0]}"                     # target of single-manager REST queries - override with -m
 _SPACE_SERVERS=( $( runall -s -l | grep -v === ) )
 _ALL_HOSTS=( $( runall -A -l | grep -iv "===\|x\.x" ) )
 _SPACE_NAME=dih-tau-service
@@ -39,20 +40,79 @@ usage() {
 
     -d                DAILY report checks - default (no arguments)
     -v                VERBOSE
+    -m <manager>      Send single-manager REST queries to <manager>.
+                      Default is the first host returned by "runall -m -l".
     -c <number>       Specify one CHECK by number
     -lc               LIST of single CHECKS
+    -ls               LIST of service names
     -p                Print command to be executed (single queries)
     -h                Display HELP/USAGE
 
+  NOTE:
+
+    -c, -lc, -ls and -h stop the script, so they must come LAST.
+    Put -d, -r, -v, -p, -q and -m before them - anything placed after them is
+    rejected with an error instead of being silently ignored.
+
   EXAMPLES:
 
-   $(basename $0) -c 6              # QUERY services only
-   $(basename $0) -v -c 11          # CHECK today's Control-M log entries
-   $(basename $0) -v -c 8           # CHECK pipelines
-   $(basename $0) -p -c 16 program  # PRINT command: single query for program_study_service
+   $(basename $0) -c 6                       # QUERY services only
+   $(basename $0) -v -c 11                   # CHECK today's Control-M log entries
+   $(basename $0) -v -c 8                    # CHECK pipelines
+   $(basename $0) -p -c 16 program           # PRINT command: single query for program_study_service
+   $(basename $0) -m gsprod-manager3 -c 24   # CHECK index counts against manager3
 
 EOF
 exit
+}
+
+bad_args() {
+  echo -e "\n ${1}\n Run '$(basename $0) -h' for usage.\n" >&2
+  exit 1
+}
+
+# -c, -lc, -ls and -h all end in "exit", so do_menu never parses anything that
+# follows them. Walk the argument list the same way do_menu does and refuse to
+# run rather than silently ignore those arguments.
+validate_args() {
+  local -a args=( "${@}" )
+  local -i i=0 argc=${#args[@]}
+  local arg check_num
+
+  while [[ $i -lt $argc ]] ; do
+    arg="${args[i]}"
+    case $arg in
+      "-p"|"-d"|"-r"|"-v"|"-q")
+        (( i++ ))
+        ;;
+      "-m")
+        [[ $((i+1)) -lt $argc ]] || bad_args "Option -m requires a manager host name."
+        [[ ${args[i+1]} == -* ]] && bad_args "Option -m requires a manager host name, got '${args[i+1]}'."
+        (( i += 2 ))
+        ;;
+      "-c")
+        [[ $((i+1)) -lt $argc ]] || bad_args "Option -c requires a check number."
+        check_num="${args[i+1]}"
+        (( i += 2 ))
+        # Checks 3, 16 and 23 accept one optional argument of their own
+        case ${check_num} in
+          3|16) [[ $i -lt $argc && ${args[i]} != -* ]] && (( i++ )) ;;
+          23)   [[ $i -lt $argc && ( ${args[i]} == "-l" || ${args[i]} == "-c" ) ]] && (( i++ )) ;;
+        esac
+        [[ $i -lt $argc ]] && bad_args "'-c ${check_num}' exits the script - these arguments would be ignored: ${args[*]:i}"
+        return 0
+        ;;
+      "-lc"|"-ls"|"-h")
+        (( i++ ))
+        [[ $i -lt $argc ]] && bad_args "'${arg}' exits the script - these arguments would be ignored: ${args[*]:i}"
+        return 0
+        ;;
+      *)
+        bad_args "Option ${arg} not supported."
+        ;;
+    esac
+  done
+  return 0
 }
 
 do_title() {
@@ -81,7 +141,16 @@ do_menu() {
         list_of_checks
         ;;
       "-ls")
-        list_services
+        list_service_names ; exit
+        ;;
+      "-m")
+        local mng found=""
+        for mng in ${_MANAGERS[@]} ; do
+          [[ "${mng}" == "${2}" || "${mng%%.*}" == "${2%%.*}" ]] && { found="${mng}" ; break ; }
+        done
+        [[ -z ${found} ]] && bad_args "Manager '${2}' is not one of: ${_MANAGERS[*]}"
+        _MGR="${found}"
+        shift
         ;;
       "-v")
         _VERBOSE="yes"
@@ -241,7 +310,7 @@ function get_certs() {
 
 service_query() {
   local srv_num=0             # enumerate service queries
-  local services_count=$(curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier | wc -l)
+  local services_count=$(curl -s  -u ${_USER}:${_PASS} http://${_MGR}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier | wc -l)
   echo -e "\n==================== Display data query for all ${services_count} deployed services.\n"
   get_certs
 
@@ -255,7 +324,7 @@ service_query() {
   while read real_service_name ; do 
     service_name=$(echo $real_service_name | sed 's/_v[0-9]\+//')
     microservices_full_string=$(grep "/${service_name}/" /giga/microservices/curls)
-    deploy_state=$( curl -s -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
+    deploy_state=$( curl -s -u ${_USER}:${_PASS} http://${_MGR}:8090/v2/pus |jq -r ".[] | select(.name == \"${real_service_name}\") | .status" )
     [[ -z $microservices_full_string ]] && { printf '%3d %-45s%s\n' "$((++srv_num))" "${real_service_name}" "${deploy_state}" ; continue ; }
     service_string=${microservices_full_string##*8443/}
     if [[ -z "${_VERBOSE}" ]] ; then
@@ -266,7 +335,7 @@ service_query() {
     # Verbose
     printf '=%.0s' {1..50} ; echo " $((++srv_num)) ${real_service_name}"
     time curl --max-time 10 -s --key $_ENV_KEY --cert $_ENV_CERT --cacert $_ENV_CACERT "https://${_END_POINT}:8443/${service_string}" | sed '$a\' ; echo 
-  done < <( curl -s  -u ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier )
+  done < <( curl -s  -u ${_USER}:${_PASS} http://${_MGR}:8090/v2/pus | jq -r '.[].name' | grep '_service$' | grep -v notifier )
 }
 
 do_entries() {
@@ -362,9 +431,9 @@ finish_checking_env() {
 list_types() {
   #[[ "${_QUIET}" != "-q" ]] && { echo ; read -sn1 -p "Press any key to list all registered types" ;echo ; }
   echo -e "\n==================== List of all registered types.\n"
-  local num_of_types=$(curl -u ${_USER}:${_PASS} -s "http://${_MANAGERS[0]}:8090/v2/internal/spaces/utilization" | jq -r ".[].objectTypes | keys| .[]" | wc -l)
+  local num_of_types=$(curl -u ${_USER}:${_PASS} -s "http://${_MGR}:8090/v2/internal/spaces/utilization" | jq -r ".[].objectTypes | keys| .[]" | wc -l)
   echo -e "Total number of registered types: ${num_of_types}\n"
-  [[ -n $_VERBOSE ]] && curl -u ${_USER}:${_PASS} -s "http://${_MANAGERS[0]}:8090/v2/internal/spaces/utilization" | jq -r ".[].objectTypes | keys| .[]"
+  [[ -n $_VERBOSE ]] && curl -u ${_USER}:${_PASS} -s "http://${_MGR}:8090/v2/internal/spaces/utilization" | jq -r ".[].objectTypes | keys| .[]"
   sleep $_SLEEP_AFTER
 }
 
@@ -523,7 +592,7 @@ check_notifiers() {
     echo "Failure"
     echo -e "${notifier_output}"
   fi
-  #curl -u ${_USER}:${_PASS} -s http://${_MANAGERS[0]}:8090/v2/pus | jq -r '.[] | select(.name | contains("notifier")).status'
+  #curl -u ${_USER}:${_PASS} -s http://${_MGR}:8090/v2/pus | jq -r '.[] | select(.name | contains("notifier")).status'
 }
 
 check_gigashare() {
@@ -550,7 +619,7 @@ check_nbagent_services() {
 }
 
 check_indexes_for_dv_max() {
-  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo | jq -r '.objectTypesMetadata[] | select(.indexes[] | select(.name == "T_IDKUN" and .method == "EQUAL_AND_ORDERED")).objectName' )
+  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MGR}:8090/v2/spaces/dih-tau-space/objectsTypeInfo | jq -r '.objectTypesMetadata[] | select(.indexes[] | select(.name == "T_IDKUN" and .method == "EQUAL_AND_ORDERED")).objectName' )
   local IDX_COUNT="Number of Types that have T_IDKUN EQUAL_AND_ORDERED index: $(echo -e "${IDX}" | wc -l)"
   [[ $1 == "-c" ]] && { echo -e "\n${IDX_COUNT}" ; return 0 ; }
   [[ $1 == "-l" ]] && { echo -e "$(date)\n${IDX_COUNT}\n${IDX}" >> /gigalogs/check-indexes.log ; return 0 ; }
@@ -559,14 +628,14 @@ check_indexes_for_dv_max() {
 }
 
 check_indexes_count() {
-  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo| jq -r '.objectTypesMetadata[] | "objectName: \(.objectName)\nindexCount: \(.indexes | length)"' )
+  local IDX=$( curl -su ${_USER}:${_PASS} http://${_MGR}:8090/v2/spaces/dih-tau-space/objectsTypeInfo| jq -r '.objectTypesMetadata[] | "objectName: \(.objectName)\nindexCount: \(.indexes | length)"' )
   echo -e "\n${IDX}"
 }
 
 check_indexes_count_less_than_2() {
   echo -e "\n==================== Display tables with less than 2 indexes.\n"
   echo -n "Index check: "
-  local IDX=$(curl -su ${_USER}:${_PASS} http://${_MANAGERS}:8090/v2/spaces/dih-tau-space/objectsTypeInfo \
+  local IDX=$(curl -su ${_USER}:${_PASS} http://${_MGR}:8090/v2/spaces/dih-tau-space/objectsTypeInfo \
   | jq -r '
     .objectTypesMetadata[]
     # Only proceed if the current element is indeed an object
@@ -662,6 +731,7 @@ do_daily() {
 
 ####################################### MAIN
 
+validate_args "${@}"
 [[ $1 == "-h" ]] && usage
 do_env "${@}"
 [[ $# -gt 0 ]] && do_menu "${@}"
