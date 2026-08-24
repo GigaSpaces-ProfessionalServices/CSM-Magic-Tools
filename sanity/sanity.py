@@ -570,7 +570,7 @@ def show_iidr_subscriptions(_step=None):
             as_home = f"/giga/iidr/as/bin/chcclp"
             monitor_home = "/dbagiga/di-iidr-watchdog"
             ss_file = "status_subscription.chcclp"
-            exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|CUSTOMER)' | sed 's/Inactive/Ready/g'"
+            exclude = "sed -n '/SUBSCRIPTION/,/Repl/p' | egrep -iv '(^$|Repl|---|Demo|LEUMI)' | sed 's/Inactive/Ready/g'"
             sh_cmd = f'ssh {server} "su - {user} -c \\"{as_home}/bin/chcclp -f {monitor_home}/{ss_file} | {exclude}\\""'
             response = subprocess.run([sh_cmd], shell=True, stdout=subprocess.PIPE).stdout.decode()
             if response == '':
@@ -817,11 +817,11 @@ if __name__ == '__main__':
         exit(1)
     THIS_ENV = os.environ['ENV_NAME']
     if THIS_ENV in ('GRG', 'DEV'):
-        DC = 'tcustomer'
+        DC = 'tleumi'
     elif THIS_ENV == 'STG':
-        DC = 'bcustomer'
+        DC = 'bleumi'
     else:
-        DC = 'customer'
+        DC = 'leumi'
 
     # ENV_CONFIG
     ENV_CONFIG_BACKUP = "/dbagiga/env_config"
@@ -940,7 +940,7 @@ if __name__ == '__main__':
             'show_grid_info',
             'show_pu_status',
             'run_services_polling',
-            'show_cdc_status',
+            #'show_cdc_status',
             'show_hardware_info',
             'show_health_info',
             #'run_stress_test',
