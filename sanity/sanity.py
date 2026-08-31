@@ -249,6 +249,7 @@ def argument_parser():
     parser.add_argument('-c', action="store", dest="cycles", help="set number of iterations to execute")
     parser.add_argument('-d', action="store", dest="duration", help="set duration (in seconds) for execution")
     parser.add_argument('--info', action="store_true", help="show general grid information")
+    parser.add_argument('--zk', action="store_true", help="show zookeeper leader election status only")
     parser.add_argument('--status', action="store_true", help="get processing units state for all services")
     parser.add_argument('--stats', action="store_true", help="show the total number of objects in the space")
     parser.add_argument('--stress', action="store_true", help="run a stress test on nt2cr")
@@ -266,6 +267,8 @@ def argument_parser():
         the_arguments['duration'] = ns.duration
     if ns.info:
         the_arguments['info'] = True
+    if ns.zk:
+        the_arguments['zk'] = True
     if ns.status:
         the_arguments['status'] = True
     if ns.stats:
@@ -682,6 +685,138 @@ def shob_update():
     logging.shutdown()
 
 
+def zk_query(base_node, host, port=None):
+    """
+    run GigaSpaces ZooKeeperAttributeStore java tool against a single host
+    and parse its indented text output into a nested dict.
+    :param base_node: zookeeper base node path (e.g. 'xap/managers/gsm/leader-election')
+    :param host: zk host to query
+    :param port: zk port, defaults to zk_default_port
+    :return: nested dict, or None on failure
+    """
+    if port is None:
+        port = zk_default_port
+    cp = f"{gs_zk_home}/lib/platform/zookeeper/*:{gs_zk_home}/lib/required/*"
+    cmd = [
+        "java", "-cp", cp,
+        "-Djava.util.logging.config.file=/dev/null",
+        "org.openspaces.zookeeper.attribute_store.ZooKeeperAttributeStore",
+        f"{host}:{port}", base_node
+        ]
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    root = {}
+    stack = [(-1, root)]
+    for line in result.stdout.decode(errors='replace').splitlines():
+        if re.match(r'^(Reading ZooKeeper data|ZooKeeper data report completed)', line):
+            continue
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip(' '))
+        key, _, val = line.strip().partition(':')
+        val = val.strip()
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        parent = stack[-1][1]
+        if val:
+            parent[key] = val
+        else:
+            parent[key] = {}
+            stack.append((indent, parent[key]))
+    return root
+
+
+def zk_rank_participants(participants):
+    """
+    rank leader-election participants by their lock sequence number.
+    lowest sequence number = leader (Curator leader-election recipe),
+    the rest = followers, ordered by their place in the watch chain.
+    :param participants: dict of {lock-node-name: participant-id}
+    :return: list of (seq, participant_id) sorted ascending by seq
+    """
+    ranked = []
+    for k, v in participants.items():
+        m = re.search(r'lock-(\d+)$', k)
+        seq = int(m.group(1)) if m else 0
+        ranked.append((seq, v))
+    ranked.sort(key=lambda x: x[0])
+    return ranked
+
+
+def show_zk_election_status(_step=None):
+    try:
+        if interactive_mode:
+            os.system('clear')
+            print(pyfiglet.figlet_format("     Sanity", font='slant'))
+        else:
+            print('\n' * 3)
+        _title = f'-- [ STEP {_step} ] --- ZOOKEEPER SNAPSHOT STATUS '
+        print_title(_title)
+        logger = logging.getLogger()
+        colorama.init(autoreset=True)
+
+        # GSM manager leader-election - queried separately from every manager host
+        gap = "   "
+        print(f"{'host':<20}{'followers':<80}{gap}{'leader':<40}")
+        for host in managers:
+            host_field = f"[{host}]".ljust(20)
+            if not check_connection(host, zk_default_port, 2):
+                msg = f"{'unable to connect on port ' + str(zk_default_port):<80}"
+                check = f"{Fore.RED}[✗]{Style.RESET_ALL}"
+                print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{Fore.RED}{msg}{Style.RESET_ALL}{gap}{check}")
+                logger.info(f"ZK GSM host={host} unreachable on port {zk_default_port}")
+                continue
+            gsm_data = zk_query("xap/managers/gsm/leader-election", host)
+            participants = {}
+            if gsm_data:
+                participants = gsm_data.get('leader-election', {}).get('participants', {})
+            if not participants:
+                msg = f"{'NONE':<80}"
+                check = f"{Fore.RED}[✗]{Style.RESET_ALL}"
+                print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{Fore.RED}{msg}{Style.RESET_ALL}{gap}{check}")
+                logger.info(f"ZK GSM host={host} no participants found")
+                continue
+            ranked = zk_rank_participants(participants)
+            leader_uuid = ranked[0][1]
+            followers = [v for _, v in ranked[1:]]
+            followers_str = ", ".join(followers) if followers else "-"
+            followers_field = f"{followers_str:<80}"
+            leader_field = f"{leader_uuid:<40}"
+            check = f"{Fore.GREEN}[✓]{Style.RESET_ALL}"
+            print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{followers_field}{gap}"
+                  f"{Fore.GREEN}{leader_field}{Style.RESET_ALL}{check}")
+            logger.info(f"ZK GSM host={host} leader={leader_uuid} followers={followers_str}")
+        print()
+
+        # space partitions leader-election
+        space_data = zk_query(f"xap/spaces/{space_name}/leader-election", manager)
+        partitions = space_data.get('leader-election', {}) if space_data else {}
+        print(f"space: {space_name}")
+        print(f"{'partition':<20}{'participants':<25}{'status':<30}")
+        for part_id in sorted(partitions.keys(), key=lambda x: int(x)):
+            part = partitions[part_id]
+            part_participants = part.get('participants', {})
+            leader_val = part.get('leader', '')
+            if not leader_val and part_participants:
+                leader_val = zk_rank_participants(part_participants)[0][1]
+            count = len(part_participants)
+            ok = bool(leader_val) and count == 2
+            status_str = "ACTIVE" if leader_val else "NO LEADER"
+            color = Fore.GREEN if ok else Fore.RED
+            check = f"{color}[✓]{Style.RESET_ALL}" if ok else f"{Fore.RED}[✗]{Style.RESET_ALL}"
+            status_field = f"{status_str:<30}"
+            print(f"{part_id:<20}{count:<25}{color}{status_field}{Style.RESET_ALL}{check}")
+            logger.info(f"ZK partition {part_id} status={status_str} participants={count}")
+        logging.shutdown()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n")
+        exit(1)
+
+
 def show_hardware_info(_step=None):
     try:
         if interactive_mode:
@@ -851,6 +986,8 @@ if __name__ == '__main__':
     k6_test = f"{utils_dir}/sanity/run_k6.sh"
     ms_config = f"{gs_root}/microservices/curls"
     ssl_root = gs_root + "/ssl"
+    gs_zk_home = "/dbagiga/gigaspaces-smart-ods"
+    zk_default_port = 2181
 
     # set display report width
     rw = 100
@@ -926,6 +1063,7 @@ if __name__ == '__main__':
         stats = False
         stress = False
         polling = False
+        zk = False
         verbose = False
         cycles_passed = 0
         total_cycles = 1
@@ -943,6 +1081,7 @@ if __name__ == '__main__':
             #'show_cdc_status',
             'show_hardware_info',
             'show_health_info',
+            'show_zk_election_status',
             #'run_stress_test',
             ]
 
@@ -981,6 +1120,8 @@ if __name__ == '__main__':
         if 'service' in arguments:
             polling = True
             service_name = arguments['service']
+        if 'zk' in arguments:
+            zk = True
 
         # setup SSL certificates
         try:
@@ -1084,6 +1225,21 @@ if __name__ == '__main__':
                 while cycles_passed < total_cycles:
                     time.sleep(0.2)
                     run_stress_test()
+                    cycles_passed += 1
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+        if zk:
+            if duration:
+                while time_passed < duration_sec:
+                    show_zk_election_status()
+                    time_passed = int(time.time() - started)
+                logger.info('Sanity complete.')
+                logging.shutdown()
+                exit(0)
+            else:
+                while cycles_passed < total_cycles:
+                    show_zk_election_status()
                     cycles_passed += 1
                 logger.info('Sanity complete.')
                 logging.shutdown()
