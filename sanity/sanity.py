@@ -759,16 +759,21 @@ def show_zk_election_status(_step=None):
         logger = logging.getLogger()
         colorama.init(autoreset=True)
 
-        # GSM manager leader-election - queried separately from every manager host
         gap = "   "
-        print(f"{'host':<20}{'followers':<80}{gap}{'leader':<40}")
+        # queried separately per manager host, so ZK replication drift between
+        # managers shows up as a difference between sections instead of being hidden
         for host in managers:
+            print(f"{Fore.CYAN}{Style.BRIGHT}===== manager: [{host}] ====={Style.RESET_ALL}")
             host_field = f"[{host}]".ljust(20)
+
+            # GSM manager leader-election
+            print(f"{'host':<20}{'followers':<80}{gap}{'leader':<40}")
             if not check_connection(host, zk_default_port, 2):
                 msg = f"{'unable to connect on port ' + str(zk_default_port):<80}"
                 check = f"{Fore.RED}[✗]{Style.RESET_ALL}"
                 print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{Fore.RED}{msg}{Style.RESET_ALL}{gap}{check}")
                 logger.info(f"ZK GSM host={host} unreachable on port {zk_default_port}")
+                print()
                 continue
             gsm_data = zk_query("xap/managers/gsm/leader-election", host)
             participants = {}
@@ -779,38 +784,39 @@ def show_zk_election_status(_step=None):
                 check = f"{Fore.RED}[✗]{Style.RESET_ALL}"
                 print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{Fore.RED}{msg}{Style.RESET_ALL}{gap}{check}")
                 logger.info(f"ZK GSM host={host} no participants found")
-                continue
-            ranked = zk_rank_participants(participants)
-            leader_uuid = ranked[0][1]
-            followers = [v for _, v in ranked[1:]]
-            followers_str = ", ".join(followers) if followers else "-"
-            followers_field = f"{followers_str:<80}"
-            leader_field = f"{leader_uuid:<40}"
-            check = f"{Fore.GREEN}[✓]{Style.RESET_ALL}"
-            print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{followers_field}{gap}"
-                  f"{Fore.GREEN}{leader_field}{Style.RESET_ALL}{check}")
-            logger.info(f"ZK GSM host={host} leader={leader_uuid} followers={followers_str}")
-        print()
+            else:
+                ranked = zk_rank_participants(participants)
+                leader_uuid = ranked[0][1]
+                followers = [v for _, v in ranked[1:]]
+                followers_str = ", ".join(followers) if followers else "-"
+                followers_field = f"{followers_str:<80}"
+                leader_field = f"{leader_uuid:<40}"
+                check = f"{Fore.GREEN}[✓]{Style.RESET_ALL}"
+                print(f"{Fore.BLUE}{host_field}{Style.RESET_ALL}{followers_field}{gap}"
+                      f"{Fore.GREEN}{leader_field}{Style.RESET_ALL}{check}")
+                logger.info(f"ZK GSM host={host} leader={leader_uuid} followers={followers_str}")
+            print()
 
-        # space partitions leader-election
-        space_data = zk_query(f"xap/spaces/{space_name}/leader-election", manager)
-        partitions = space_data.get('leader-election', {}) if space_data else {}
-        print(f"space: {space_name}")
-        print(f"{'partition':<20}{'participants':<25}{'status':<30}")
-        for part_id in sorted(partitions.keys(), key=lambda x: int(x)):
-            part = partitions[part_id]
-            part_participants = part.get('participants', {})
-            leader_val = part.get('leader', '')
-            if not leader_val and part_participants:
-                leader_val = zk_rank_participants(part_participants)[0][1]
-            count = len(part_participants)
-            ok = bool(leader_val) and count == 2
-            status_str = "ACTIVE" if leader_val else "NO LEADER"
-            color = Fore.GREEN if ok else Fore.RED
-            check = f"{color}[✓]{Style.RESET_ALL}" if ok else f"{Fore.RED}[✗]{Style.RESET_ALL}"
-            status_field = f"{status_str:<30}"
-            print(f"{part_id:<20}{count:<25}{color}{status_field}{Style.RESET_ALL}{check}")
-            logger.info(f"ZK partition {part_id} status={status_str} participants={count}")
+            # space partitions leader-election, queried from this same host
+            space_data = zk_query(f"xap/spaces/{space_name}/leader-election", host)
+            partitions = space_data.get('leader-election', {}) if space_data else {}
+            print(f"space: {space_name}")
+            print(f"{'partition':<20}{'participants':<25}{'status':<30}")
+            for part_id in sorted(partitions.keys(), key=lambda x: int(x)):
+                part = partitions[part_id]
+                part_participants = part.get('participants', {})
+                leader_val = part.get('leader', '')
+                if not leader_val and part_participants:
+                    leader_val = zk_rank_participants(part_participants)[0][1]
+                count = len(part_participants)
+                ok = bool(leader_val) and count == 2
+                status_str = "ACTIVE" if leader_val else "NO LEADER"
+                color = Fore.GREEN if ok else Fore.RED
+                check = f"{color}[✓]{Style.RESET_ALL}" if ok else f"{Fore.RED}[✗]{Style.RESET_ALL}"
+                status_field = f"{status_str:<30}"
+                print(f"{part_id:<20}{count:<25}{color}{status_field}{Style.RESET_ALL}{check}")
+                logger.info(f"ZK manager={host} partition={part_id} status={status_str} participants={count}")
+            print()
         logging.shutdown()
     except (KeyboardInterrupt, SystemExit):
         print("\n")
